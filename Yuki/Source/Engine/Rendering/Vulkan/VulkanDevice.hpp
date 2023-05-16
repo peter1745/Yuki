@@ -28,6 +28,8 @@ namespace Yuki {
 	private:
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
+		VkPhysicalDeviceFeatures2 m_DeviceFeatures;
+		VkPhysicalDeviceVulkan13Features m_DeviceFeatures13;
 		VkDevice m_Device = VK_NULL_HANDLE;
 		uint32_t m_DeviceScore = 0;
 		VkQueue m_Queue = VK_NULL_HANDLE;

@@ -27,7 +27,7 @@ namespace Yuki {
 
 		VkApplicationInfo appInfo = {
 			.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-			.apiVersion = VK_VERSION_1_3
+			.apiVersion = VK_API_VERSION_1_3
 		};
 
 		VkInstanceCreateInfo instanceInfo = {

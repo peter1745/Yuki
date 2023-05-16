@@ -43,8 +43,15 @@ namespace Yuki {
 			.pQueuePriorities = &queuePriority,
 		};
 
+		VkPhysicalDeviceVulkan13Features features13 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
+		features13.dynamicRendering = m_DeviceFeatures13.dynamicRendering;
+		features13.synchronization2 = m_DeviceFeatures13.synchronization2;
+
+		VkPhysicalDeviceFeatures2 features2 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features13 };
+
 		VkDeviceCreateInfo deviceInfo = {
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+			.pNext = &features2,
 			.queueCreateInfoCount = 1,
 			.pQueueCreateInfos = &queueCreateInfo,
 			.enabledLayerCount = uint32_t(InDeviceLayers.Count()),
@@ -99,14 +106,14 @@ namespace Yuki {
 		}
 		}
 
-		VkPhysicalDeviceVulkan13Features deviceFeatures13 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
-		VkPhysicalDeviceFeatures2 deviceFeatures2 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &deviceFeatures13 };
-		vkGetPhysicalDeviceFeatures2(m_PhysicalDevice, &deviceFeatures2);
+		m_DeviceFeatures13 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
+		m_DeviceFeatures = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &m_DeviceFeatures13 };
+		vkGetPhysicalDeviceFeatures2(m_PhysicalDevice, &m_DeviceFeatures);
 
-		if (deviceFeatures13.dynamicRendering == VK_TRUE)
+		if (m_DeviceFeatures13.dynamicRendering == VK_TRUE)
 			m_DeviceScore += 10;
 
-		if (deviceFeatures13.synchronization2 == VK_TRUE)
+		if (m_DeviceFeatures13.synchronization2 == VK_TRUE)
 			m_DeviceScore += 10;
 	}
 
