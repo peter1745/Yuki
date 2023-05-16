@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../Memory/Unique.hpp"
+
 namespace Yuki {
 
 	struct WindowAttributes
@@ -7,6 +9,7 @@ namespace Yuki {
 		std::string Title = "Yuki Application";
 		uint32_t Width = 0;
 		uint32_t Height = 0;
+		bool Maximized = false;
 	};
 
 	class GenericWindow
@@ -16,10 +19,16 @@ namespace Yuki {
 
 		virtual void Create() = 0;
 
-		virtual void ProcessEvents() const = 0;
+		virtual void ProcessEvents() = 0;
+
+		virtual void Show() = 0;
+
+		virtual bool ShouldClose() const = 0;
+
+		virtual const WindowAttributes& GetAttributes() const = 0;
 
 	public:
-		static std::unique_ptr<GenericWindow> New(WindowAttributes InAttributes);
+		static Unique<GenericWindow> New(WindowAttributes InAttributes);
 	};
 
 }

@@ -7,6 +7,34 @@ namespace Yuki {
 
 	LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
+		WindowAttributes* windowAttributes = reinterpret_cast<WindowAttributes*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+
+		switch (uMsg)
+		{
+		case WM_NCCREATE:
+		case WM_CREATE:
+		{
+			SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)reinterpret_cast<CREATESTRUCT*>(lParam)->lpCreateParams);
+			break;
+		}
+		case WM_SIZE:
+		{
+			int32_t width = LOWORD(lParam);
+			int32_t height = HIWORD(lParam);
+			
+			windowAttributes->Width = uint32_t(width);
+			windowAttributes->Height = uint32_t(height);
+			break;
+		}
+		case WM_DESTROY:
+		{
+			PostQuitMessage(0);
+			return 0;
+		}
+		default:
+			break;
+		}
+
 		return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
 
@@ -44,14 +72,17 @@ namespace Yuki {
 		    nullptr,
 		    nullptr,
 		    windowClass.hInstance,
-		    nullptr);
+		    &m_Attributes);
 
 		YUKI_VERIFY(m_WindowHandle != nullptr, "Failed to create Win32 Window!");
-
-		ShowWindow(m_WindowHandle, SW_SHOW);
 	}
 
-	void WindowsWindow::ProcessEvents() const
+	void WindowsWindow::Show()
+	{
+		ShowWindow(m_WindowHandle, m_Attributes.Maximized ? SW_SHOWMAXIMIZED : SW_SHOW);
+	}
+
+	void WindowsWindow::ProcessEvents()
 	{
 		MSG message = {};
 		while (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
@@ -59,11 +90,14 @@ namespace Yuki {
 			TranslateMessage(&message);
 			DispatchMessage(&message);
 		}
+
+		if (message.message == WM_QUIT)
+			m_Closed = true;
 	}
 
-	std::unique_ptr<GenericWindow> GenericWindow::New(WindowAttributes InAttributes)
+	Unique<GenericWindow> GenericWindow::New(WindowAttributes InAttributes)
 	{
-		return std::make_unique<WindowsWindow>(std::move(InAttributes));
+		return Unique<WindowsWindow>::Create(std::move(InAttributes));
 	}
 
 }

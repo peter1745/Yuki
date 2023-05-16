@@ -1,26 +1,27 @@
 #include <iostream>
 
-#include <Yuki/Core/GenericWindow.hpp>
+#include <Yuki/EntryPoint.hpp>
+#include <Yuki/Core/Application.hpp>
 #include <Yuki/Core/Logging.hpp>
 
-int main()
+class TestApplication : public Yuki::Application
 {
-	Yuki::LogInit();
-
-	Yuki::WindowAttributes windowAttributes =
+public:
+	TestApplication()
+	    : Yuki::Application("Test Application")
 	{
-		.Title = "Sandbox - Yuki",
-		.Width = 1920,
-		.Height = 1080
-	};
-	auto window = Yuki::GenericWindow::New(windowAttributes);
-	window->Create();
-
-	while (true)
-	{
-		window->ProcessEvents();
 	}
 
-	std::cin.get();
-	return 0;
-}
+private:
+	void OnInitialize() override
+	{
+		Yuki::LogInfo("OnInitialize!");
+	}
+
+	void OnRunLoop() override
+	{
+		Yuki::LogInfo("OnRunLoop");
+	}
+};
+
+YUKI_DECLARE_APPLICATION(TestApplication)
