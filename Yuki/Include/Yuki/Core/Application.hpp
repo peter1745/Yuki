@@ -2,6 +2,8 @@
 
 #include "GenericWindow.hpp"
 
+#include "../EventSystem/EventSystem.hpp"
+
 namespace Yuki {
 
 	class Application
@@ -12,6 +14,8 @@ namespace Yuki {
 
 		int32_t GetExitCode() const { return m_ExitCode; }
 
+		EventSystem& GetEventSystem() const { return *m_EventSystem; }
+
 	private:
 		virtual void OnInitialize() {}
 		virtual void OnRunLoop() {}
@@ -20,9 +24,15 @@ namespace Yuki {
 		void Initialize();
 		void Run();
 
+		void OnWindowClose(const WindowCloseEvent& InEvent);
+
 	private:
 		std::string m_Name;
 		Unique<GenericWindow> m_Window = nullptr;
+		Unique<EventSystem> m_EventSystem = nullptr;
+
+		bool m_RunEngineLoop = false;
+
 		int32_t m_ExitCode = 0;
 
 	private:

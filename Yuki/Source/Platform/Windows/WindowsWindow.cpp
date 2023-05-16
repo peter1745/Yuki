@@ -7,7 +7,7 @@ namespace Yuki {
 
 	LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		WindowAttributes* windowAttributes = reinterpret_cast<WindowAttributes*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+		auto* windowAttributes = reinterpret_cast<WindowAttributes*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
 		switch (uMsg)
 		{
@@ -82,7 +82,7 @@ namespace Yuki {
 		ShowWindow(m_WindowHandle, m_Attributes.Maximized ? SW_SHOWMAXIMIZED : SW_SHOW);
 	}
 
-	void WindowsWindow::ProcessEvents()
+	void WindowsWindow::ProcessEvents() const
 	{
 		MSG message = {};
 		while (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
@@ -92,7 +92,10 @@ namespace Yuki {
 		}
 
 		if (message.message == WM_QUIT)
-			m_Closed = true;
+		{
+			WindowCloseEvent closeEvent;
+			m_Attributes.EventCallback(&closeEvent);
+		}
 	}
 
 	Unique<GenericWindow> GenericWindow::New(WindowAttributes InAttributes)

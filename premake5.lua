@@ -29,6 +29,10 @@ workspace "Yuki"
 	filter "system:windows"
 		defines { "_CRT_SECURE_NO_WARNINGS" }
 
+		disablewarnings {
+            "4100" -- Unreferenced Formal Parameter
+        }
+
 group "ThirdParty"
 include "ThirdParty/"
 group ""

@@ -8,7 +8,7 @@ namespace Yuki {
 	template<typename TAppClass>
 	struct EntryPoint
 	{
-		int operator()()
+		int operator()() const
 		{
 			Yuki::LogInit();
 			Unique<TAppClass> app = Unique<TAppClass>::Create();

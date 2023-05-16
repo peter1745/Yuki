@@ -13,9 +13,7 @@ namespace Yuki {
 
 		void Show() override;
 
-		void ProcessEvents() override;
-
-		bool ShouldClose() const override { return m_Closed; }
+		void ProcessEvents() const override;
 
 	public:
 		const WindowAttributes& GetAttributes() const override { return m_Attributes; }
@@ -23,7 +21,6 @@ namespace Yuki {
 	private:
 		HWND m_WindowHandle = nullptr;
 		WindowAttributes m_Attributes;
-		bool m_Closed = false;
 	};
 
 }
