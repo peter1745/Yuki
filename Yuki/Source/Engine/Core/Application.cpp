@@ -25,6 +25,9 @@ namespace Yuki {
 		m_EventSystem = Unique<EventSystem>::Create();
 		m_EventSystem->AddListener(this, &Application::OnWindowClose);
 
+		m_RenderContext = RenderContext::New(m_Window.GetPtr());
+		m_RenderContext->Initialize();
+
 		OnInitialize();
 
 		m_Window->Show();
@@ -39,6 +42,11 @@ namespace Yuki {
 			m_Window->ProcessEvents();
 			OnRunLoop();
 		}
+	}
+
+	void Application::Destroy()
+	{
+		m_RenderContext->Destroy();
 	}
 
 	void Application::OnWindowClose(const WindowCloseEvent& InEvent)

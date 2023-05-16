@@ -3,6 +3,7 @@
 #include "GenericWindow.hpp"
 
 #include "../EventSystem/EventSystem.hpp"
+#include "../Rendering/RenderContext.hpp"
 
 namespace Yuki {
 
@@ -23,6 +24,7 @@ namespace Yuki {
 	private:
 		void Initialize();
 		void Run();
+		void Destroy();
 
 		void OnWindowClose(const WindowCloseEvent& InEvent);
 
@@ -30,6 +32,7 @@ namespace Yuki {
 		std::string m_Name;
 		Unique<GenericWindow> m_Window = nullptr;
 		Unique<EventSystem> m_EventSystem = nullptr;
+		Unique<RenderContext> m_RenderContext = nullptr;
 
 		bool m_RunEngineLoop = false;
 

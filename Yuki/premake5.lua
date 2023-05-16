@@ -1,3 +1,5 @@
+local VulkanSDKPath = os.getenv("VULKAN_SDK") .. "/Include/"
+
 project "Yuki"
     kind "StaticLib"
 
@@ -23,7 +25,10 @@ project "Yuki"
     }
 
     externalincludedirs {
-        "../ThirdParty/spdlog/include/"
+        "../ThirdParty/spdlog/include/",
+        "../ThirdParty/volk/Include/",
+
+        VulkanSDKPath,
     }
 
     defines { "SPDLOG_COMPILED_LIB" }

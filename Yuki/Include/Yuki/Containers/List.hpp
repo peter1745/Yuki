@@ -169,6 +169,15 @@ namespace Yuki {
 
 	public:
 		constexpr List() = default;
+
+		constexpr List(size_t InElementCount, const T& InValue = T())
+		    : m_Count(InElementCount), m_Capacity(InElementCount)
+		{
+			m_Data = reinterpret_cast<T*>(::operator new(m_Capacity * sizeof(T)));
+			for (size_t i = 0; i < m_Count; i++)
+				m_Data[i] = std::move(InValue);
+		}
+
 		constexpr List(const List& InOther)
 		    : m_Count(InOther.m_Count), m_Capacity(InOther.m_Capacity)
 		{
@@ -226,16 +235,6 @@ namespace Yuki {
 			m_Count = 0;
 		}
 
-		constexpr T& PushBack(const T& InValue)
-		{
-			return EmplaceBack(InValue);
-		}
-
-		constexpr T& PushBack(T&& InValue)
-		{
-			return EmplaceBack(std::move(InValue));
-		}
-
 		template<typename... TArgs>
 		constexpr T& EmplaceBack(TArgs&&... InArgs)
 		{
@@ -245,6 +244,23 @@ namespace Yuki {
 			}
 
 			return EmplaceReallocate(std::forward<TArgs>(InArgs)...);
+		}
+
+		constexpr void Resize(size_t InCount)
+		{
+			size_t newCapacity = CalculateGrowth(InCount);
+			size_t elemsToCopy = newCapacity < m_Count ? newCapacity : m_Count;
+
+			auto* newData = reinterpret_cast<T*>(::operator new(newCapacity * sizeof(T)));
+			memset(newData, 0, newCapacity * sizeof(T));
+
+			for (size_t i = 0; i < elemsToCopy; i++)
+				newData[i] = std::move(m_Data[i]);
+
+			Deallocate();
+			m_Data = newData;
+			m_Count = InCount;
+			m_Capacity = newCapacity;
 		}
 
 		constexpr T& operator[](size_t InIndex) { return m_Data[InIndex]; }

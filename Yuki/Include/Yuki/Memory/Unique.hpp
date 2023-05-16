@@ -59,6 +59,8 @@ namespace Yuki {
 		inline T& operator*() const noexcept { return *m_Ptr; }
 		inline T* operator->() const noexcept { return m_Ptr; }
 
+		inline T* GetPtr() const noexcept { return m_Ptr; }
+
 	public:
 		Unique(const Unique&) = delete;
 		Unique& operator=(const Unique&) = delete;

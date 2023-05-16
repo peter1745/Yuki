@@ -15,6 +15,8 @@ namespace Yuki {
 
 		void ProcessEvents() const override;
 
+		HWND GetWindowHandle() const { return m_WindowHandle; }
+
 	public:
 		const WindowAttributes& GetAttributes() const override { return m_Attributes; }
 

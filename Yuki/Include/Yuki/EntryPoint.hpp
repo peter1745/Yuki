@@ -14,6 +14,7 @@ namespace Yuki {
 			Unique<TAppClass> app = Unique<TAppClass>::Create();
 			app->Initialize();
 			app->Run();
+			app->Destroy();
 			int exitCode = app->GetExitCode();
 			app.Release();
 			return exitCode;

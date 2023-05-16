@@ -23,11 +23,9 @@ private:
 
 	void OnRunLoop() override
 	{
-		Yuki::LogInfo("OnRunLoop");
 	}
 
 private:
-	
 	void OnCloseEvent(const Yuki::ApplicationCloseEvent& InEvent)
 	{
 		Yuki::LogWarn("OnCloseEvent!");
