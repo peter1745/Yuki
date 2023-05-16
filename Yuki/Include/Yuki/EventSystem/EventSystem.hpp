@@ -3,9 +3,8 @@
 #include "Event.hpp"
 
 #include "../Memory/Unique.hpp"
-
-#include <array>
-#include <vector>
+#include "../Containers/Array.hpp"
+#include "../Containers/List.hpp"
 
 namespace Yuki {
 
@@ -47,13 +46,13 @@ namespace Yuki {
 		{
 			EventType eventType = TEventType::StaticType();
 			auto eventListenerFunc = Unique<EventListenerMemberFunc<TListenerType, TEventType>>::Create(InListenerInstance, ListenerFunc);
-			m_Listeners[(size_t)eventType].emplace_back(std::move(eventListenerFunc));
+			m_Listeners[(size_t)eventType].EmplaceBack(std::move(eventListenerFunc));
 		}
 
 		void PostEvent(Event* InEvent);
 
 	private:
-		std::array<std::vector<Unique<EventListenerFunc>>, (size_t)EventType::COUNT> m_Listeners;
+		Array<List<Unique<EventListenerFunc>>, (size_t)EventType::COUNT> m_Listeners;
 	};
 
 }

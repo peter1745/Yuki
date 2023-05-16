@@ -11,8 +11,8 @@ project "Yuki"
         "Source/YukiPCH.cpp",
         "Source/YukiPCH.hpp",
 
-        "Source/Core/**.cpp",
-        "Source/Core/**.hpp",
+        "Source/Engine/**.cpp",
+        "Source/Engine/**.hpp",
 
         "Include/**.hpp"
     }

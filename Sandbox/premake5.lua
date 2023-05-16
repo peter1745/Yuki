@@ -18,3 +18,6 @@ project "Sandbox"
 
     defines { "SPDLOG_COMPILED_LIB" }
 
+    filter { "system:windows" }
+        defines { "YUKI_PLATFORM_WINDOWS" }
+
