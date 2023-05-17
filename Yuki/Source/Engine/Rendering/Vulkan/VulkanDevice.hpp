@@ -14,12 +14,17 @@ namespace Yuki {
 		VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
 		VkDevice GetLogicalDevice() const { return m_Device; }
 
+		uint32_t GetQueueFamilyIndex() const { return m_QueueFamilyIndex; }
+		VkQueue GetQueue() const { return m_Queue; }
+
 		uint32_t GetDeviceScore() const { return m_DeviceScore; }
 
 		const VkPhysicalDeviceProperties& GetPhysicalDeviceProperties() const { return m_PhysicalDeviceProperties; }
 
+		VkSurfaceCapabilitiesKHR QuerySurfaceCapabilities(VkSurfaceKHR InSurface) const;
+
 	public:
-		void CreateLogicalDevice(VkSurfaceKHR InSurface, const List<const char*>& InDeviceLayers);
+		void CreateLogicalDevice(const List<const char*>& InDeviceLayers);
 		void Destroy();
 
 	private:
@@ -32,6 +37,8 @@ namespace Yuki {
 		VkPhysicalDeviceVulkan13Features m_DeviceFeatures13;
 		VkDevice m_Device = VK_NULL_HANDLE;
 		uint32_t m_DeviceScore = 0;
+
+		uint32_t m_QueueFamilyIndex = std::numeric_limits<uint32_t>::max();
 		VkQueue m_Queue = VK_NULL_HANDLE;
 	};
 

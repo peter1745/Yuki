@@ -17,6 +17,8 @@ namespace Yuki {
 
 		EventSystem& GetEventSystem() const { return *m_EventSystem; }
 
+		GenericWindow* NewWindow(WindowAttributes InWindowAttributes);
+
 	private:
 		virtual void OnInitialize() {}
 		virtual void OnRunLoop() {}
@@ -30,13 +32,16 @@ namespace Yuki {
 
 	private:
 		std::string m_Name;
-		Unique<GenericWindow> m_Window = nullptr;
+		List<Unique<GenericWindow>> m_Windows;
+		GenericWindow* m_MainWindow = nullptr;
 		Unique<EventSystem> m_EventSystem = nullptr;
 		Unique<RenderContext> m_RenderContext = nullptr;
 
 		bool m_RunEngineLoop = false;
 
 		int32_t m_ExitCode = 0;
+
+		List<GenericWindow*> m_ClosedWindows;
 
 	private:
 		template<typename TAppClass>

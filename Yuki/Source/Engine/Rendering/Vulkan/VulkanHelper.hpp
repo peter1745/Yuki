@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Containers/List.hpp"
+#include "Core/Core.hpp"
 
 namespace Yuki {
 
@@ -12,8 +12,8 @@ namespace Yuki {
 		{
 			uint32_t numElements = 0;
 			InEnumerationFunc(std::forward<TArgs>(InArgs)..., &numElements, nullptr);
-			InList.Resize(size_t(numElements));
-			InEnumerationFunc(std::forward<TArgs>(InArgs)..., &numElements, InList.Data());
+			InList.resize(size_t(numElements));
+			InEnumerationFunc(std::forward<TArgs>(InArgs)..., &numElements, InList.data());
 		}
 	};
 

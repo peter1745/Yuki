@@ -3,20 +3,22 @@
 
 namespace Yuki {
 
+	static List<Unique<VulkanDevice>> s_AvailableDevices;
+
 	const List<Unique<VulkanDevice>>& VulkanPlatform::QueryAvailableDevices(VkInstance InInstance)
 	{
-		if (m_AvailableDevices.IsEmpty())
+		if (s_AvailableDevices.empty())
 		{
 			List<VkPhysicalDevice> availablePhysicalDevices;
 			VulkanHelper::Enumerate(vkEnumeratePhysicalDevices, availablePhysicalDevices, InInstance);
 			
-			m_AvailableDevices.Resize(availablePhysicalDevices.Count());
+			s_AvailableDevices.resize(availablePhysicalDevices.size());
 
-			for (size_t i = 0; i < availablePhysicalDevices.Count(); i++)
-				m_AvailableDevices[i] = std::move(Unique<VulkanDevice>::Create(availablePhysicalDevices[i]));
+			for (size_t i = 0; i < availablePhysicalDevices.size(); i++)
+				s_AvailableDevices[i] = std::move(Unique<VulkanDevice>::Create(availablePhysicalDevices[i]));
 		}
 
-		return m_AvailableDevices;
+		return s_AvailableDevices;
 	}
 
 }

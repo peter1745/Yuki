@@ -6,7 +6,7 @@ namespace Yuki {
 	{
 		EventType eventType = InEvent->GetType();
 
-		if (m_Listeners[(size_t)eventType].IsEmpty())
+		if (m_Listeners[(size_t)eventType].empty())
 			return;
 
 		for (const auto& listener : m_Listeners[(size_t)eventType])

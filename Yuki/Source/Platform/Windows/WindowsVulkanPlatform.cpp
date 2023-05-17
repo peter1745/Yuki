@@ -1,14 +1,14 @@
-#include "WindowsVulkanPlatform.hpp"
+#include "Engine/Rendering/Vulkan/VulkanPlatform.hpp"
 #include "WindowsWindow.hpp"
 
 namespace Yuki {
 
-	void WindowsVulkanPlatform::GetRequiredInstanceExtensions(List<const char*>& InExtensions) const
+	void VulkanPlatform::GetRequiredInstanceExtensions(List<const char*>& InExtensions)
 	{
-		InExtensions.EmplaceBack(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+		InExtensions.emplace_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 	}
 
-	VkSurfaceKHR WindowsVulkanPlatform::CreateSurface(VkInstance InInstance, GenericWindow* InWindow) const
+	VkSurfaceKHR VulkanPlatform::CreateSurface(VkInstance InInstance, GenericWindow* InWindow)
 	{
 		auto* nativeWindow = static_cast<WindowsWindow*>(InWindow);
 
@@ -22,7 +22,5 @@ namespace Yuki {
 		YUKI_VERIFY(vkCreateWin32SurfaceKHR(InInstance, &surfaceInfo, nullptr, &surface) == VK_SUCCESS);
 		return surface;
 	}
-
-	Unique<VulkanPlatform> VulkanPlatform::New() { return Unique<WindowsVulkanPlatform>::Create(); }
 
 }

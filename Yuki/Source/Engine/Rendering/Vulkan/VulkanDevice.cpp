@@ -14,21 +14,24 @@ namespace Yuki {
 		vkDeviceWaitIdle(m_Device);
 	}
 
-	void VulkanDevice::CreateLogicalDevice(VkSurfaceKHR InSurface, const List<const char*>& InDeviceLayers)
+	VkSurfaceCapabilitiesKHR VulkanDevice::QuerySurfaceCapabilities(VkSurfaceKHR InSurface) const
 	{
-		uint32_t selectedQueueFamilyIndex = std::numeric_limits<uint32_t>::max();
+		VkSurfaceCapabilitiesKHR surfaceCapabilities;
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_PhysicalDevice, InSurface, &surfaceCapabilities);
+		return surfaceCapabilities;
+	}
+
+	void VulkanDevice::CreateLogicalDevice(const List<const char*>& InDeviceLayers)
+	{
 		uint32_t currentQueueFamilyIndex = 0;
 
 		List<VkQueueFamilyProperties> queueFamilyProperties;
 		VulkanHelper::Enumerate(vkGetPhysicalDeviceQueueFamilyProperties, queueFamilyProperties, m_PhysicalDevice);
 		for (const auto& queueFamily : queueFamilyProperties)
 		{
-			VkBool32 canPresentToSurface = VK_FALSE;
-			vkGetPhysicalDeviceSurfaceSupportKHR(m_PhysicalDevice, currentQueueFamilyIndex, InSurface, &canPresentToSurface);
-
-			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT && canPresentToSurface == VK_TRUE)
+			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 			{
-				selectedQueueFamilyIndex = currentQueueFamilyIndex;
+				m_QueueFamilyIndex = currentQueueFamilyIndex;
 				break;
 			}
 
@@ -38,10 +41,13 @@ namespace Yuki {
 		float queuePriority = 1.0f;
 		VkDeviceQueueCreateInfo queueCreateInfo = {
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-			.queueFamilyIndex = selectedQueueFamilyIndex,
+			.queueFamilyIndex = m_QueueFamilyIndex,
 			.queueCount = 1,
 			.pQueuePriorities = &queuePriority,
 		};
+
+		List<const char*> deviceExtensions;
+		deviceExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 		VkPhysicalDeviceVulkan13Features features13 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
 		features13.dynamicRendering = m_DeviceFeatures13.dynamicRendering;
@@ -54,17 +60,17 @@ namespace Yuki {
 			.pNext = &features2,
 			.queueCreateInfoCount = 1,
 			.pQueueCreateInfos = &queueCreateInfo,
-			.enabledLayerCount = uint32_t(InDeviceLayers.Count()),
-			.ppEnabledLayerNames = InDeviceLayers.Data(),
-			.enabledExtensionCount = 0,
-			.ppEnabledExtensionNames = nullptr,
+			.enabledLayerCount = uint32_t(InDeviceLayers.size()),
+			.ppEnabledLayerNames = InDeviceLayers.data(),
+			.enabledExtensionCount = uint32_t(deviceExtensions.size()),
+			.ppEnabledExtensionNames = deviceExtensions.data(),
 			.pEnabledFeatures = nullptr,
 		};
 
 		YUKI_VERIFY(vkCreateDevice(m_PhysicalDevice, &deviceInfo, nullptr, &m_Device) == VK_SUCCESS);
 		volkLoadDevice(m_Device);
 
-		vkGetDeviceQueue(m_Device, selectedQueueFamilyIndex, 0, &m_Queue);
+		vkGetDeviceQueue(m_Device, m_QueueFamilyIndex, 0, &m_Queue);
 		YUKI_VERIFY(m_Queue != VK_NULL_HANDLE);
 	}
 

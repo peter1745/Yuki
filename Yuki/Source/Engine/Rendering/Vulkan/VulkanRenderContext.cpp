@@ -1,10 +1,10 @@
 #include "VulkanRenderContext.hpp"
 #include "VulkanHelper.hpp"
+#include "VulkanSwapchain.hpp"
 
 namespace Yuki {
 
-	VulkanRenderContext::VulkanRenderContext(GenericWindow* InWindow)
-	    : m_Window(InWindow), m_Platform(VulkanPlatform::New())
+	VulkanRenderContext::VulkanRenderContext()
 	{
 		YUKI_VERIFY(volkInitialize() == VK_SUCCESS);
 	}
@@ -18,12 +18,12 @@ namespace Yuki {
 
 		if (enableValidationLayers)
 		{
-			enabledLayers.EmplaceBack("VK_LAYER_KHRONOS_validation");
-			enabledInstanceExtensions.EmplaceBack(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+			enabledLayers.emplace_back("VK_LAYER_KHRONOS_validation");
+			enabledInstanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
 
-		enabledInstanceExtensions.EmplaceBack(VK_KHR_SURFACE_EXTENSION_NAME);
-		m_Platform->GetRequiredInstanceExtensions(enabledInstanceExtensions);
+		enabledInstanceExtensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
+		VulkanPlatform::GetRequiredInstanceExtensions(enabledInstanceExtensions);
 
 		VkApplicationInfo appInfo = {
 			.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -33,21 +33,19 @@ namespace Yuki {
 		VkInstanceCreateInfo instanceInfo = {
 			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 			.pApplicationInfo = &appInfo,
-			.enabledLayerCount = uint32_t(enabledLayers.Count()),
-			.ppEnabledLayerNames = enabledLayers.Data(),
-			.enabledExtensionCount = uint32_t(enabledInstanceExtensions.Count()),
-			.ppEnabledExtensionNames = enabledInstanceExtensions.Data(),
+			.enabledLayerCount = uint32_t(enabledLayers.size()),
+			.ppEnabledLayerNames = enabledLayers.data(),
+			.enabledExtensionCount = uint32_t(enabledInstanceExtensions.size()),
+			.ppEnabledExtensionNames = enabledInstanceExtensions.data(),
 		};
 
 		YUKI_VERIFY(vkCreateInstance(&instanceInfo, nullptr, &m_Instance) == VK_SUCCESS);
 
 		volkLoadInstance(m_Instance);
 
-		m_Surface = m_Platform->CreateSurface(m_Instance, m_Window);
-
 		SelectSuitablePhysicalDevice();
 
-		m_Device->CreateLogicalDevice(m_Surface, enabledLayers);
+		m_Device->CreateLogicalDevice(enabledLayers);
 	}
 
 	void VulkanRenderContext::Destroy()
@@ -55,8 +53,12 @@ namespace Yuki {
 		m_Device->WaitIdle();
 		m_Device->Destroy();
 
-		vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
 		vkDestroyInstance(m_Instance, nullptr);
+	}
+
+	Unique<Swapchain> VulkanRenderContext::CreateSwapchain(GenericWindow* InWindow) const
+	{
+		return Unique<VulkanSwapchain>::Create(InWindow, m_Instance, m_Device);
 	}
 
 	bool VulkanRenderContext::HasValidationLayerSupport() const
@@ -81,12 +83,12 @@ namespace Yuki {
 
 	void VulkanRenderContext::SelectSuitablePhysicalDevice()
 	{
-		const auto& availableDevices = m_Platform->QueryAvailableDevices(m_Instance);
+		const auto& availableDevices = VulkanPlatform::QueryAvailableDevices(m_Instance);
 
 		size_t selectedDeviceIndex = 0;
 		uint32_t highestDeviceScore = 0;
 
-		for (size_t i = 0; i < availableDevices.Count(); i++)
+		for (size_t i = 0; i < availableDevices.size(); i++)
 		{
 			const auto& device = availableDevices[i];
 
@@ -105,7 +107,5 @@ namespace Yuki {
 
 		m_Device = selectedDevice.GetPtr();
 	}
-
-	Unique<RenderContext> RenderContext::New(GenericWindow* InWindow) { return Unique<VulkanRenderContext>::Create(InWindow); }
 
 }

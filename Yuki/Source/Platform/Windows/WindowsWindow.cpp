@@ -7,7 +7,7 @@ namespace Yuki {
 
 	LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
-		auto* windowAttributes = reinterpret_cast<WindowAttributes*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+		auto* windowData = reinterpret_cast<WindowsWindow::WindowData*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
 		switch (uMsg)
 		{
@@ -22,14 +22,28 @@ namespace Yuki {
 			int32_t width = LOWORD(lParam);
 			int32_t height = HIWORD(lParam);
 			
-			windowAttributes->Width = uint32_t(width);
-			windowAttributes->Height = uint32_t(height);
+			WindowResizeEvent resizeEvent;
+			resizeEvent.Window = windowData->This;
+			resizeEvent.OldWidth = windowData->Attributes->Width;
+			resizeEvent.OldHeight = windowData->Attributes->Height;
+			resizeEvent.NewWidth = uint32_t(width);
+			resizeEvent.NewHeight = uint32_t(height);
+
+			windowData->Attributes->Width = resizeEvent.NewWidth;
+			windowData->Attributes->Height = resizeEvent.NewHeight;
+
+			if (windowData->Attributes->EventCallback)
+				windowData->Attributes->EventCallback(&resizeEvent);
+
 			break;
 		}
-		case WM_DESTROY:
+		case WM_CLOSE:
 		{
-			PostQuitMessage(0);
-			return 0;
+			WindowCloseEvent closeEvent;
+			closeEvent.Window = windowData->This;
+			if (windowData->Attributes->EventCallback)
+				windowData->Attributes->EventCallback(&closeEvent);
+			break;
 		}
 		default:
 			break;
@@ -38,25 +52,37 @@ namespace Yuki {
 		return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
 
+	static bool s_WindowClassRegistered = false;
+
 	WindowsWindow::WindowsWindow(WindowAttributes InAttributes)
 	    : m_Attributes(std::move(InAttributes))
 	{
 	}
 
-	void WindowsWindow::Create()
+	void WindowsWindow::Create(RenderContext& InRenderContext)
 	{
 		YUKI_VERIFY(!m_WindowHandle, "Cannot create window multiple times!");
 
 		const wchar_t* WindowClassName = L"YukiWindowsWindowClass";
+		
+		HMODULE hInstance = GetModuleHandle(nullptr);
 
-		WNDCLASSEX windowClass = {};
-		windowClass.cbSize = sizeof(WNDCLASSEX);
-		windowClass.lpszClassName = WindowClassName;
-		windowClass.hInstance = GetModuleHandle(nullptr);
-		windowClass.lpfnWndProc = WindowProc;
-		RegisterClassEx(&windowClass);
+		if (!s_WindowClassRegistered)
+		{
+			WNDCLASSEX windowClass = {};
+			windowClass.cbSize = sizeof(WNDCLASSEX);
+			windowClass.lpszClassName = WindowClassName;
+			windowClass.hInstance = hInstance;
+			windowClass.lpfnWndProc = WindowProc;
+			RegisterClassEx(&windowClass);
+
+			s_WindowClassRegistered = true;
+		}
 
 		auto title = WindowsUtils::ConvertUtf8ToWide(m_Attributes.Title);
+
+		m_WindowData.This = this;
+		m_WindowData.Attributes = &m_Attributes;
 
 		m_WindowHandle = CreateWindowEx(
 		    0,
@@ -71,10 +97,12 @@ namespace Yuki {
 
 		    nullptr,
 		    nullptr,
-		    windowClass.hInstance,
-		    &m_Attributes);
+		    hInstance,
+		    &m_WindowData);
 
 		YUKI_VERIFY(m_WindowHandle != nullptr, "Failed to create Win32 Window!");
+
+		m_Swapchain = InRenderContext.CreateSwapchain(this);
 	}
 
 	void WindowsWindow::Show()
@@ -89,12 +117,6 @@ namespace Yuki {
 		{
 			TranslateMessage(&message);
 			DispatchMessage(&message);
-		}
-
-		if (message.message == WM_QUIT)
-		{
-			WindowCloseEvent closeEvent;
-			m_Attributes.EventCallback(&closeEvent);
 		}
 	}
 

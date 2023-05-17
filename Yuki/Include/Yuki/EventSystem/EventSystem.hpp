@@ -2,9 +2,8 @@
 
 #include "Event.hpp"
 
+#include "../Core/Core.hpp"
 #include "../Memory/Unique.hpp"
-#include "../Containers/Array.hpp"
-#include "../Containers/List.hpp"
 
 namespace Yuki {
 
@@ -46,7 +45,7 @@ namespace Yuki {
 		{
 			EventType eventType = TEventType::StaticType();
 			auto eventListenerFunc = Unique<EventListenerMemberFunc<TListenerType, TEventType>>::Create(InListenerInstance, ListenerFunc);
-			m_Listeners[(size_t)eventType].EmplaceBack(std::move(eventListenerFunc));
+			m_Listeners[(size_t)eventType].emplace_back(std::move(eventListenerFunc));
 		}
 
 		void PostEvent(Event* InEvent);

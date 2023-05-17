@@ -1,9 +1,13 @@
 #pragma once
 
-#include "../Core/GenericWindow.hpp"
 #include "../Memory/Unique.hpp"
 
+#include "RenderAPI.hpp"
+#include "Swapchain.hpp"
+
 namespace Yuki {
+
+	class GenericWindow;
 
 	class RenderContext
 	{
@@ -13,7 +17,9 @@ namespace Yuki {
 		virtual void Initialize() = 0;
 		virtual void Destroy() = 0;
 
-		 static Unique<RenderContext> New(GenericWindow* InWindow);
+		virtual Unique<Swapchain> CreateSwapchain(GenericWindow* InWindow) const = 0;
+
+		static Unique<RenderContext> New(RenderAPI InRenderAPI);
 	};
 
 }

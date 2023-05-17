@@ -19,6 +19,14 @@ private:
 		Yuki::LogInfo("OnInitialize!");
 
 		GetEventSystem().AddListener(this, &TestApplication::OnCloseEvent);
+
+		Yuki::WindowAttributes windowAttributes = {
+			.Title = "Second Window",
+			.Width = 1280,
+			.Height = 720
+		};
+		auto* otherWindow = NewWindow(windowAttributes);
+		otherWindow->Show();
 	}
 
 	void OnRunLoop() override

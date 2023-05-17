@@ -11,16 +11,10 @@ namespace Yuki {
 	public:
 		virtual ~VulkanPlatform() = default;
 
-		virtual void GetRequiredInstanceExtensions(List<const char*>& InExtensions) const = 0;
-		virtual VkSurfaceKHR CreateSurface(VkInstance InInstance, GenericWindow* InWindow) const = 0;
+		static void GetRequiredInstanceExtensions(List<const char*>& InExtensions);
+		static VkSurfaceKHR CreateSurface(VkInstance InInstance, GenericWindow* InWindow);
 
-		const List<Unique<VulkanDevice>>& QueryAvailableDevices(VkInstance InInstance);
-
-	public:
-		static Unique<VulkanPlatform> New();
-
-	private:
-		List<Unique<VulkanDevice>> m_AvailableDevices;
+		static const List<Unique<VulkanDevice>>& QueryAvailableDevices(VkInstance InInstance);
 	};
 
 }

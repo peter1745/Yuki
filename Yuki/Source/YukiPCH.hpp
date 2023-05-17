@@ -9,15 +9,15 @@
 
 #include <functional>
 
+#include <ranges>
+
 #if defined(YUKI_PLATFORM_WINDOWS)
 	#define NOMINMAX
 	#define WIN32_LEAN_AND_MEAN
 	#include <Windows.h>
 #endif
 
+#include "Core/Core.hpp"
 #include "Core/Debug.hpp"
-
-#include "Containers/Array.hpp"
-#include "Containers/List.hpp"
 
 #include "Memory/Unique.hpp"

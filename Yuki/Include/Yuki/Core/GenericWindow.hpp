@@ -3,6 +3,8 @@
 #include "../Memory/Unique.hpp"
 #include "../EventSystem/Event.hpp"
 #include "../EventSystem/WindowEvents.hpp"
+#include "../Rendering/RenderContext.hpp"
+#include "../Rendering/Swapchain.hpp"
 
 namespace Yuki {
 
@@ -23,13 +25,15 @@ namespace Yuki {
 	public:
 		virtual ~GenericWindow() = default;
 
-		virtual void Create() = 0;
+		virtual void Create(RenderContext& InRenderContext) = 0;
 
 		virtual void ProcessEvents() const = 0;
 
 		virtual void Show() = 0;
 
 		virtual const WindowAttributes& GetAttributes() const = 0;
+
+		virtual Swapchain& GetSwapchain() const = 0;
 
 	public:
 		static Unique<GenericWindow> New(WindowAttributes InAttributes);

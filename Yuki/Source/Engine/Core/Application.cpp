@@ -8,29 +8,35 @@ namespace Yuki {
 	{
 	}
 
+	GenericWindow* Application::NewWindow(WindowAttributes InWindowAttributes)
+	{
+		InWindowAttributes.EventCallback = [this](Event* InEvent) { m_EventSystem->PostEvent(InEvent); };
+		Unique<GenericWindow> window = GenericWindow::New(InWindowAttributes);
+		window->Create(*m_RenderContext);
+		return m_Windows.emplace_back(std::move(window)).GetPtr();
+	}
+
 	void Application::Initialize()
 	{
+		m_RenderContext = RenderContext::New(RenderAPI::Vulkan);
+		m_RenderContext->Initialize();
+
 		WindowAttributes windowAttributes =
 		{
 			.Title = m_Name,
 			.Width = 1920,
 			.Height = 1080,
 			.Maximized = true,
-			.EventCallback = [this](Event* InEvent) { m_EventSystem->PostEvent(InEvent); }
 		};
 
-		m_Window = GenericWindow::New(windowAttributes);
-		m_Window->Create();
+		m_MainWindow = NewWindow(windowAttributes);
 
 		m_EventSystem = Unique<EventSystem>::Create();
 		m_EventSystem->AddListener(this, &Application::OnWindowClose);
 
-		m_RenderContext = RenderContext::New(m_Window.GetPtr());
-		m_RenderContext->Initialize();
+		m_MainWindow->Show();
 
 		OnInitialize();
-
-		m_Window->Show();
 
 		m_RunEngineLoop = true;
 	}
@@ -39,8 +45,14 @@ namespace Yuki {
 	{
 		while (m_RunEngineLoop)
 		{
-			m_Window->ProcessEvents();
+			for (const auto& window : m_Windows)
+				window->ProcessEvents();
+
 			OnRunLoop();
+
+			// Clean up closed windows
+			const auto it = std::ranges::remove_if(m_Windows, [this](const auto& InWindow) { return std::ranges::find(m_ClosedWindows, InWindow.GetPtr()) != m_ClosedWindows.end(); });
+			m_Windows.erase(it.begin(), it.end());
 		}
 	}
 
@@ -51,6 +63,11 @@ namespace Yuki {
 
 	void Application::OnWindowClose(const WindowCloseEvent& InEvent)
 	{
+		m_ClosedWindows.emplace_back(InEvent.Window);
+
+		if (InEvent.Window != m_MainWindow)
+			return;
+
 		ApplicationCloseEvent closeEvent;
 		m_EventSystem->PostEvent(&closeEvent);
 		m_RunEngineLoop = false;
