@@ -1,4 +1,15 @@
-local VulkanSDKPath = os.getenv("VULKAN_SDK") .. "/Include/"
+local function getParentPath(path)
+    pattern1 = "^(.+)//"
+    pattern2 = "^(.+)\\"
+
+    if (string.match(path,pattern1) == nil) then
+        return string.match(path,pattern2)
+    else
+        return string.match(path,pattern1)
+    end
+end
+
+local VulkanSDKPath = getParentPath(os.getenv("VULKAN_SDK")) .. "/1.3.246.1/Include"
 
 project "Yuki"
     kind "StaticLib"
@@ -27,6 +38,7 @@ project "Yuki"
     externalincludedirs {
         "../ThirdParty/spdlog/include/",
         "../ThirdParty/volk/Include/",
+        "../ThirdParty/ankerl/include/",
 
         VulkanSDKPath,
     }

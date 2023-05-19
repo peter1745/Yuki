@@ -8,7 +8,8 @@ project "Sandbox"
     externalincludedirs {
         "../Yuki/Include/",
         
-        "../ThirdParty/spdlog/include/"
+        "../ThirdParty/spdlog/include/",
+        "../ThirdParty/ankerl/include/"
     }
 
     links {

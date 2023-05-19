@@ -9,6 +9,7 @@ perf.data
 *.vcxproj
 *.vcxproj.*
 *.sln
+*.code-workspace
 
 **/Build/**
 **/Intermediates/**
