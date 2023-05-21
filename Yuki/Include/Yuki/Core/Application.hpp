@@ -19,6 +19,8 @@ namespace Yuki {
 
 		GenericWindow* NewWindow(WindowAttributes InWindowAttributes);
 
+		RenderContext* GetRenderContext() const { return m_RenderContext.GetPtr(); }
+
 	private:
 		virtual void OnInitialize() {}
 		virtual void OnRunLoop() {}

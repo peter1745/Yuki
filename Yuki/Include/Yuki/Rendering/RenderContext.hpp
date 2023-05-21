@@ -4,6 +4,8 @@
 
 #include "RenderAPI.hpp"
 #include "Swapchain.hpp"
+#include "ShaderCompiler.hpp"
+#include "ShaderManager.hpp"
 
 namespace Yuki {
 
@@ -18,6 +20,9 @@ namespace Yuki {
 		virtual void Destroy() = 0;
 
 		virtual Unique<Swapchain> CreateSwapchain(GenericWindow* InWindow) const = 0;
+
+		virtual ShaderManager* GetShaderManager() const = 0;
+		virtual ShaderCompiler* GetShaderCompiler() const = 0;
 
 		static Unique<RenderContext> New(RenderAPI InRenderAPI);
 	};

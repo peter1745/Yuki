@@ -35,6 +35,9 @@ workspace "Yuki"
             "4100" -- Unreferenced Formal Parameter
         }
 
+    filter "action:vs*"
+        linkoptions { "/ignore:4099" }
+
 group "ThirdParty"
 include "ThirdParty/"
 group ""

@@ -5,6 +5,7 @@
 #include "Vulkan.hpp"
 #include "VulkanPlatform.hpp"
 #include "VulkanDevice.hpp"
+#include "VulkanShaderCompiler.hpp"
 
 namespace Yuki {
 
@@ -19,6 +20,9 @@ namespace Yuki {
 
 		Unique<Swapchain> CreateSwapchain(GenericWindow* InWindow) const override;
 
+		ShaderManager* GetShaderManager() const override { return m_ShaderManager.GetPtr(); }
+		ShaderCompiler* GetShaderCompiler() const override { return m_ShaderCompiler.GetPtr(); }
+
 	private:
 		bool HasValidationLayerSupport() const;
 		void SelectSuitablePhysicalDevice();
@@ -27,6 +31,9 @@ namespace Yuki {
 		VkInstance m_Instance = VK_NULL_HANDLE;
 		VulkanDevice* m_Device = nullptr;
 		VkQueue m_Queue = VK_NULL_HANDLE;
+
+		Unique<ShaderManager> m_ShaderManager = nullptr;
+		Unique<VulkanShaderCompiler> m_ShaderCompiler = nullptr;
 	};
 
 }

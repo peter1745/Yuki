@@ -1,6 +1,7 @@
 #include "VulkanRenderContext.hpp"
 #include "VulkanHelper.hpp"
 #include "VulkanSwapchain.hpp"
+#include "VulkanShaderCompiler.hpp"
 
 namespace Yuki {
 
@@ -46,6 +47,9 @@ namespace Yuki {
 		SelectSuitablePhysicalDevice();
 
 		m_Device->CreateLogicalDevice(enabledLayers);
+
+		m_ShaderManager = Unique<ShaderManager>::Create();
+		m_ShaderCompiler = Unique<VulkanShaderCompiler>::Create(m_ShaderManager.GetPtr(), m_Device->GetLogicalDevice());
 	}
 
 	void VulkanRenderContext::Destroy()

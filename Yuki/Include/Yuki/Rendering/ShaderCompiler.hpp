@@ -1,16 +1,14 @@
 #pragma once
 
-#include "../Core/ResourceHandle.hpp"
+#include "Shader.hpp"
 
 namespace Yuki {
-
-	struct Shader
-	{
-	};
 
 	class ShaderCompiler
 	{
 	public:
+		virtual ~ShaderCompiler() = default;
+
 		virtual ResourceHandle<Shader> CompileFromFile(const std::filesystem::path& InFilePath) = 0;
 	};
 

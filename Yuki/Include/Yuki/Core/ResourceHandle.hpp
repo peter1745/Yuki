@@ -1,11 +1,12 @@
 #pragma once
 
-#include <ankerl/unordered_dense.h>
+#include "Core.hpp"
 
 namespace Yuki {
 
 	template<typename TResource>
 	class ResourceHandle;
+	class ResourceHandleFactory;
 
 	template <typename TResource>
 	struct ResourceHandleHash
@@ -14,7 +15,6 @@ namespace Yuki {
 
 		uint64_t operator()(const ResourceHandle<TResource>& InHandle) const noexcept
 		{
-			static_assert(std::has_unique_object_representations_v<ResourceHandle<TResource>>);
 			return ankerl::unordered_dense::detail::wyhash::hash(&InHandle, sizeof(InHandle));
 		}
 	};
@@ -27,10 +27,17 @@ namespace Yuki {
 		static const ResourceHandle<TResource> Invalid;
 
 	public:
-		ResourceHandle() = delete;
+		ResourceHandle()
+		    : m_Handle(ResourceHandleFactory::NewHandle()) {}
 
 		ResourceHandle(const ResourceHandle& InOther)
 		    : m_Handle(InOther.m_Handle) {}
+
+		ResourceHandle(ResourceHandle&& InOther) noexcept
+			: m_Handle(InOther.m_Handle)
+		{
+			InOther.m_Handle = Invalid.m_Handle;
+		}
 
 		~ResourceHandle() = default;
 
@@ -39,6 +46,18 @@ namespace Yuki {
 			m_Handle = InOther.m_Handle;
 			return *this;
 		}
+
+		ResourceHandle& operator=(ResourceHandle&& InOther) noexcept
+		{
+			m_Handle = InOther.m_Handle;
+			InOther.m_Handle = Invalid.m_Handle;
+			return *this;
+		}
+
+		bool operator==(const ResourceHandle& InOther) const { return m_Handle == InOther.m_Handle; }
+		bool operator!=(const ResourceHandle& InOther) const { return m_Handle != InOther.m_Handle; }
+
+		bool IsValid() const { return m_Handle != std::numeric_limits<uint32_t>::max(); }
 
 	public:
 		template<typename TOther>

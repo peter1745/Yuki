@@ -1,4 +1,5 @@
 #include <iostream>
+#include <filesystem>
 
 #include <Yuki/EntryPoint.hpp>
 #include <Yuki/Core/Application.hpp>
@@ -27,6 +28,8 @@ private:
 		};
 		auto* otherWindow = NewWindow(windowAttributes);
 		otherWindow->Show();
+
+		GetRenderContext()->GetShaderCompiler()->CompileFromFile("Resources/Shaders/Test.glsl");
 	}
 
 	void OnRunLoop() override
