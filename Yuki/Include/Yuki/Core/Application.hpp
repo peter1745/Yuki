@@ -10,7 +10,7 @@ namespace Yuki {
 	class Application
 	{
 	public:
-		Application(const std::string& InName);
+		Application(const std::string& InName, RenderAPI InRenderAPI = RenderAPI::Vulkan);
 		virtual ~Application() = default;
 
 		int32_t GetExitCode() const { return m_ExitCode; }
@@ -20,6 +20,8 @@ namespace Yuki {
 		GenericWindow* NewWindow(WindowAttributes InWindowAttributes);
 
 		RenderContext* GetRenderContext() const { return m_RenderContext.GetPtr(); }
+
+		RenderAPI GetRenderAPI() const { return m_RenderingAPI; }
 
 	private:
 		virtual void OnInitialize() {}
@@ -34,6 +36,8 @@ namespace Yuki {
 
 	private:
 		std::string m_Name;
+		RenderAPI m_RenderingAPI = RenderAPI::Vulkan;
+
 		List<Unique<GenericWindow>> m_Windows;
 		GenericWindow* m_MainWindow = nullptr;
 		Unique<EventSystem> m_EventSystem = nullptr;

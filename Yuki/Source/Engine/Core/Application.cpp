@@ -3,8 +3,8 @@
 
 namespace Yuki {
 
-	Application::Application(const std::string& InName)
-	    : m_Name(InName)
+	Application::Application(const std::string& InName, RenderAPI InRenderAPI)
+	    : m_Name(InName), m_RenderingAPI(InRenderAPI)
 	{
 	}
 
@@ -18,7 +18,7 @@ namespace Yuki {
 
 	void Application::Initialize()
 	{
-		m_RenderContext = RenderContext::New(RenderAPI::Vulkan);
+		m_RenderContext = RenderContext::New(m_RenderingAPI);
 		m_RenderContext->Initialize();
 
 		WindowAttributes windowAttributes =

@@ -5,6 +5,7 @@
 #include <Yuki/Core/Application.hpp>
 #include <Yuki/Core/Logging.hpp>
 #include <Yuki/EventSystem/ApplicationEvents.hpp>
+#include <Yuki/Rendering/GraphicsPipelineBuilder.hpp>
 
 class TestApplication : public Yuki::Application
 {
@@ -29,7 +30,11 @@ private:
 		auto* otherWindow = NewWindow(windowAttributes);
 		otherWindow->Show();
 
-		GetRenderContext()->GetShaderCompiler()->CompileFromFile("Resources/Shaders/Test.glsl");
+		auto testShader = GetRenderContext()->GetShaderCompiler()->CompileFromFile("Resources/Shaders/Test.glsl");
+
+		auto pipelineBuilder = Yuki::GraphicsPipelineBuilder::New(GetRenderAPI(), GetRenderContext());
+		auto testPipeline = pipelineBuilder->WithShader(testShader)
+			->Build();
 	}
 
 	void OnRunLoop() override

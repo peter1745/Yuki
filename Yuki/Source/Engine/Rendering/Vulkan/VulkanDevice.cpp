@@ -48,12 +48,19 @@ namespace Yuki {
 
 		List<const char*> deviceExtensions;
 		deviceExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+		deviceExtensions.emplace_back(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME);
 
 		VkPhysicalDeviceVulkan13Features features13 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
 		features13.dynamicRendering = m_DeviceFeatures13.dynamicRendering;
 		features13.synchronization2 = m_DeviceFeatures13.synchronization2;
 
-		VkPhysicalDeviceFeatures2 features2 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features13 };
+		VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3Features = {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
+			.pNext = &features13,
+			.extendedDynamicState3PolygonMode = m_ExtendedDynamicStateDeviceFeatures.extendedDynamicState3PolygonMode,
+		};
+
+		VkPhysicalDeviceFeatures2 features2 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &extendedDynamicState3Features };
 
 		VkDeviceCreateInfo deviceInfo = {
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -113,13 +120,22 @@ namespace Yuki {
 		}
 
 		m_DeviceFeatures13 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
-		m_DeviceFeatures = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &m_DeviceFeatures13 };
+		
+		m_ExtendedDynamicStateDeviceFeatures = {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
+			.pNext = &m_DeviceFeatures13
+		};
+
+		m_DeviceFeatures = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &m_ExtendedDynamicStateDeviceFeatures };
 		vkGetPhysicalDeviceFeatures2(m_PhysicalDevice, &m_DeviceFeatures);
 
 		if (m_DeviceFeatures13.dynamicRendering == VK_TRUE)
 			m_DeviceScore += 10;
 
 		if (m_DeviceFeatures13.synchronization2 == VK_TRUE)
+			m_DeviceScore += 10;
+
+		if (m_ExtendedDynamicStateDeviceFeatures.extendedDynamicState3PolygonMode == VK_TRUE)
 			m_DeviceScore += 10;
 	}
 
