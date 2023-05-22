@@ -5,7 +5,8 @@
 #include <Yuki/Core/Application.hpp>
 #include <Yuki/Core/Logging.hpp>
 #include <Yuki/EventSystem/ApplicationEvents.hpp>
-#include <Yuki/Rendering/GraphicsPipelineBuilder.hpp>
+#include <Yuki/Rendering/RHI/GraphicsPipelineBuilder.hpp>
+#include <Yuki/Rendering/RHI/ShaderCompiler.hpp>
 
 class TestApplication : public Yuki::Application
 {

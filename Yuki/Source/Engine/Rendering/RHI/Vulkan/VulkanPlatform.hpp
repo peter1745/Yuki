@@ -2,7 +2,7 @@
 
 #include "Core/GenericWindow.hpp"
 
-#include "VulkanDevice.hpp"
+#include "Vulkan.hpp"
 
 namespace Yuki {
 
@@ -13,8 +13,6 @@ namespace Yuki {
 
 		static void GetRequiredInstanceExtensions(List<const char*>& InExtensions);
 		static VkSurfaceKHR CreateSurface(VkInstance InInstance, GenericWindow* InWindow);
-
-		static const List<Unique<VulkanDevice>>& QueryAvailableDevices(VkInstance InInstance);
 	};
 
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rendering/GraphicsPipeline.hpp"
+#include "Rendering/RHI/GraphicsPipeline.hpp"
 
 #include "Vulkan.hpp"
 

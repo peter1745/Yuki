@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Rendering/ShaderManager.hpp"
-#include "Rendering/ShaderCompiler.hpp"
+
+#include "Rendering/RHI/ShaderCompiler.hpp"
 
 #include "Vulkan.hpp"
 

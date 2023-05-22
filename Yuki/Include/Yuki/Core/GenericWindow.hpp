@@ -1,10 +1,12 @@
 #pragma once
 
-#include "../Memory/Unique.hpp"
-#include "../EventSystem/Event.hpp"
-#include "../EventSystem/WindowEvents.hpp"
-#include "../Rendering/RenderContext.hpp"
-#include "../Rendering/Swapchain.hpp"
+#include "Yuki/Memory/Unique.hpp"
+
+#include "Yuki/EventSystem/Event.hpp"
+#include "Yuki/EventSystem/WindowEvents.hpp"
+
+#include "Yuki/Rendering/RHI/RenderContext.hpp"
+#include "Yuki/Rendering/RHI/Swapchain.hpp"
 
 namespace Yuki {
 
@@ -25,7 +27,7 @@ namespace Yuki {
 	public:
 		virtual ~GenericWindow() = default;
 
-		virtual void Create(RenderContext& InRenderContext) = 0;
+		virtual void Create() = 0;
 
 		virtual void ProcessEvents() const = 0;
 
@@ -36,7 +38,7 @@ namespace Yuki {
 		virtual Swapchain& GetSwapchain() const = 0;
 
 	public:
-		static Unique<GenericWindow> New(WindowAttributes InAttributes);
+		static Unique<GenericWindow> New(RenderContext* InRenderContext, WindowAttributes InAttributes);
 	};
 
 }

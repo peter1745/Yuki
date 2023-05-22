@@ -11,8 +11,8 @@ namespace Yuki {
 	GenericWindow* Application::NewWindow(WindowAttributes InWindowAttributes)
 	{
 		InWindowAttributes.EventCallback = [this](Event* InEvent) { m_EventSystem->PostEvent(InEvent); };
-		Unique<GenericWindow> window = GenericWindow::New(InWindowAttributes);
-		window->Create(*m_RenderContext);
+		Unique<GenericWindow> window = GenericWindow::New(m_RenderContext.GetPtr(), InWindowAttributes);
+		window->Create();
 		return m_Windows.emplace_back(std::move(window)).GetPtr();
 	}
 

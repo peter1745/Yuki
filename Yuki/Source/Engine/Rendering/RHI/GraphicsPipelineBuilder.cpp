@@ -1,4 +1,4 @@
-#include "Rendering/GraphicsPipelineBuilder.hpp"
+#include "Rendering/RHI/GraphicsPipelineBuilder.hpp"
 
 #include "Vulkan/VulkanGraphicsPipelineBuilder.hpp"
 

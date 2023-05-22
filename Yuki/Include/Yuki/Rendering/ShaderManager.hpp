@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Shader.hpp"
+#include "RHI/Shader.hpp"
 
 namespace Yuki {
 

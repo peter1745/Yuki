@@ -21,7 +21,8 @@ project "Yuki"
 
     includedirs {
         "Source/",
-        "Include/Yuki/"
+        "Include/",
+        "Include/Yuki/",
     }
 
     externalincludedirs {

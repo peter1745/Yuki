@@ -1,9 +1,12 @@
 #pragma once
 
-#include "RenderAPI.hpp"
+#include "Yuki/Rendering/RenderAPI.hpp"
+#include "Yuki/Rendering/ImageFormat.hpp"
+
 #include "RenderContext.hpp"
 #include "GraphicsPipeline.hpp"
-#include "ImageFormat.hpp"
+
+#include "Shader.hpp"
 
 namespace Yuki {
 

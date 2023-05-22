@@ -59,6 +59,9 @@ namespace Yuki {
 		inline T& operator*() const noexcept { return *m_Ptr; }
 		inline T* operator->() const noexcept { return m_Ptr; }
 
+		bool operator==(const Unique& InOther) const { return m_Ptr == InOther.m_Ptr; }
+		bool operator!=(const Unique& InOther) const { return !(*this == InOther); }
+
 		inline T* GetPtr() const noexcept { return m_Ptr; }
 
 	public:

@@ -54,12 +54,17 @@ namespace Yuki {
 
 	static bool s_WindowClassRegistered = false;
 
-	WindowsWindow::WindowsWindow(WindowAttributes InAttributes)
-	    : m_Attributes(std::move(InAttributes))
+	WindowsWindow::WindowsWindow(RenderContext* InRenderContext, WindowAttributes InAttributes)
+	    : m_Attributes(std::move(InAttributes)), m_RenderContext(InRenderContext)
 	{
 	}
 
-	void WindowsWindow::Create(RenderContext& InRenderContext)
+	WindowsWindow::~WindowsWindow()
+	{
+		m_RenderContext->DestroySwapchain(m_Swapchain);
+	}
+
+	void WindowsWindow::Create()
 	{
 		YUKI_VERIFY(!m_WindowHandle, "Cannot create window multiple times!");
 
@@ -102,7 +107,7 @@ namespace Yuki {
 
 		YUKI_VERIFY(m_WindowHandle != nullptr, "Failed to create Win32 Window!");
 
-		m_Swapchain = InRenderContext.CreateSwapchain(this);
+		m_Swapchain = m_RenderContext->CreateSwapchain(this);
 	}
 
 	void WindowsWindow::Show()
@@ -120,9 +125,9 @@ namespace Yuki {
 		}
 	}
 
-	Unique<GenericWindow> GenericWindow::New(WindowAttributes InAttributes)
+	Unique<GenericWindow> GenericWindow::New(RenderContext* InRenderContext, WindowAttributes InAttributes)
 	{
-		return Unique<WindowsWindow>::Create(std::move(InAttributes));
+		return Unique<WindowsWindow>::Create(InRenderContext, std::move(InAttributes));
 	}
 
 }

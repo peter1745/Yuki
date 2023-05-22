@@ -2,8 +2,8 @@
 
 #include "GenericWindow.hpp"
 
-#include "../EventSystem/EventSystem.hpp"
-#include "../Rendering/RenderContext.hpp"
+#include "Yuki/EventSystem/EventSystem.hpp"
+#include "Yuki/Rendering/RHI/RenderContext.hpp"
 
 namespace Yuki {
 

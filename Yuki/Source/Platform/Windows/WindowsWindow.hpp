@@ -14,9 +14,10 @@ namespace Yuki {
 		};
 
 	public:
-		WindowsWindow(WindowAttributes InAttributes);
+		WindowsWindow(RenderContext* InRenderContext, WindowAttributes InAttributes);
+		~WindowsWindow();
 
-		void Create(RenderContext& InRenderContext) override;
+		void Create() override;
 
 		void Show() override;
 
@@ -32,7 +33,8 @@ namespace Yuki {
 	private:
 		HWND m_WindowHandle = nullptr;
 		WindowAttributes m_Attributes;
-		Unique<Swapchain> m_Swapchain = nullptr;
+		RenderContext* m_RenderContext;
+		Swapchain* m_Swapchain = nullptr;
 
 	private:
 		 WindowData m_WindowData;

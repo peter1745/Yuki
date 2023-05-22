@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Core.hpp"
+#include "VulkanQueue.hpp"
 
 namespace Yuki {
 
@@ -15,6 +16,8 @@ namespace Yuki {
 			InList.resize(size_t(numElements));
 			InEnumerationFunc(std::forward<TArgs>(InArgs)..., &numElements, InList.data());
 		}
+
+		static uint32_t SelectGraphicsQueue(VkPhysicalDevice InPhysicalDevice);
 	};
 
 }

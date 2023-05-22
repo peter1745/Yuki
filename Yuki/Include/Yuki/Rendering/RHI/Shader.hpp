@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Core/ResourceHandle.hpp"
+#include "Yuki/Core/ResourceHandle.hpp"
 
 namespace Yuki {
 

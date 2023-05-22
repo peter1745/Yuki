@@ -1,4 +1,4 @@
-#include "Engine/Rendering/Vulkan/VulkanPlatform.hpp"
+#include "Engine/Rendering/RHI/Vulkan/VulkanPlatform.hpp"
 #include "WindowsWindow.hpp"
 
 namespace Yuki {

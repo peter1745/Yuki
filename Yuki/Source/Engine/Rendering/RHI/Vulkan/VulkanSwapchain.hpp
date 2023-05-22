@@ -1,20 +1,17 @@
 #pragma once
 
 #include "Core/GenericWindow.hpp"
-#include "Rendering/Swapchain.hpp"
+#include "Rendering/RHI/Swapchain.hpp"
 
-#include "VulkanDevice.hpp"
+#include "VulkanRenderContext.hpp"
 
 namespace Yuki {
 
 	class VulkanSwapchain : public Swapchain
 	{
-	public:
-		VulkanSwapchain(GenericWindow* InWindow, VkInstance InInstance, VulkanDevice* InDevice);
-
-		bool AcquireNextImage(VulkanDevice* InDevice, VkSemaphore InSemaphore);
-
-		void Destroy(VulkanDevice* InDevice);
+	private:
+		static VulkanSwapchain* Create(VulkanRenderContext* InContext, GenericWindow* InWindow);
+		static void Destroy(VulkanRenderContext* InContext, VulkanSwapchain* InSwapchain);
 
 	private:
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
@@ -22,6 +19,8 @@ namespace Yuki {
 		List<VkImage> m_Images;
 		List<VkImageView> m_ImageViews;
 		uint32_t m_CurrentImage = 0;
+
+		friend class VulkanRenderContext;
 	};
 
 }

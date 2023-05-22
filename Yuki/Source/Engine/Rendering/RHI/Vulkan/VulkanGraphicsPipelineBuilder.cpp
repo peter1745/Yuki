@@ -52,7 +52,7 @@ namespace Yuki {
 	VulkanGraphicsPipelineBuilder::VulkanGraphicsPipelineBuilder(RenderContext* InContext)
 	    : m_ShaderManager(InContext->GetShaderManager())
 	{
-		m_Device = ((VulkanDevice*)InContext->GetDevice())->GetLogicalDevice();
+		m_Device = ((VulkanRenderContext*)InContext)->GetDevice();
 	}
 
 	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::WithShader(ResourceHandle<Shader> InShaderHandle)
