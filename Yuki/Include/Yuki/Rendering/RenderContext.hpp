@@ -3,6 +3,7 @@
 #include "../Memory/Unique.hpp"
 
 #include "RenderAPI.hpp"
+#include "Device.hpp"
 #include "Swapchain.hpp"
 #include "ShaderCompiler.hpp"
 #include "ShaderManager.hpp"
@@ -23,6 +24,8 @@ namespace Yuki {
 
 		virtual ShaderManager* GetShaderManager() const = 0;
 		virtual ShaderCompiler* GetShaderCompiler() const = 0;
+
+		virtual Device* GetDevice() const = 0;
 
 		static Unique<RenderContext> New(RenderAPI InRenderAPI);
 	};

@@ -20,8 +20,6 @@ private:
 	{
 		Yuki::LogInfo("OnInitialize!");
 
-		GetEventSystem().AddListener(this, &TestApplication::OnCloseEvent);
-
 		Yuki::WindowAttributes windowAttributes = {
 			.Title = "Second Window",
 			.Width = 1280,
@@ -34,17 +32,13 @@ private:
 
 		auto pipelineBuilder = Yuki::GraphicsPipelineBuilder::New(GetRenderAPI(), GetRenderContext());
 		auto testPipeline = pipelineBuilder->WithShader(testShader)
-			->Build();
+		                        ->ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
+		                        ->DepthAttachment()
+		                        ->Build();
 	}
 
 	void OnRunLoop() override
 	{
-	}
-
-private:
-	void OnCloseEvent(const Yuki::ApplicationCloseEvent& InEvent)
-	{
-		Yuki::LogWarn("OnCloseEvent!");
 	}
 };
 

@@ -1,5 +1,6 @@
 #include "VulkanGraphicsPipelineBuilder.hpp"
 #include "VulkanRenderContext.hpp"
+#include "VulkanGraphicsPipeline.hpp"
 
 namespace Yuki {
 
@@ -51,7 +52,7 @@ namespace Yuki {
 	VulkanGraphicsPipelineBuilder::VulkanGraphicsPipelineBuilder(RenderContext* InContext)
 	    : m_ShaderManager(InContext->GetShaderManager())
 	{
-		m_Device = ((VulkanRenderContext*)InContext)->GetDevice()->GetLogicalDevice();
+		m_Device = ((VulkanDevice*)InContext->GetDevice())->GetLogicalDevice();
 	}
 
 	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::WithShader(ResourceHandle<Shader> InShaderHandle)
@@ -104,8 +105,22 @@ namespace Yuki {
 		return this;
 	}
 
-	ResourceHandle<GraphicsPipeline> VulkanGraphicsPipelineBuilder::Build()
+	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::DepthAttachment()
 	{
+		m_HasDepthAttachment = true;
+		return this;
+	}
+
+	Unique<GraphicsPipeline> VulkanGraphicsPipelineBuilder::Build()
+	{
+		VkPipelineRenderingCreateInfo renderingCreateInfo = {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+			.colorAttachmentCount = uint32_t(m_ColorAttachmentFormats.size()),
+			.pColorAttachmentFormats = m_ColorAttachmentFormats.data(),
+			.depthAttachmentFormat = m_HasDepthAttachment ? VK_FORMAT_D24_UNORM_S8_UINT : VK_FORMAT_UNDEFINED,
+			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
+		};
+
 		VkPipelineLayoutCreateInfo layoutCreateInfo = {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = 0,
@@ -162,6 +177,35 @@ namespace Yuki {
 			.sampleShadingEnable = VK_FALSE
 		};
 
+		VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo = {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+			.depthTestEnable = m_HasDepthAttachment ? VK_TRUE : VK_FALSE,
+			.depthWriteEnable = m_HasDepthAttachment ? VK_TRUE : VK_FALSE,
+			.depthCompareOp = VK_COMPARE_OP_LESS,
+			.depthBoundsTestEnable = VK_FALSE,
+			.stencilTestEnable = VK_FALSE,
+			.front = {
+				.failOp = VK_STENCIL_OP_KEEP,
+			    .passOp = VK_STENCIL_OP_KEEP,
+				.depthFailOp = VK_STENCIL_OP_KEEP,
+				.compareOp = VK_COMPARE_OP_ALWAYS,
+				.compareMask = 0xFF,
+			    .writeMask = 0xFF,
+				.reference = 0,
+			},
+			.back = {
+			    .failOp = VK_STENCIL_OP_KEEP,
+			    .passOp = VK_STENCIL_OP_KEEP,
+			    .depthFailOp = VK_STENCIL_OP_KEEP,
+			    .compareOp = VK_COMPARE_OP_ALWAYS,
+			    .compareMask = 0xFF,
+			    .writeMask = 0xFF,
+			    .reference = 0,
+			},
+			.minDepthBounds = 0.0f,
+			.maxDepthBounds = 0.0f,
+		};
+
 		VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
 			.attachmentCount = uint32_t(m_ColorAttachmentBlendStates.size()),
@@ -176,12 +220,6 @@ namespace Yuki {
 			.pDynamicStates = dynamicStates.data()
 		};
 
-		VkPipelineRenderingCreateInfo renderingCreateInfo = {
-			.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-			.colorAttachmentCount = uint32_t(m_ColorAttachmentFormats.size()),
-			.pColorAttachmentFormats = m_ColorAttachmentFormats.data()
-		};
-
 		VkGraphicsPipelineCreateInfo pipelineCreateInfo = {
 			.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 			.pNext = &renderingCreateInfo,
@@ -192,16 +230,17 @@ namespace Yuki {
 			.pViewportState = &viewportStateCreateInfo,
 			.pRasterizationState = &rasterizationStateCreateInfo,
 			.pMultisampleState = &multisampleStateCreateInfo,
-			.pDepthStencilState = nullptr, // TODO
+			.pDepthStencilState = &depthStencilCreateInfo,
 			.pColorBlendState = &colorBlendStateCreateInfo,
 			.pDynamicState = &dynamicStateCreateInfo,
 			.layout = pipelineLayout,
 		};
 
-		VkPipeline pipeline;
-		YUKI_VERIFY(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline) == VK_SUCCESS);
+		Unique<VulkanGraphicsPipeline> result = Unique<VulkanGraphicsPipeline>::Create();
+		YUKI_VERIFY(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &result->Pipeline) == VK_SUCCESS);
+		result->Layout = pipelineLayout;
 
-		return ResourceHandle<GraphicsPipeline>::Invalid;
+		return result;
 	}
 
 }

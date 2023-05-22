@@ -1,15 +1,17 @@
 #pragma once
 
+#include "Rendering/Device.hpp"
+
 #include "Vulkan.hpp"
 
 namespace Yuki {
 
-	class VulkanDevice
+	class VulkanDevice : public Device
 	{
 	public:
 		VulkanDevice(VkPhysicalDevice InPhysicalDevice);
 
-		void WaitIdle() const;
+		void WaitIdle() const override;
 
 		VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
 		VkDevice GetLogicalDevice() const { return m_Device; }

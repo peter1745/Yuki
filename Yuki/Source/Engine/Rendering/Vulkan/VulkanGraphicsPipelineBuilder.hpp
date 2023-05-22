@@ -14,7 +14,8 @@ namespace Yuki {
 		GraphicsPipelineBuilder* WithShader(ResourceHandle<Shader> InShaderHandle) override;
 		GraphicsPipelineBuilder* AddVertexInput(uint32_t InLocation, ShaderDataType InDataType) override;
 		GraphicsPipelineBuilder* ColorAttachment(ImageFormat InFormat) override;
-		ResourceHandle<GraphicsPipeline> Build() override;
+		GraphicsPipelineBuilder* DepthAttachment() override;
+		Unique<GraphicsPipeline> Build() override;
 
 	private:
 		VkDevice m_Device = VK_NULL_HANDLE;
@@ -26,6 +27,8 @@ namespace Yuki {
 
 		List<VkFormat> m_ColorAttachmentFormats;
 		List<VkPipelineColorBlendAttachmentState> m_ColorAttachmentBlendStates;
+
+		bool m_HasDepthAttachment = false;
 	};
 
 }

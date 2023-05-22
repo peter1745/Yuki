@@ -23,7 +23,7 @@ namespace Yuki {
 		ShaderManager* GetShaderManager() const override { return m_ShaderManager.GetPtr(); }
 		ShaderCompiler* GetShaderCompiler() const override { return m_ShaderCompiler.GetPtr(); }
 
-		VulkanDevice* GetDevice() const { return m_Device; }
+		Device* GetDevice() const override { return m_Device; }
 
 	private:
 		bool HasValidationLayerSupport() const;
