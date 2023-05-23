@@ -7,6 +7,7 @@
 #include <Yuki/EventSystem/ApplicationEvents.hpp>
 #include <Yuki/Rendering/RHI/GraphicsPipelineBuilder.hpp>
 #include <Yuki/Rendering/RHI/ShaderCompiler.hpp>
+#include <Yuki/Rendering/RenderTarget.hpp>
 
 class TestApplication : public Yuki::Application
 {
@@ -17,6 +18,8 @@ public:
 	}
 
 private:
+	Yuki::RenderTarget* m_RenderTarget;
+
 	void OnInitialize() override
 	{
 		Yuki::LogInfo("OnInitialize!");
@@ -36,10 +39,18 @@ private:
 		                        ->ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
 		                        ->DepthAttachment()
 		                        ->Build();
+
+		Yuki::RenderTargetInfo renderTargetInfo;
+		renderTargetInfo.Width = 1280;
+		renderTargetInfo.Height = 720;
+		renderTargetInfo.ColorAttachments[0] = Yuki::ImageFormat::BGRA8UNorm;
+		renderTargetInfo.DepthAttachmentFormat = Yuki::ImageFormat::D24UNormS8UInt;
+		m_RenderTarget = GetRenderContext()->CreateRenderTarget(renderTargetInfo);
 	}
 
-	void OnRunLoop() override
+	void OnDestroy() override
 	{
+		GetRenderContext()->DestroyRenderTarget(m_RenderTarget);
 	}
 };
 

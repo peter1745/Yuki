@@ -13,6 +13,8 @@ namespace Yuki {
 		uint32_t GetHeight() const override { return m_Height; }
 		ImageFormat GetImageFormat() const override { return m_Format; }
 
+		VkImage GetImage() const { return m_Image; }
+
 	private:
 		static VulkanImage2D* Create(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat);
 		static void Destroy(VulkanRenderContext* InContext, VulkanImage2D* InImage);
@@ -21,6 +23,9 @@ namespace Yuki {
 		uint32_t m_Width;
 		uint32_t m_Height;
 		ImageFormat m_Format;
+
+		VkImage m_Image;
+		VmaAllocation m_Allocation;
 
 	private:
 		friend class VulkanRenderContext;
@@ -37,6 +42,7 @@ namespace Yuki {
 
 	private:
 		VulkanImage2D* m_Image = nullptr;
+		VkImageView m_ImageView = VK_NULL_HANDLE;
 
 	private:
 		friend class VulkanRenderContext;

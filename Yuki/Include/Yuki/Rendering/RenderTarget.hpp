@@ -23,8 +23,9 @@ namespace Yuki {
 
 	class RenderTarget
 	{
-	public:
-		RenderTarget(RenderContext* InContext, const RenderTargetInfo& InInfo);
+	private:
+		static RenderTarget* Create(RenderContext* InContext, const RenderTargetInfo& InInfo);
+		static void Destroy(RenderContext* InContext, RenderTarget* InRenderTarget);
 
 	private:
 		struct Attachment
@@ -40,6 +41,10 @@ namespace Yuki {
 
 		std::array<Attachment, RenderTargetInfo::MaxColorAttachments> m_ColorAttachments;
 		Attachment m_DepthAttachment;
+
+	private:
+		// TODO(Peter): I'd rather not expose VulkanRenderContext here, but for now it's fine
+		friend class VulkanRenderContext;
 	};
 
 }

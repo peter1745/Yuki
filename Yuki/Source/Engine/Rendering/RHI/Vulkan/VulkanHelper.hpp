@@ -3,6 +3,8 @@
 #include "Core/Core.hpp"
 #include "VulkanQueue.hpp"
 
+#include "Rendering/ImageFormat.hpp"
+
 namespace Yuki {
 
 	class VulkanHelper
@@ -18,6 +20,11 @@ namespace Yuki {
 		}
 
 		static uint32_t SelectGraphicsQueue(VkPhysicalDevice InPhysicalDevice);
+
+	public:
+		// Conversion Functions
+		static VkFormat ImageFormatToVkFormat(ImageFormat InFormat);
+
 	};
 
 }

@@ -58,6 +58,8 @@ namespace Yuki {
 
 	void Application::Destroy()
 	{
+		OnDestroy();
+		m_Windows.clear();
 		m_RenderContext->Destroy();
 	}
 

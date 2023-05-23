@@ -1,6 +1,7 @@
 #include "VulkanGraphicsPipelineBuilder.hpp"
 #include "VulkanRenderContext.hpp"
 #include "VulkanGraphicsPipeline.hpp"
+#include "VulkanHelper.hpp"
 
 namespace Yuki {
 
@@ -30,19 +31,6 @@ namespace Yuki {
 		case ShaderDataType::Int2: return VK_FORMAT_R32G32_SINT;
 		case ShaderDataType::Int3: return VK_FORMAT_R32G32B32_SINT;
 		case ShaderDataType::Int4: return VK_FORMAT_R32G32B32A32_SINT;
-		}
-
-		YUKI_VERIFY(false);
-		return VK_FORMAT_UNDEFINED;
-	}
-
-	static constexpr VkFormat ImageFormatToVkFormat(ImageFormat InFormat)
-	{
-		switch (InFormat)
-		{
-		case ImageFormat::RGBA8UNorm: return VK_FORMAT_R8G8B8A8_UNORM;
-		case ImageFormat::BGRA8UNorm: return VK_FORMAT_B8G8R8A8_UNORM;
-		case ImageFormat::D24UNormS8UInt: return VK_FORMAT_D24_UNORM_S8_UINT;
 		}
 
 		YUKI_VERIFY(false);
@@ -90,7 +78,7 @@ namespace Yuki {
 	{
 		YUKI_VERIFY(InFormat != ImageFormat::D24UNormS8UInt);
 
-		m_ColorAttachmentFormats.emplace_back(ImageFormatToVkFormat(InFormat));
+		m_ColorAttachmentFormats.emplace_back(VulkanHelper::ImageFormatToVkFormat(InFormat));
 
 		auto& blendStateInfo = m_ColorAttachmentBlendStates.emplace_back();
 		blendStateInfo.blendEnable = VK_TRUE;

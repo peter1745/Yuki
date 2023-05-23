@@ -45,10 +45,12 @@ namespace Yuki {
 
 		YUKI_VERIFY(vkCreateInstance(&instanceInfo, nullptr, &m_Instance) == VK_SUCCESS);
 
-		volkLoadInstance(m_Instance);
+		volkLoadInstanceOnly(m_Instance);
 
 		SelectSuitablePhysicalDevice();
 		CreateLogicalDevice(enabledLayers);
+
+		m_Allocator.Initialize(m_Instance, m_PhysicalDevice, m_Device);
 
 		m_ShaderManager = Unique<ShaderManager>::Create();
 		m_ShaderCompiler = Unique<VulkanShaderCompiler>::Create(m_ShaderManager.GetPtr(), m_Device);
@@ -57,6 +59,9 @@ namespace Yuki {
 	void VulkanRenderContext::Destroy()
 	{
 		vkDeviceWaitIdle(m_Device);
+
+		m_Allocator.Destroy();
+
 		vkDestroyDevice(m_Device, nullptr);
 		vkDestroyInstance(m_Instance, nullptr);
 	}
@@ -78,7 +83,7 @@ namespace Yuki {
 
 	RenderTarget* VulkanRenderContext::CreateRenderTarget(const RenderTargetInfo& InInfo)
 	{
-		return nullptr;
+		return RenderTarget::Create(this, InInfo);
 	}
 
 	void VulkanRenderContext::DestroySwapchain(Swapchain* InSwapchain)
@@ -98,7 +103,7 @@ namespace Yuki {
 
 	void VulkanRenderContext::DestroyRenderTarget(RenderTarget* InRenderTarget)
 	{
-		// TODO
+		RenderTarget::Destroy(this, InRenderTarget);
 	}
 
 	VkSurfaceCapabilitiesKHR VulkanRenderContext::QuerySurfaceCapabilities(VkSurfaceKHR InSurface) const

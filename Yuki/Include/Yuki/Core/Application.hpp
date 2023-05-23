@@ -26,6 +26,7 @@ namespace Yuki {
 	private:
 		virtual void OnInitialize() {}
 		virtual void OnRunLoop() {}
+		virtual void OnDestroy() {}
 
 	private:
 		void Initialize();

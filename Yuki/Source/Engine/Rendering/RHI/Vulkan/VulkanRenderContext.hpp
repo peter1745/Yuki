@@ -6,6 +6,7 @@
 #include "VulkanPlatform.hpp"
 #include "VulkanShaderCompiler.hpp"
 #include "VulkanQueue.hpp"
+#include "VulkanAllocator.hpp"
 
 namespace Yuki {
 
@@ -33,6 +34,8 @@ namespace Yuki {
 		void DestroyRenderTarget(RenderTarget* InRenderTarget) override;
 
 	public:
+		VulkanAllocator& GetAllocator() { return m_Allocator; }
+
 		VkInstance GetInstance() const { return m_Instance; }
 		VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
 		VkDevice GetDevice() const { return m_Device; }
@@ -51,6 +54,7 @@ namespace Yuki {
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkDevice m_Device = VK_NULL_HANDLE;
 		Unique<VulkanQueue> m_GraphicsQueue = nullptr;
+		VulkanAllocator m_Allocator;
 
 		Unique<ShaderManager> m_ShaderManager = nullptr;
 		Unique<VulkanShaderCompiler> m_ShaderCompiler = nullptr;
