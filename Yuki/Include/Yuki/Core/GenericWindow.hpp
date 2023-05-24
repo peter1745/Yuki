@@ -6,7 +6,7 @@
 #include "Yuki/EventSystem/WindowEvents.hpp"
 
 #include "Yuki/Rendering/RHI/RenderContext.hpp"
-#include "Yuki/Rendering/RHI/Swapchain.hpp"
+#include "Yuki/Rendering/RHI/Viewport.hpp"
 
 namespace Yuki {
 
@@ -35,7 +35,7 @@ namespace Yuki {
 
 		virtual const WindowAttributes& GetAttributes() const = 0;
 
-		virtual Swapchain& GetSwapchain() const = 0;
+		virtual Viewport* GetViewport() const = 0;
 
 	public:
 		static Unique<GenericWindow> New(RenderContext* InRenderContext, WindowAttributes InAttributes);

@@ -61,7 +61,7 @@ namespace Yuki {
 
 	WindowsWindow::~WindowsWindow()
 	{
-		m_RenderContext->DestroySwapchain(m_Swapchain);
+		m_RenderContext->DestroyViewport(m_Viewport);
 	}
 
 	void WindowsWindow::Create()
@@ -107,7 +107,7 @@ namespace Yuki {
 
 		YUKI_VERIFY(m_WindowHandle != nullptr, "Failed to create Win32 Window!");
 
-		m_Swapchain = m_RenderContext->CreateSwapchain(this);
+		m_Viewport = m_RenderContext->CreateViewport(this);
 	}
 
 	void WindowsWindow::Show()

@@ -3,6 +3,41 @@
 
 namespace Yuki {
 
+	void VulkanImage2D::Transition(VkCommandBuffer InCommandBuffer, const VulkanImageTransition& InTransitionInfo)
+	{
+		VkImageAspectFlags aspectFlags = IsDepthFormat(m_Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+
+		VkImageMemoryBarrier2 barrier = {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+			.srcStageMask = m_CurrentPipelineStage,
+			.srcAccessMask = m_CurrentAccessFlags,
+			.dstStageMask = InTransitionInfo.DstPipelineStage,
+			.dstAccessMask = InTransitionInfo.DstAccessFlags,
+			.oldLayout = m_CurrentLayout,
+			.newLayout = InTransitionInfo.DstImageLayout,
+			.image = m_Image,
+			.subresourceRange = {
+			    .aspectMask = aspectFlags,
+			    .baseMipLevel = 0,
+			    .levelCount = 1,
+			    .baseArrayLayer = 0,
+			    .layerCount = 1,
+			}
+		};
+
+		VkDependencyInfo dependencyInfo = {
+			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+			.imageMemoryBarrierCount = 1,
+			.pImageMemoryBarriers = &barrier,
+		};
+
+		vkCmdPipelineBarrier2(InCommandBuffer, &dependencyInfo);
+
+		m_CurrentPipelineStage = InTransitionInfo.DstPipelineStage;
+		m_CurrentAccessFlags = InTransitionInfo.DstAccessFlags;
+		m_CurrentLayout = InTransitionInfo.DstImageLayout;
+	}
+
 	VulkanImage2D* VulkanImage2D::Create(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat)
 	{
 		VulkanImage2D* image = new VulkanImage2D();
@@ -10,7 +45,7 @@ namespace Yuki {
 		image->m_Height = InHeight;
 		image->m_Format = InFormat;
 
-		uint32_t queueFamilyIndex = InContext->GetGraphicsQueue()->GetFamilyIndex();
+		uint32_t queueFamilyIndex = static_cast<VulkanQueue*>(InContext->GetGraphicsQueue())->GetFamilyIndex();
 
 		VkFlags baseImageUsage = IsDepthFormat(InFormat) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -38,6 +73,16 @@ namespace Yuki {
 		return image;
 	}
 
+	VulkanImage2D* VulkanImage2D::Create(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, VkImage InExistingImage)
+	{
+		VulkanImage2D* image = new VulkanImage2D();
+		image->m_Width = InWidth;
+		image->m_Height = InHeight;
+		image->m_Format = InFormat;
+		image->m_Image = InExistingImage;
+		return image;
+	}
+
 	void VulkanImage2D::Destroy(VulkanRenderContext* InContext, VulkanImage2D* InImage)
 	{
 		InContext->GetAllocator().DestroyImage(InImage->m_Image, InImage->m_Allocation);
@@ -49,11 +94,11 @@ namespace Yuki {
 		VulkanImageView2D* imageView = new VulkanImageView2D();
 		imageView->m_Image = InImage;
 
-		VkImageAspectFlags aspectMask = IsDepthFormat(InImage->GetImageFormat()) ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+		VkImageAspectFlags aspectMask = IsDepthFormat(InImage->GetImageFormat()) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 
 		VkImageViewCreateInfo imageViewInfo = {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-			.image = InImage->GetImage(),
+			.image = InImage->GetVkImage(),
 			.viewType = VK_IMAGE_VIEW_TYPE_2D,
 			.format = VulkanHelper::ImageFormatToVkFormat(InImage->GetImageFormat()),
 			.subresourceRange = {

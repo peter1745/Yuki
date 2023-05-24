@@ -24,6 +24,7 @@ namespace Yuki {
 	public:
 		// Conversion Functions
 		static VkFormat ImageFormatToVkFormat(ImageFormat InFormat);
+		static ImageFormat VkFormatToImageFormat(VkFormat InFormat);
 
 	};
 

@@ -9,6 +9,12 @@ namespace Yuki {
 		spdlog::set_pattern("%^[%T][Yuki]: %v%$");
 	}
 
+	template <typename... TArgs>
+	constexpr void LogDebug(spdlog::format_string_t<TArgs...> InFormat, TArgs&&... InArgs)
+	{
+		spdlog::debug(InFormat, std::forward<TArgs>(InArgs)...);
+	}
+
 	template<typename... TArgs>
 	constexpr void LogInfo(spdlog::format_string_t<TArgs...> InFormat, TArgs&&... InArgs)
 	{

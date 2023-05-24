@@ -44,6 +44,10 @@ namespace Yuki {
 		Unique<EventSystem> m_EventSystem = nullptr;
 		Unique<RenderContext> m_RenderContext = nullptr;
 
+		CommandBuffer m_CommandBuffer;
+
+		Fence* m_Fence = nullptr;
+
 		bool m_RunEngineLoop = false;
 
 		int32_t m_ExitCode = 0;

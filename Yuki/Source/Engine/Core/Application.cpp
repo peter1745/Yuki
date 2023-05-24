@@ -1,5 +1,10 @@
 #include "Core/Application.hpp"
 #include "EventSystem/ApplicationEvents.hpp"
+#include "Rendering/RHI/Queue.hpp"
+#include "Rendering/RHI/Fence.hpp"
+#include "Rendering/RHI/Swapchain.hpp"
+
+#include "../Rendering/RHI/Vulkan/Vulkan.hpp"
 
 namespace Yuki {
 
@@ -38,6 +43,10 @@ namespace Yuki {
 
 		OnInitialize();
 
+		m_CommandBuffer = m_RenderContext->CreateCommandBuffer();
+
+		m_Fence = m_RenderContext->CreateFence();
+
 		m_RunEngineLoop = true;
 	}
 
@@ -50,10 +59,42 @@ namespace Yuki {
 
 			OnRunLoop();
 
+			LogInfo("--------------------- Frame Begin ---------------------");
+
+			m_Fence->Wait();
+
+			std::vector<Viewport*> viewports;
+			viewports.reserve(m_Windows.size());
+			for (const auto& window : m_Windows)
+				viewports.emplace_back(window->GetViewport());
+
+			m_RenderContext->ResetCommandPool();
+
+			m_RenderContext->GetGraphicsQueue()->AcquireImages(viewports, { m_Fence });
+
+			VkCommandBufferBeginInfo beginInfo = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, };
+			vkBeginCommandBuffer(m_CommandBuffer.As<VkCommandBuffer>(), &beginInfo);
+			for (auto* viewport : viewports)
+			{
+				viewport->GetSwapchain()->BeginRendering(m_CommandBuffer);
+				viewport->GetSwapchain()->EndRendering(m_CommandBuffer);
+			}
+			vkEndCommandBuffer(m_CommandBuffer.As<VkCommandBuffer>());
+			m_RenderContext->GetGraphicsQueue()->SubmitCommandBuffers({ m_CommandBuffer }, { m_Fence }, { m_Fence });
+
+			m_RenderContext->GetGraphicsQueue()->Present(viewports, { m_Fence });
+
+			LogInfo("--------------------- Frame End ---------------------\n\n");
+
 			// Clean up closed windows
 			const auto it = std::ranges::remove_if(m_Windows, [this](const auto& InWindow) { return std::ranges::find(m_ClosedWindows, InWindow.GetPtr()) != m_ClosedWindows.end(); });
 			m_Windows.erase(it.begin(), it.end());
+
+			//using namespace std::literals;
+			//std::this_thread::sleep_for(4s);
 		}
+
+		m_RenderContext->WaitDeviceIdle();
 	}
 
 	void Application::Destroy()

@@ -76,7 +76,7 @@ namespace Yuki {
 
 	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::ColorAttachment(ImageFormat InFormat)
 	{
-		YUKI_VERIFY(InFormat != ImageFormat::D24UNormS8UInt);
+		YUKI_VERIFY(InFormat != ImageFormat::Depth24UNorm);
 
 		m_ColorAttachmentFormats.emplace_back(VulkanHelper::ImageFormatToVkFormat(InFormat));
 

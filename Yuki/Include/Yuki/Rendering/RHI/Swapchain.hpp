@@ -9,6 +9,9 @@ namespace Yuki {
 	public:
 		virtual ~Swapchain() = default;
 
+		virtual void BeginRendering(CommandBuffer InCmdBuffer) = 0;
+		virtual void EndRendering(CommandBuffer InCmdBuffer) = 0;
+
 	};
 
 }

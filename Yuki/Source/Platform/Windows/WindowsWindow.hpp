@@ -23,7 +23,7 @@ namespace Yuki {
 
 		void ProcessEvents() const override;
 
-		Swapchain& GetSwapchain() const override { return *m_Swapchain; }
+		Viewport* GetViewport() const override { return m_Viewport; }
 
 		HWND GetWindowHandle() const { return m_WindowHandle; }
 
@@ -34,7 +34,7 @@ namespace Yuki {
 		HWND m_WindowHandle = nullptr;
 		WindowAttributes m_Attributes;
 		RenderContext* m_RenderContext;
-		Swapchain* m_Swapchain = nullptr;
+		Viewport* m_Viewport = nullptr;
 
 	private:
 		 WindowData m_WindowData;

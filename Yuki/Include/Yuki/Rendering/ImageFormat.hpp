@@ -8,9 +8,9 @@ namespace Yuki {
 
 		RGBA8UNorm,
 		BGRA8UNorm,
-		D24UNormS8UInt
+		Depth24UNorm
 	};
 
-	static constexpr bool IsDepthFormat(ImageFormat InFormat) { return InFormat == ImageFormat::D24UNormS8UInt; }
+	static constexpr bool IsDepthFormat(ImageFormat InFormat) { return InFormat == ImageFormat::Depth24UNorm; }
 
 }

@@ -6,115 +6,152 @@
 
 namespace Yuki {
 
-	/*bool VulkanSwapchain::AcquireNextImage(VulkanDevice* InDevice, VkSemaphore InSemaphore)
+	VulkanSwapchain::VulkanSwapchain(VulkanRenderContext* InContext, const VulkanSwapchainInfo& InSwapchainInfo)
+		: m_Context(InContext)
 	{
-		vkAcquireNextImageKHR(InDevice->GetLogicalDevice(), m_Swapchain, std::numeric_limits<uint64_t>::max(), InSemaphore, VK_NULL_HANDLE, &m_CurrentImage);
-		return true;
-	}*/
+		Create(InSwapchainInfo);
+	}
 
-	VulkanSwapchain* VulkanSwapchain::Create(VulkanRenderContext* InContext, GenericWindow* InWindow)
+	void VulkanSwapchain::BeginRendering(CommandBuffer InCmdBuffer)
 	{
-		auto* swapchain = new VulkanSwapchain();
+		VulkanImageTransition imageTransition = {
+			.DstPipelineStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+			.DstAccessFlags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+			.DstImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+		};
 
-		swapchain->m_Surface = VulkanPlatform::CreateSurface(InContext->GetInstance(), InWindow);
+		m_Images[m_CurrentImage]->Transition(InCmdBuffer.As<VkCommandBuffer>(), imageTransition);
 
-		auto surfaceCapabilities = InContext->QuerySurfaceCapabilities(swapchain->m_Surface);
-		VkSurfaceFormatKHR selectedSurfaceFormat = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_MAX_ENUM_KHR };
-		{
-			// Find a suitable surface format
-			List<VkSurfaceFormatKHR> availableSurfaceFormats;
-			VulkanHelper::Enumerate(vkGetPhysicalDeviceSurfaceFormatsKHR, availableSurfaceFormats, InContext->GetPhysicalDevice(), swapchain->m_Surface);
-			for (const auto& surfaceFormat : availableSurfaceFormats)
-			{
-				if (surfaceFormat.format == VK_FORMAT_R8G8B8A8_UNORM || surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM)
-				{
-					selectedSurfaceFormat = surfaceFormat;
-					break;
-				}
-			}
-		}
+		VkClearValue clearColor = {};
+		clearColor.color.float32[0] = 1.0f;
+		clearColor.color.float32[1] = 0.0f;
+		clearColor.color.float32[2] = 0.0f;
+		clearColor.color.float32[3] = 1.0f;
 
-		VkExtent2D imageExtent = surfaceCapabilities.currentExtent;
-		if (imageExtent.width == std::numeric_limits<uint32_t>::max())
-		{
-			const auto& windowAttributes = InWindow->GetAttributes();
-			imageExtent.width = Math::Clamp(windowAttributes.Width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-			imageExtent.height = Math::Clamp(windowAttributes.Height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
-		}
+		VkRenderingAttachmentInfo colorAttachmentInfo = {
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+			.imageView = m_ImageViews[m_CurrentImage]->GetVkImageView(),
+			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.clearValue = clearColor,
+		};
 
-		VkPresentModeKHR selectedPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-		{
-			// Find a suitable present mode
-			List<VkPresentModeKHR> availablePresentModes;
-			VulkanHelper::Enumerate(vkGetPhysicalDeviceSurfacePresentModesKHR, availablePresentModes, InContext->GetPhysicalDevice(), swapchain->m_Surface);
-			for (auto presentMode : availablePresentModes)
-			{
-				if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
-				{
-					selectedPresentMode = presentMode;
-					break;
-				}
-			}
-		}
+		VkRenderingInfo renderingInfo = {
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+			.renderArea = {
+			    .offset = { 0, 0 },
+			    .extent = { m_Images[m_CurrentImage]->GetWidth(), m_Images[m_CurrentImage]->GetHeight() },
+			},
+			.layerCount = 1,
+			.viewMask = 0,
+			.colorAttachmentCount = 1,
+			.pColorAttachments = &colorAttachmentInfo
+		};
 
-		uint32_t queueFamilyIndex = InContext->GetGraphicsQueue()->GetFamilyIndex();
+		vkCmdBeginRendering(InCmdBuffer.As<VkCommandBuffer>(), &renderingInfo);
+	}
+
+	void VulkanSwapchain::EndRendering(CommandBuffer InCmdBuffer)
+	{
+		vkCmdEndRendering(InCmdBuffer.As<VkCommandBuffer>());
+
+		VulkanImageTransition imageTransition = {
+			.DstPipelineStage = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+			.DstAccessFlags = 0,
+			.DstImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		};
+
+		m_Images[m_CurrentImage]->Transition(InCmdBuffer.As<VkCommandBuffer>(), imageTransition);
+	}
+
+	void VulkanSwapchain::Create(const VulkanSwapchainInfo& InSwapchainInfo)
+	{
+		uint32_t queueFamilyIndex = static_cast<VulkanQueue*>(m_Context->GetGraphicsQueue())->GetFamilyIndex();
 		VkSwapchainCreateInfoKHR swapchainInfo = {
 			.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-			.surface = swapchain->m_Surface,
-			.minImageCount = Math::Min(surfaceCapabilities.minImageCount + 1, surfaceCapabilities.maxImageCount),
-			.imageFormat = selectedSurfaceFormat.format,
-			.imageColorSpace = selectedSurfaceFormat.colorSpace,
-			.imageExtent = imageExtent,
+			.surface = InSwapchainInfo.Surface,
+			.minImageCount = InSwapchainInfo.MinImageCount,
+			.imageFormat = InSwapchainInfo.SurfaceFormat.format,
+			.imageColorSpace = InSwapchainInfo.SurfaceFormat.colorSpace,
+			.imageExtent = InSwapchainInfo.ImageExtent,
 			.imageArrayLayers = 1,
 			.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 			.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 1,
 			.pQueueFamilyIndices = &queueFamilyIndex,
-			.preTransform = surfaceCapabilities.currentTransform,
+			.preTransform = InSwapchainInfo.PreTransform,
 			.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-			.presentMode = selectedPresentMode,
+			.presentMode = InSwapchainInfo.PresentMode,
 			.clipped = VK_TRUE,
 			.oldSwapchain = VK_NULL_HANDLE,
 		};
-		YUKI_VERIFY(vkCreateSwapchainKHR(InContext->GetDevice(), &swapchainInfo, nullptr, &swapchain->m_Swapchain) == VK_SUCCESS);
+		YUKI_VERIFY(vkCreateSwapchainKHR(m_Context->GetDevice(), &swapchainInfo, nullptr, &m_Swapchain) == VK_SUCCESS);
 
 		// Fetch the swapchain images and create image views
 		{
-			VulkanHelper::Enumerate(vkGetSwapchainImagesKHR, swapchain->m_Images, InContext->GetDevice(), swapchain->m_Swapchain);
-			swapchain->m_ImageViews.reserve(swapchain->m_Images.size());
-			for (auto image : swapchain->m_Images)
-			{
-				VkImageViewCreateInfo viewInfo = {
-					.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-					.image = image,
-					.viewType = VK_IMAGE_VIEW_TYPE_2D,
-					.format = selectedSurfaceFormat.format,
-					.subresourceRange = {
-					    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-					    .baseMipLevel = 0,
-					    .levelCount = 1,
-					    .baseArrayLayer = 0,
-					    .layerCount = 1 }
-				};
+			List<VkImage> swapchainImages;
+			VulkanHelper::Enumerate(vkGetSwapchainImagesKHR, swapchainImages, m_Context->GetDevice(), m_Swapchain);
+			m_Images.reserve(swapchainImages.size());
+			for (auto image : swapchainImages)
+				m_Images.emplace_back(VulkanImage2D::Create(m_Context, InSwapchainInfo.ImageExtent.width, InSwapchainInfo.ImageExtent.height, VulkanHelper::VkFormatToImageFormat(InSwapchainInfo.SurfaceFormat.format), image));
 
-				VkImageView imageView;
-				YUKI_VERIFY(vkCreateImageView(InContext->GetDevice(), &viewInfo, nullptr, &imageView) == VK_SUCCESS);
-				swapchain->m_ImageViews.emplace_back(imageView);
-			}
+			m_ImageViews.reserve(m_Images.size());
+			for (auto image : m_Images)
+				m_ImageViews.emplace_back(static_cast<VulkanImageView2D*>(m_Context->CreateImageView2D(image)));
 		}
 
-		return swapchain;
+		// Create binary semaphores
+		{
+			m_Semaphores.resize(m_Images.size() * 2);
+
+			VkSemaphoreCreateInfo semaphoreInfo = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+
+			for (size_t i = 0; i < m_Semaphores.size(); i++)
+				vkCreateSemaphore(m_Context->GetDevice(), &semaphoreInfo, nullptr, &m_Semaphores[i]);
+		}
 	}
 
-	void VulkanSwapchain::Destroy(VulkanRenderContext* InContext, VulkanSwapchain* InSwapchain)
+	void VulkanSwapchain::Recreate(const VulkanSwapchainInfo& InSwapchainInfo)
 	{
-		for (auto imageView : InSwapchain->m_ImageViews)
-			vkDestroyImageView(InContext->GetDevice(), imageView, nullptr);
+		// Destroy old resources
+		{
+			for (auto semaphore : m_Semaphores)
+			{
+				LogInfo("Destroying semaphore: {}", (void*)semaphore);
+				vkDestroySemaphore(m_Context->GetDevice(), semaphore, nullptr);
+			}
+			m_Semaphores.clear();
+			m_SemaphoreIndex = 0;
 
-		vkDestroySwapchainKHR(InContext->GetDevice(), InSwapchain->m_Swapchain, nullptr);
-		vkDestroySurfaceKHR(InContext->GetInstance(), InSwapchain->m_Surface, nullptr);
+			for (auto imageView : m_ImageViews)
+				m_Context->DestroyImageView2D(imageView);
+			m_ImageViews.clear();
 
-		delete InSwapchain;
+			m_Images.clear();
+
+			m_CurrentImage = 0;
+
+			vkDestroySwapchainKHR(m_Context->GetDevice(), m_Swapchain, nullptr);
+		}
+
+		Create(InSwapchainInfo);
+	}
+
+	VkResult VulkanSwapchain::AcquireNextImage()
+	{
+		LogInfo("Acquiring with semaphore {}", (void*)m_Semaphores[m_SemaphoreIndex]);
+
+		VkAcquireNextImageInfoKHR acquireImageInfo = {
+			.sType = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
+			.swapchain = m_Swapchain,
+			.timeout = UINT64_MAX,
+			.semaphore = m_Semaphores[m_SemaphoreIndex],
+			.fence = VK_NULL_HANDLE,
+			.deviceMask = 1
+		};
+
+		return vkAcquireNextImage2KHR(m_Context->GetDevice(), &acquireImageInfo, &m_CurrentImage);
 	}
 
 }

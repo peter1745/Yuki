@@ -1,12 +1,35 @@
 #include "VulkanRenderContext.hpp"
 #include "VulkanHelper.hpp"
-#include "VulkanSwapchain.hpp"
+#include "VulkanViewport.hpp"
 #include "VulkanShaderCompiler.hpp"
 #include "VulkanImage2D.hpp"
-
-#include "Rendering/RenderTarget.hpp"
+#include "VulkanRenderTarget.hpp"
+#include "VulkanFence.hpp"
 
 namespace Yuki {
+
+	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT InSeverity, VkDebugUtilsMessageTypeFlagsEXT InType, const VkDebugUtilsMessengerCallbackDataEXT* InCallbackData, void* InUserData)
+	{
+		if (InSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+		{
+			LogDebug("Vulkan: {}", InCallbackData->pMessage);
+		}
+		else if (InSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+		{
+			LogInfo("Vulkan: {}", InCallbackData->pMessage);
+		}
+		else if (InSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		{
+			LogWarn("Vulkan: {}", InCallbackData->pMessage);
+		}
+		else if (InSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		{
+			LogError("Vulkan: {}", InCallbackData->pMessage);
+			YUKI_VERIFY(false);
+		}
+
+		return VK_FALSE;
+	}
 
 	VulkanRenderContext::VulkanRenderContext()
 	{
@@ -27,6 +50,7 @@ namespace Yuki {
 		}
 
 		enabledInstanceExtensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
+
 		VulkanPlatform::GetRequiredInstanceExtensions(enabledInstanceExtensions);
 
 		VkApplicationInfo appInfo = {
@@ -47,10 +71,18 @@ namespace Yuki {
 
 		volkLoadInstanceOnly(m_Instance);
 
+		SetupDebugUtilsMessenger();
+
 		SelectSuitablePhysicalDevice();
 		CreateLogicalDevice(enabledLayers);
 
 		m_Allocator.Initialize(m_Instance, m_PhysicalDevice, m_Device);
+
+		VkCommandPoolCreateInfo poolInfo = {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.queueFamilyIndex = m_GraphicsQueue->GetFamilyIndex()
+		};
+		vkCreateCommandPool(m_Device, &poolInfo, nullptr, &m_CommandPool);
 
 		m_ShaderManager = Unique<ShaderManager>::Create();
 		m_ShaderCompiler = Unique<VulkanShaderCompiler>::Create(m_ShaderManager.GetPtr(), m_Device);
@@ -63,12 +95,25 @@ namespace Yuki {
 		m_Allocator.Destroy();
 
 		vkDestroyDevice(m_Device, nullptr);
+
+		vkDestroyDebugUtilsMessengerEXT(m_Instance, m_DebugUtilsMessengerHandle, nullptr);
+
 		vkDestroyInstance(m_Instance, nullptr);
 	}
 
-	Swapchain* VulkanRenderContext::CreateSwapchain(GenericWindow* InWindow)
+	void VulkanRenderContext::ResetCommandPool()
 	{
-		return VulkanSwapchain::Create(this, InWindow);
+		vkResetCommandPool(m_Device, m_CommandPool, 0);
+	}
+
+	void VulkanRenderContext::WaitDeviceIdle() const
+	{
+		vkDeviceWaitIdle(m_Device);
+	}
+
+	Viewport* VulkanRenderContext::CreateViewport(GenericWindow* InWindow)
+	{
+		return new VulkanViewport(this, InWindow);
 	}
 
 	Image2D* VulkanRenderContext::CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat)
@@ -83,12 +128,37 @@ namespace Yuki {
 
 	RenderTarget* VulkanRenderContext::CreateRenderTarget(const RenderTargetInfo& InInfo)
 	{
-		return RenderTarget::Create(this, InInfo);
+		return VulkanRenderTarget::Create(this, InInfo);
 	}
 
-	void VulkanRenderContext::DestroySwapchain(Swapchain* InSwapchain)
+	Fence* VulkanRenderContext::CreateFence()
 	{
-		VulkanSwapchain::Destroy(this, (VulkanSwapchain*)InSwapchain);
+		return VulkanFence::Create(this);
+	}
+
+	CommandBuffer VulkanRenderContext::CreateCommandBuffer()
+	{
+		VkCommandBufferAllocateInfo commandBufferAllocInfo = {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+			.commandPool = m_CommandPool,
+			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			.commandBufferCount = 1
+		};
+
+		CommandBuffer commandBuffer = {};
+		vkAllocateCommandBuffers(m_Device, &commandBufferAllocInfo, reinterpret_cast<VkCommandBuffer*>(&commandBuffer.Instance));
+
+		return commandBuffer;
+	}
+
+	void VulkanRenderContext::DestroyFence(Fence* InFence)
+	{
+		VulkanFence::Destroy(this, (VulkanFence*)InFence);
+	}
+
+	void VulkanRenderContext::DestroyViewport(Viewport* InViewport)
+	{
+		delete InViewport;
 	}
 
 	void VulkanRenderContext::DestroyImage2D(Image2D* InImage)
@@ -103,7 +173,7 @@ namespace Yuki {
 
 	void VulkanRenderContext::DestroyRenderTarget(RenderTarget* InRenderTarget)
 	{
-		RenderTarget::Destroy(this, InRenderTarget);
+		VulkanRenderTarget::Destroy(this, (VulkanRenderTarget*)InRenderTarget);
 	}
 
 	VkSurfaceCapabilitiesKHR VulkanRenderContext::QuerySurfaceCapabilities(VkSurfaceKHR InSurface) const
@@ -229,9 +299,11 @@ namespace Yuki {
 		deviceExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 		deviceExtensions.emplace_back(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME);
 
-		VkPhysicalDeviceVulkan13Features features13 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
-		features13.dynamicRendering = VK_TRUE;
-		features13.synchronization2 = VK_TRUE;
+		VkPhysicalDeviceVulkan13Features features13 = {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+			.synchronization2 = VK_TRUE,
+			.dynamicRendering = VK_TRUE,
+		};
 
 		VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3Features = {
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
@@ -239,7 +311,13 @@ namespace Yuki {
 			.extendedDynamicState3PolygonMode = VK_TRUE,
 		};
 
-		VkPhysicalDeviceFeatures2 features2 = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &extendedDynamicState3Features };
+		VkPhysicalDeviceVulkan12Features features12 = {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+			.pNext = &extendedDynamicState3Features,
+			.timelineSemaphore = VK_TRUE,
+		};
+
+		VkPhysicalDeviceFeatures2 features2 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features12};
 
 		VkDeviceCreateInfo deviceInfo = {
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -257,8 +335,30 @@ namespace Yuki {
 		volkLoadDevice(m_Device);
 
 		m_GraphicsQueue = Unique<VulkanQueue>::Create();
+		m_GraphicsQueue->m_Context = this;
 		vkGetDeviceQueue(m_Device, selectedQueueFamilyIndex, 0, &m_GraphicsQueue->m_Queue);
 		m_GraphicsQueue->m_QueueFamily = selectedQueueFamilyIndex;
+	}
+
+	void VulkanRenderContext::SetupDebugUtilsMessenger()
+	{
+		static constexpr uint32_t MessageSeverities = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+													  VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+													  VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+													  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+
+		static constexpr uint32_t MessageTypes = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+												 VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+												 VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+		VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = {
+			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+			.messageSeverity = MessageSeverities,
+			.messageType = MessageTypes,
+			.pfnUserCallback = DebugMessengerCallback,
+		};
+
+		vkCreateDebugUtilsMessengerEXT(m_Instance, &messengerCreateInfo, nullptr, &m_DebugUtilsMessengerHandle);
 	}
 
 }
