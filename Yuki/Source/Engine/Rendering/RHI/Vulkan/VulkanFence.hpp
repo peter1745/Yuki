@@ -9,6 +9,8 @@ namespace Yuki {
 	class VulkanFence : public Fence
 	{
 	public:
+		~VulkanFence();
+
 		void Wait(uint64_t InValue = 0) override;
 
 		uint64_t& GetValue() override { return m_Value; }
@@ -16,8 +18,7 @@ namespace Yuki {
 		VkSemaphore GetVkSemaphore() const { return m_Semaphore; }
 
 	private:
-		static VulkanFence* Create(VulkanRenderContext* InContext);
-		static void Destroy(VulkanRenderContext* InContext, VulkanFence* InFence);
+		VulkanFence(VulkanRenderContext* InContext);
 
 	private:
 		VulkanRenderContext* m_Context = nullptr;

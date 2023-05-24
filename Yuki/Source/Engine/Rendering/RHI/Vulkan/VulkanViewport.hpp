@@ -10,7 +10,6 @@ namespace Yuki {
 	class VulkanViewport : public Viewport
 	{
 	public:
-		VulkanViewport(VulkanRenderContext* InContext, GenericWindow* InWindow);
 		~VulkanViewport();
 
 		GenericWindow* GetWindow() const override { return m_Window; }
@@ -24,6 +23,9 @@ namespace Yuki {
 		void RecreateSwapchain() override;
 
 	private:
+			VulkanViewport(VulkanRenderContext* InContext, GenericWindow* InWindow);
+
+	private:
 		VulkanRenderContext* m_Context = nullptr;
 		GenericWindow* m_Window = nullptr;
 		uint32_t m_Width = 0;
@@ -33,6 +35,9 @@ namespace Yuki {
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 		VkSurfaceFormatKHR m_SurfaceFormat = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_MAX_ENUM_KHR };
 		VkPresentModeKHR m_PresentMode = VK_PRESENT_MODE_MAX_ENUM_KHR;
+
+	private:
+		friend class VulkanRenderContext;
 	};
 
 }

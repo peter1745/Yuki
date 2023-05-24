@@ -66,7 +66,14 @@ namespace Yuki {
 			std::vector<Viewport*> viewports;
 			viewports.reserve(m_Windows.size());
 			for (const auto& window : m_Windows)
-				viewports.emplace_back(window->GetViewport());
+			{
+				Viewport* viewport = window->GetViewport();
+
+				if (!viewport)
+					continue;
+
+				viewports.emplace_back(viewport);
+			}
 
 			m_RenderContext->ResetCommandPool();
 
@@ -89,9 +96,6 @@ namespace Yuki {
 			// Clean up closed windows
 			const auto it = std::ranges::remove_if(m_Windows, [this](const auto& InWindow) { return std::ranges::find(m_ClosedWindows, InWindow.GetPtr()) != m_ClosedWindows.end(); });
 			m_Windows.erase(it.begin(), it.end());
-
-			//using namespace std::literals;
-			//std::this_thread::sleep_for(4s);
 		}
 
 		m_RenderContext->WaitDeviceIdle();
@@ -101,12 +105,16 @@ namespace Yuki {
 	{
 		OnDestroy();
 		m_Windows.clear();
+		m_RenderContext->WaitDeviceIdle();
+		m_RenderContext->DestroyFence(m_Fence);
 		m_RenderContext->Destroy();
 	}
 
 	void Application::OnWindowClose(const WindowCloseEvent& InEvent)
 	{
 		m_ClosedWindows.emplace_back(InEvent.Window);
+
+		InEvent.Window->Destroy();
 
 		if (InEvent.Window != m_MainWindow)
 			return;

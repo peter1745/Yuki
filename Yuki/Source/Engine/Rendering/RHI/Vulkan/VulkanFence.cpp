@@ -2,22 +2,9 @@
 
 namespace Yuki {
 
-	void VulkanFence::Wait(uint64_t InValue)
+	VulkanFence::VulkanFence(VulkanRenderContext* InContext)
+		: m_Context(InContext)
 	{
-		VkSemaphoreWaitInfo waitInfo = {
-			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
-			.semaphoreCount = 1,
-			.pSemaphores = &m_Semaphore,
-			.pValues = InValue ? &InValue : &m_Value,
-		};
-		vkWaitSemaphores(m_Context->GetDevice(), &waitInfo, UINT64_MAX);
-	}
-
-	VulkanFence* VulkanFence::Create(VulkanRenderContext* InContext)
-	{
-		VulkanFence* fence = new VulkanFence();
-		fence->m_Context = InContext;
-
 		VkSemaphoreTypeCreateInfo semaphoreTypeInfo = {
 			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
 			.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
@@ -28,14 +15,23 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
 			.pNext = &semaphoreTypeInfo,
 		};
-		vkCreateSemaphore(InContext->GetDevice(), &semaphoreInfo, nullptr, &fence->m_Semaphore);
-
-		return fence;
+		vkCreateSemaphore(InContext->GetDevice(), &semaphoreInfo, nullptr, &m_Semaphore);
 	}
 
-	void VulkanFence::Destroy(VulkanRenderContext* InContext, VulkanFence* InFence)
+	VulkanFence::~VulkanFence()
 	{
-		vkDestroySemaphore(InContext->GetDevice(), InFence->m_Semaphore, nullptr);
+		vkDestroySemaphore(m_Context->GetDevice(), m_Semaphore, nullptr);
+	}
+
+	void VulkanFence::Wait(uint64_t InValue)
+	{
+		VkSemaphoreWaitInfo waitInfo = {
+			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+			.semaphoreCount = 1,
+			.pSemaphores = &m_Semaphore,
+			.pValues = InValue ? &InValue : &m_Value,
+		};
+		vkWaitSemaphores(m_Context->GetDevice(), &waitInfo, UINT64_MAX);
 	}
 
 }

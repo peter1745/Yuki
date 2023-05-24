@@ -60,8 +60,6 @@ namespace Yuki {
 					break;
 				}
 			}
-
-			m_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
 		}
 
 		VulkanSwapchainInfo swapchainInfo = {
@@ -78,6 +76,12 @@ namespace Yuki {
 
 	VulkanViewport::~VulkanViewport()
 	{
+		m_Context->GetGraphicsQueue()->WaitIdle();
+
+		m_Swapchain->Destroy();
+		delete m_Swapchain;
+
+		vkDestroySurfaceKHR(m_Context->GetInstance(), m_Surface, nullptr);
 	}
 
 	void VulkanViewport::AcquireNextImage()

@@ -56,6 +56,9 @@ namespace Yuki {
 
 	void VulkanQueue::Present(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences)
 	{
+		if (InViewports.empty())
+			return;
+
 		std::vector<VkResult> presentResults(InViewports.size());
 		std::vector<VkSemaphore> binaryWaits;
 
@@ -139,8 +142,16 @@ namespace Yuki {
 		}
 	}
 
+	void VulkanQueue::WaitIdle() const
+	{
+		vkQueueWaitIdle(m_Queue);
+	}
+
 	void VulkanQueue::AcquireImages(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences)
 	{
+		if (InViewports.empty())
+			return;
+
 		std::ranges::for_each(InViewports, [](auto* const InViewport)
 		{
 			InViewport->AcquireNextImage();

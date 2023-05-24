@@ -2,13 +2,15 @@
 
 #include "Rendering/RHI/RenderTarget.hpp"
 
-#include "Vulkan.hpp"
+#include "VulkanRenderContext.hpp"
 
 namespace Yuki {
 
 	class VulkanRenderTarget : public RenderTarget
 	{
 	public:
+		~VulkanRenderTarget();
+
 		const RenderTargetInfo& GetInfo() const override { return m_Info; }
 
 		const std::vector<AttachmentInfo>& GetColorAttachmentInfos() const override { return m_ColorAttachmentInfos; }
@@ -18,10 +20,10 @@ namespace Yuki {
 		const VkRenderingAttachmentInfo& GetDepthRenderingAttachment() const { return m_DepthAttachment; }
 
 	private:
-		static RenderTarget* Create(RenderContext* InContext, const RenderTargetInfo& InInfo);
-		static void Destroy(RenderContext* InContext, VulkanRenderTarget* InRenderTarget);
+		VulkanRenderTarget(VulkanRenderContext* InContext, const RenderTargetInfo& InInfo);
 
 	private:
+		VulkanRenderContext* m_Context = nullptr;
 		RenderTargetInfo m_Info;
 
 		std::vector<AttachmentInfo> m_ColorAttachmentInfos;

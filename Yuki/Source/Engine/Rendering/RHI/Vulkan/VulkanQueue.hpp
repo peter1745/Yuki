@@ -13,8 +13,10 @@ namespace Yuki {
 	public:
 		void SubmitCommandBuffers(const InitializerList<CommandBuffer>& InCommandBuffers, const InitializerList<Fence*> InWaits, const InitializerList<Fence*> InSignals) override;
 
-		void Present(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences) override;
 		void AcquireImages(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences) override;
+		void Present(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences) override;
+
+		void WaitIdle() const override;
 
 		uint32_t GetFamilyIndex() const { return m_QueueFamily; }
 

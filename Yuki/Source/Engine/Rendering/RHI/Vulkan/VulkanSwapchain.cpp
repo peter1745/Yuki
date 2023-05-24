@@ -12,6 +12,27 @@ namespace Yuki {
 		Create(InSwapchainInfo);
 	}
 
+	void VulkanSwapchain::Destroy()
+	{
+		for (auto semaphore : m_Semaphores)
+		{
+			LogInfo("Destroying semaphore: {}", (void*)semaphore);
+			vkDestroySemaphore(m_Context->GetDevice(), semaphore, nullptr);
+		}
+		m_Semaphores.clear();
+		m_SemaphoreIndex = 0;
+
+		for (auto imageView : m_ImageViews)
+			m_Context->DestroyImageView2D(imageView);
+		m_ImageViews.clear();
+
+		m_Images.clear();
+
+		m_CurrentImage = 0;
+
+		vkDestroySwapchainKHR(m_Context->GetDevice(), m_Swapchain, nullptr);
+	}
+
 	void VulkanSwapchain::BeginRendering(CommandBuffer InCmdBuffer)
 	{
 		VulkanImageTransition imageTransition = {
@@ -94,7 +115,7 @@ namespace Yuki {
 			VulkanHelper::Enumerate(vkGetSwapchainImagesKHR, swapchainImages, m_Context->GetDevice(), m_Swapchain);
 			m_Images.reserve(swapchainImages.size());
 			for (auto image : swapchainImages)
-				m_Images.emplace_back(VulkanImage2D::Create(m_Context, InSwapchainInfo.ImageExtent.width, InSwapchainInfo.ImageExtent.height, VulkanHelper::VkFormatToImageFormat(InSwapchainInfo.SurfaceFormat.format), image));
+				m_Images.emplace_back(new VulkanImage2D(m_Context, InSwapchainInfo.ImageExtent.width, InSwapchainInfo.ImageExtent.height, VulkanHelper::VkFormatToImageFormat(InSwapchainInfo.SurfaceFormat.format), image));
 
 			m_ImageViews.reserve(m_Images.size());
 			for (auto image : m_Images)
@@ -114,27 +135,7 @@ namespace Yuki {
 
 	void VulkanSwapchain::Recreate(const VulkanSwapchainInfo& InSwapchainInfo)
 	{
-		// Destroy old resources
-		{
-			for (auto semaphore : m_Semaphores)
-			{
-				LogInfo("Destroying semaphore: {}", (void*)semaphore);
-				vkDestroySemaphore(m_Context->GetDevice(), semaphore, nullptr);
-			}
-			m_Semaphores.clear();
-			m_SemaphoreIndex = 0;
-
-			for (auto imageView : m_ImageViews)
-				m_Context->DestroyImageView2D(imageView);
-			m_ImageViews.clear();
-
-			m_Images.clear();
-
-			m_CurrentImage = 0;
-
-			vkDestroySwapchainKHR(m_Context->GetDevice(), m_Swapchain, nullptr);
-		}
-
+		Destroy();
 		Create(InSwapchainInfo);
 	}
 

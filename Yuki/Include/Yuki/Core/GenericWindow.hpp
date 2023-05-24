@@ -28,6 +28,7 @@ namespace Yuki {
 		virtual ~GenericWindow() = default;
 
 		virtual void Create() = 0;
+		virtual void Destroy() = 0;
 
 		virtual void ProcessEvents() const = 0;
 

@@ -16,6 +16,8 @@ namespace Yuki {
 	class VulkanImage2D : public Image2D
 	{
 	public:
+		~VulkanImage2D();
+
 		uint32_t GetWidth() const override { return m_Width;}
 		uint32_t GetHeight() const override { return m_Height; }
 		ImageFormat GetImageFormat() const override { return m_Format; }
@@ -25,11 +27,11 @@ namespace Yuki {
 		void Transition(VkCommandBuffer InCommandBuffer, const VulkanImageTransition& InTransitionInfo);
 
 	private:
-		static VulkanImage2D* Create(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat);
-		static VulkanImage2D* Create(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, VkImage InExistingImage);
-		static void Destroy(VulkanRenderContext* InContext, VulkanImage2D* InImage);
+		VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat);
+		VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, VkImage InExistingImage);
 
 	private:
+		VulkanRenderContext* m_Context = nullptr;
 		uint32_t m_Width;
 		uint32_t m_Height;
 		ImageFormat m_Format;
@@ -49,15 +51,17 @@ namespace Yuki {
 	class VulkanImageView2D : public ImageView2D
 	{
 	public:
+		~VulkanImageView2D();
+
 		Image2D* GetImage() const override { return m_Image; }
 
 		VkImageView GetVkImageView() const { return m_ImageView; }
 
 	private:
-		static VulkanImageView2D* Create(VulkanRenderContext* InContext, VulkanImage2D* InImage);
-		static void Destroy(VulkanRenderContext* InContext, VulkanImageView2D* InImageView);
+		VulkanImageView2D(VulkanRenderContext* InContext, VulkanImage2D* InImage);
 
 	private:
+		VulkanRenderContext* m_Context = nullptr;
 		VulkanImage2D* m_Image = nullptr;
 		VkImageView m_ImageView = VK_NULL_HANDLE;
 

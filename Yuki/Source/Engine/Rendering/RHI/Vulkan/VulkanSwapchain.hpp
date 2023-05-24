@@ -24,6 +24,8 @@ namespace Yuki {
 	public:
 		VulkanSwapchain(VulkanRenderContext* InContext, const VulkanSwapchainInfo& InSwapchainInfo);
 
+		void Destroy() override;
+
 		void BeginRendering(CommandBuffer InCmdBuffer) override;
 		void EndRendering(CommandBuffer InCmdBuffer) override;
 

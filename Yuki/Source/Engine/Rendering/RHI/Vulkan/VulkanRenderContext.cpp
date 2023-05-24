@@ -68,7 +68,6 @@ namespace Yuki {
 		};
 
 		YUKI_VERIFY(vkCreateInstance(&instanceInfo, nullptr, &m_Instance) == VK_SUCCESS);
-
 		volkLoadInstanceOnly(m_Instance);
 
 		SetupDebugUtilsMessenger();
@@ -91,13 +90,13 @@ namespace Yuki {
 	void VulkanRenderContext::Destroy()
 	{
 		vkDeviceWaitIdle(m_Device);
+		
+		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
 
 		m_Allocator.Destroy();
 
 		vkDestroyDevice(m_Device, nullptr);
-
 		vkDestroyDebugUtilsMessengerEXT(m_Instance, m_DebugUtilsMessengerHandle, nullptr);
-
 		vkDestroyInstance(m_Instance, nullptr);
 	}
 
@@ -111,30 +110,11 @@ namespace Yuki {
 		vkDeviceWaitIdle(m_Device);
 	}
 
-	Viewport* VulkanRenderContext::CreateViewport(GenericWindow* InWindow)
-	{
-		return new VulkanViewport(this, InWindow);
-	}
-
-	Image2D* VulkanRenderContext::CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat)
-	{
-		return VulkanImage2D::Create(this, InWidth, InHeight, InFormat);
-	}
-
-	ImageView2D* VulkanRenderContext::CreateImageView2D(Image2D* InImage)
-	{
-		return VulkanImageView2D::Create(this, (VulkanImage2D*)InImage);
-	}
-
-	RenderTarget* VulkanRenderContext::CreateRenderTarget(const RenderTargetInfo& InInfo)
-	{
-		return VulkanRenderTarget::Create(this, InInfo);
-	}
-
-	Fence* VulkanRenderContext::CreateFence()
-	{
-		return VulkanFence::Create(this);
-	}
+	Viewport* VulkanRenderContext::CreateViewport(GenericWindow* InWindow) { return new VulkanViewport(this, InWindow); }
+	Image2D* VulkanRenderContext::CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat) { return new VulkanImage2D(this, InWidth, InHeight, InFormat); }
+	ImageView2D* VulkanRenderContext::CreateImageView2D(Image2D* InImage) { return new VulkanImageView2D(this, (VulkanImage2D*)InImage); }
+	RenderTarget* VulkanRenderContext::CreateRenderTarget(const RenderTargetInfo& InInfo) { return new VulkanRenderTarget(this, InInfo); }
+	Fence* VulkanRenderContext::CreateFence() { return new VulkanFence(this); }
 
 	CommandBuffer VulkanRenderContext::CreateCommandBuffer()
 	{
@@ -151,30 +131,11 @@ namespace Yuki {
 		return commandBuffer;
 	}
 
-	void VulkanRenderContext::DestroyFence(Fence* InFence)
-	{
-		VulkanFence::Destroy(this, (VulkanFence*)InFence);
-	}
-
-	void VulkanRenderContext::DestroyViewport(Viewport* InViewport)
-	{
-		delete InViewport;
-	}
-
-	void VulkanRenderContext::DestroyImage2D(Image2D* InImage)
-	{
-		VulkanImage2D::Destroy(this, (VulkanImage2D*)InImage);
-	}
-
-	void VulkanRenderContext::DestroyImageView2D(ImageView2D* InImageView)
-	{
-		VulkanImageView2D::Destroy(this, (VulkanImageView2D*)InImageView);
-	}
-
-	void VulkanRenderContext::DestroyRenderTarget(RenderTarget* InRenderTarget)
-	{
-		VulkanRenderTarget::Destroy(this, (VulkanRenderTarget*)InRenderTarget);
-	}
+	void VulkanRenderContext::DestroyFence(Fence* InFence) { delete InFence; }
+	void VulkanRenderContext::DestroyViewport(Viewport* InViewport) { delete InViewport; }
+	void VulkanRenderContext::DestroyImage2D(Image2D* InImage) { delete InImage; }
+	void VulkanRenderContext::DestroyImageView2D(ImageView2D* InImageView) { delete InImageView; }
+	void VulkanRenderContext::DestroyRenderTarget(RenderTarget* InRenderTarget) { delete InRenderTarget; }
 
 	VkSurfaceCapabilitiesKHR VulkanRenderContext::QuerySurfaceCapabilities(VkSurfaceKHR InSurface) const
 	{

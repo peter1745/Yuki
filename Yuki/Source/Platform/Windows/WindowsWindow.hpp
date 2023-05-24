@@ -18,6 +18,7 @@ namespace Yuki {
 		~WindowsWindow();
 
 		void Create() override;
+		void Destroy() override;
 
 		void Show() override;
 

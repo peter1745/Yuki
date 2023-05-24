@@ -20,6 +20,8 @@ namespace Yuki {
 
 		virtual void AcquireImages(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences) = 0;
 		virtual void Present(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences) = 0;
+
+		virtual void WaitIdle() const = 0;
 	};
 
 }
