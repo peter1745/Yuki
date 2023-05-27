@@ -52,7 +52,8 @@ namespace Yuki {
 		vmaVulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
 		vmaVulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
 
-		VmaAllocatorCreateInfo allocatorCreateInfo = {
+		VmaAllocatorCreateInfo allocatorCreateInfo =
+		{
 			.physicalDevice = InPhysicalDevice,
 			.device = InDevice,
 			.pVulkanFunctions = &vmaVulkanFunctions,

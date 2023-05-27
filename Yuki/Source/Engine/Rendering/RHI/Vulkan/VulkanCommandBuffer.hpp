@@ -12,8 +12,9 @@ namespace Yuki {
 		void End() override;
 
 		void BindVertexBuffer(Buffer* InVertexBuffer) override;
-
 		void BindPipeline(GraphicsPipeline* InPipeline) override;
+
+		void SetViewport(Viewport* InViewport) override;
 
 		void Draw(uint32_t InVertexCount, uint32_t InInstanceCount, uint32_t InFirstVertex, uint32_t InFirstInstance) override;
 

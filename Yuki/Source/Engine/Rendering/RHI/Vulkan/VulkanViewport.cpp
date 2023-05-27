@@ -84,39 +84,8 @@ namespace Yuki {
 		vkDestroySurfaceKHR(m_Context->GetInstance(), m_Surface, nullptr);
 	}
 
-	void VulkanViewport::SetViewportAndScissor(CommandBuffer* InCmdBuffer)
-	{
-		VkViewport viewport =
-		{
-			.x = 0.0f,
-			.y = 0.0f,
-			.width = float(m_Width),
-			.height = float(m_Height),
-			.minDepth = 0.0f,
-			.maxDepth = 1.0f,
-		};
-		vkCmdSetViewport(InCmdBuffer->As<VkCommandBuffer>(), 0, 1, &viewport);
-
-		VkRect2D scissor =
-		{
-			.offset =
-			{
-				.x = 0,
-				.y = 0,
-			},
-			.extent =
-			{
-				.width = m_Width,
-				.height = m_Height,
-			},
-		};
-		vkCmdSetScissor(InCmdBuffer->As<VkCommandBuffer>(), 0, 1, &scissor);
-	}
-
 	void VulkanViewport::AcquireNextImage()
 	{
-		LogInfo("Acquiring Next Image (Viewport: {}, Swapchain: {}, VkSwapchain: {})", (void*)this, (void*)m_Swapchain, (void*)m_Swapchain->GetVkSwapchain());
-
 		VkResult acquireResult = m_Swapchain->AcquireNextImage();
 
 		if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR)
@@ -129,8 +98,6 @@ namespace Yuki {
 	void VulkanViewport::RecreateSwapchain()
 	{
 		m_Context->WaitDeviceIdle();
-
-		LogInfo("Recreating Swapchain {}", (void*)m_Swapchain);
 
 		VkSurfaceCapabilitiesKHR surfaceCapabilities;
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_Context->GetPhysicalDevice(), m_Surface, &surfaceCapabilities);
@@ -148,7 +115,8 @@ namespace Yuki {
 			}
 		}
 
-		VulkanSwapchainInfo swapchainInfo = {
+		VulkanSwapchainInfo swapchainInfo =
+		{
 			.Surface = m_Surface,
 			.SurfaceFormat = m_SurfaceFormat,
 			.PresentMode = m_PresentMode,
@@ -158,8 +126,6 @@ namespace Yuki {
 		};
 
 		m_Swapchain->Recreate(swapchainInfo);
-
-		LogInfo("Recreated Swapchain {} (VkSwapchain: {})", (void*)m_Swapchain, (void*)m_Swapchain->GetVkSwapchain());
 	}
 
 }

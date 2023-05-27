@@ -122,7 +122,8 @@ namespace Yuki {
 
 		for (const auto& [shaderModuleType, moduleByteCode] : compiledByteCode)
 		{
-			VkShaderModuleCreateInfo moduleCreateInfo = {
+			VkShaderModuleCreateInfo moduleCreateInfo =
+			{
 				.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 				.codeSize = moduleByteCode.size() * sizeof(uint32_t),
 				.pCode = moduleByteCode.data()

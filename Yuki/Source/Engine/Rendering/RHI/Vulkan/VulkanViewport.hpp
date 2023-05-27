@@ -19,8 +19,6 @@ namespace Yuki {
 
 		Swapchain* GetSwapchain() const override { return m_Swapchain; }
 
-		void SetViewportAndScissor(CommandBuffer* InCmdBuffer) override;
-
 		void AcquireNextImage() override;
 		void RecreateSwapchain() override;
 

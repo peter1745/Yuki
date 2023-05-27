@@ -13,7 +13,8 @@ namespace Yuki {
 
 		// Transition Images
 		{
-			VulkanImageTransition imageTransition = {
+			VulkanImageTransition imageTransition =
+			{
 				.DstPipelineStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
 				.DstAccessFlags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
 				.DstImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
@@ -25,7 +26,8 @@ namespace Yuki {
 			const auto& depthAttachmentInfo = renderTarget->GetDepthAttachmentInfo();
 			if (depthAttachmentInfo.IsValid())
 			{
-				VulkanImageTransition depthImageTransition = {
+				VulkanImageTransition depthImageTransition =
+				{
 					.DstPipelineStage = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
 					.DstAccessFlags = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 					.DstImageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
@@ -38,7 +40,8 @@ namespace Yuki {
 		const auto& colorRenderingAttachments = renderTarget->GetColorRenderingAttachments();
 		const auto& depthRenderingAttachment = renderTarget->GetDepthRenderingAttachment();
 
-		VkRenderingInfo renderingInfo = {
+		VkRenderingInfo renderingInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
 			.renderArea = {
 			    .offset = { 0, 0 },

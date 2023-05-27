@@ -73,7 +73,8 @@ namespace Yuki {
 			.size = size,
 		};
 
-		VkCopyBufferInfo2 bufferCopyInfo = {
+		VkCopyBufferInfo2 bufferCopyInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
 			.srcBuffer = static_cast<VulkanBuffer*>(InStagingBuffer)->m_Buffer,
 			.dstBuffer = m_Buffer,

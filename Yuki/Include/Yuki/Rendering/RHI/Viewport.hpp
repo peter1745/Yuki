@@ -18,8 +18,6 @@ namespace Yuki {
 
 		virtual Swapchain* GetSwapchain() const = 0;
 
-		virtual void SetViewportAndScissor(CommandBuffer* InCmdBuffer) = 0;
-
 		virtual void AcquireNextImage() = 0;
 		virtual void RecreateSwapchain() = 0;
 

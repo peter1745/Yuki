@@ -24,7 +24,11 @@ namespace Yuki {
 		};
 		m_StagingBuffer = InContext->CreateBuffer(stagingBufferInfo);
 		
-		BufferInfo vertexBufferInfo = { .Type = BufferType::VertexBuffer, .Size = sizeof(Vertex) * 3 };
+		BufferInfo vertexBufferInfo =
+		{
+			.Type = BufferType::VertexBuffer,
+			.Size = sizeof(Vertex) * 3
+		};
 		vertexBuffer = InContext->CreateBuffer(vertexBufferInfo);
 
 		Vertex vertices[3] =

@@ -4,8 +4,6 @@
 #include "Rendering/RHI/Fence.hpp"
 #include "Rendering/RHI/Swapchain.hpp"
 
-#include "../Rendering/RHI/Vulkan/Vulkan.hpp"
-
 namespace Yuki {
 
 	Application::Application(const std::string& InName, RenderAPI InRenderAPI)
@@ -61,8 +59,6 @@ namespace Yuki {
 
 			OnRunLoop();
 
-			LogInfo("--------------------- Frame Begin ---------------------");
-
 			m_Fence->Wait();
 
 			std::vector<Viewport*> viewports;
@@ -84,7 +80,7 @@ namespace Yuki {
 
 			for (auto* viewport : viewports)
 			{
-				viewport->SetViewportAndScissor(m_Renderer->GetCommandBuffer());
+				m_Renderer->GetCommandBuffer()->SetViewport(viewport);
 
 				viewport->GetSwapchain()->BeginRendering(m_Renderer->GetCommandBuffer());
 
@@ -96,8 +92,6 @@ namespace Yuki {
 			m_RenderContext->GetGraphicsQueue()->SubmitCommandBuffers({ m_Renderer->GetCommandBuffer() }, { m_Fence }, { m_Fence });
 
 			m_RenderContext->GetGraphicsQueue()->Present(viewports, { m_Fence });
-
-			LogInfo("--------------------- Frame End ---------------------\n\n");
 
 			// Clean up closed windows
 			const auto it = std::ranges::remove_if(m_Windows, [this](const auto& InWindow) { return std::ranges::find(m_ClosedWindows, InWindow.GetPtr()) != m_ClosedWindows.end(); });

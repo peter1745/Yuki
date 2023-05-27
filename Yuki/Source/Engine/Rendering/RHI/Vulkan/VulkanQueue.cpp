@@ -27,7 +27,8 @@ namespace Yuki {
 		waitSemaphores.resize(InWaits.Size());
 		for (size_t i = 0; i < InWaits.Size(); i++)
 		{
-			waitSemaphores[i] = {
+			waitSemaphores[i] =
+			{
 				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 				.semaphore = static_cast<VulkanFence*>(InWaits[i])->GetVkSemaphore(),
 				.value = InWaits[i]->GetValue(),
@@ -41,7 +42,8 @@ namespace Yuki {
 		{
 			auto& value = InSignals[i]->GetValue();
 
-			signalSemaphores[i] = {
+			signalSemaphores[i] =
+			{
 				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 				.semaphore = static_cast<VulkanFence*>(InSignals[i])->GetVkSemaphore(),
 				.value = ++value,
@@ -49,7 +51,8 @@ namespace Yuki {
 			};
 		}
 
-		VkSubmitInfo2 submitInfo = {
+		VkSubmitInfo2 submitInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
 			.waitSemaphoreInfoCount = uint32_t(waitSemaphores.size()),
 			.pWaitSemaphoreInfos = waitSemaphores.data(),
@@ -77,7 +80,8 @@ namespace Yuki {
 
 			for (size_t i = 0; i < InFences.Size(); i++)
 			{
-				waitInfos[i] = {
+				waitInfos[i] =
+				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 					.semaphore = static_cast<VulkanFence* const>(InFences[i])->GetVkSemaphore(),
 					.value = InFences[i]->GetValue(),
@@ -90,14 +94,15 @@ namespace Yuki {
 			for (size_t i = 0; i < InViewports.size(); i++)
 			{
 				auto* swapchain = static_cast<VulkanSwapchain*>(InViewports[i]->GetSwapchain());
-				LogInfo("Submitting Swapchain for signaling (Swapchain: {}, VkSwapchain: {}, Semaphore: {})", (void*)swapchain, (void*)swapchain->GetVkSwapchain(), (void*)swapchain->GetSemaphore(swapchain->GetSemaphoreIndex()));
-				signalInfos[i] = {
+				signalInfos[i] =
+				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 					.semaphore = swapchain->GetSemaphore(swapchain->GetSemaphoreIndex()),
 				};
 			}
 
-			VkSubmitInfo2 submitInfo = {
+			VkSubmitInfo2 submitInfo =
+			{
 				.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
 				.waitSemaphoreInfoCount = uint32_t(waitInfos.size()),
 				.pWaitSemaphoreInfos = waitInfos.data(),
@@ -111,7 +116,6 @@ namespace Yuki {
 			{
 				auto* swapchain = static_cast<VulkanSwapchain*>(InViewports[i]->GetSwapchain());
 				uint32_t& semaphoreIndex = swapchain->GetSemaphoreIndex();
-				LogInfo("Submitting Swapchain binary waits (Swapchain: {}, VkSwapchain: {}, Semaphore: {})", (void*)swapchain, (void*)swapchain->GetVkSwapchain(), (void*)swapchain->GetSemaphore(semaphoreIndex));
 				binaryWaits[i] = swapchain->GetSemaphore(semaphoreIndex);
 				semaphoreIndex = (semaphoreIndex + 1) % swapchain->GetSemaphoreCount();
 			}
@@ -126,11 +130,10 @@ namespace Yuki {
 			auto* swapchain = static_cast<VulkanSwapchain*>(InViewports[i]->GetSwapchain());
 			swapchains[i] = swapchain->GetVkSwapchain();
 			imageIndices[i] = swapchain->GetCurrentImageIndex();
-
-			LogInfo("Submitting Swapchain for presenting (Swapchain: {}, VkSwapchain: {}, Image Index: {})", (void*)swapchain, (void*)swapchain->GetVkSwapchain(), swapchain->GetCurrentImageIndex());
 		}
 
-		VkPresentInfoKHR presentInfo = {
+		VkPresentInfoKHR presentInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 			.waitSemaphoreCount = uint32_t(binaryWaits.size()),
 			.pWaitSemaphores = binaryWaits.data(),
@@ -174,9 +177,8 @@ namespace Yuki {
 				auto* swapchain = static_cast<VulkanSwapchain*>(InViewports[i]->GetSwapchain());
 				uint32_t& semaphoreIndex = swapchain->GetSemaphoreIndex();
 
-				LogInfo("Submitting Swapchain Semaphore for waiting (Swapchain: {}, VkSwapchain: {}, Semaphore: {})", (void*)swapchain, (void*)swapchain->GetVkSwapchain(), (void*)swapchain->GetSemaphore(semaphoreIndex));
-
-				waitInfos[i] = {
+				waitInfos[i] =
+				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 					.semaphore = swapchain->GetSemaphore(semaphoreIndex),
 				};
@@ -190,7 +192,8 @@ namespace Yuki {
 			{
 				auto& value = InFences[i]->GetValue();
 
-				signalInfos[i] = {
+				signalInfos[i] =
+				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 					.semaphore = static_cast<VulkanFence* const>(InFences[i])->GetVkSemaphore(),
 					.value = ++value,
@@ -198,12 +201,14 @@ namespace Yuki {
 				};
 			}
 
-			VkSubmitInfo2 submitInfo = {
+			VkSubmitInfo2 submitInfo =
+			{
 				.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
 				.waitSemaphoreInfoCount = uint32_t(waitInfos.size()),
 				.pWaitSemaphoreInfos = waitInfos.data(),
 				.signalSemaphoreInfoCount = uint32_t(signalInfos.size()),
-				.pSignalSemaphoreInfos = signalInfos.data()};
+				.pSignalSemaphoreInfos = signalInfos.data()
+			};
 			vkQueueSubmit2(m_Queue, 1, &submitInfo, VK_NULL_HANDLE);
 		}
 	}

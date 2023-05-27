@@ -15,10 +15,7 @@ namespace Yuki {
 	void VulkanSwapchain::Destroy()
 	{
 		for (auto semaphore : m_Semaphores)
-		{
-			LogInfo("Destroying semaphore: {}", (void*)semaphore);
 			vkDestroySemaphore(m_Context->GetDevice(), semaphore, nullptr);
-		}
 		m_Semaphores.clear();
 		m_SemaphoreIndex = 0;
 
@@ -35,7 +32,8 @@ namespace Yuki {
 
 	void VulkanSwapchain::BeginRendering(CommandBuffer* InCmdBuffer)
 	{
-		VulkanImageTransition imageTransition = {
+		VulkanImageTransition imageTransition =
+		{
 			.DstPipelineStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
 			.DstAccessFlags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
 			.DstImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
@@ -49,7 +47,8 @@ namespace Yuki {
 		clearColor.color.float32[2] = 0.0f;
 		clearColor.color.float32[3] = 1.0f;
 
-		VkRenderingAttachmentInfo colorAttachmentInfo = {
+		VkRenderingAttachmentInfo colorAttachmentInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
 			.imageView = m_ImageViews[m_CurrentImage]->GetVkImageView(),
 			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -58,7 +57,8 @@ namespace Yuki {
 			.clearValue = clearColor,
 		};
 
-		VkRenderingInfo renderingInfo = {
+		VkRenderingInfo renderingInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
 			.renderArea = {
 			    .offset = { 0, 0 },
@@ -77,7 +77,8 @@ namespace Yuki {
 	{
 		vkCmdEndRendering(InCmdBuffer->As<VkCommandBuffer>());
 
-		VulkanImageTransition imageTransition = {
+		VulkanImageTransition imageTransition =
+		{
 			.DstPipelineStage = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
 			.DstAccessFlags = 0,
 			.DstImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
@@ -89,7 +90,8 @@ namespace Yuki {
 	void VulkanSwapchain::Create(const VulkanSwapchainInfo& InSwapchainInfo)
 	{
 		uint32_t queueFamilyIndex = static_cast<VulkanQueue*>(m_Context->GetGraphicsQueue())->GetFamilyIndex();
-		VkSwapchainCreateInfoKHR swapchainInfo = {
+		VkSwapchainCreateInfoKHR swapchainInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
 			.surface = InSwapchainInfo.Surface,
 			.minImageCount = InSwapchainInfo.MinImageCount,
@@ -126,7 +128,7 @@ namespace Yuki {
 		{
 			m_Semaphores.resize(m_Images.size() * 2);
 
-			VkSemaphoreCreateInfo semaphoreInfo = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+			VkSemaphoreCreateInfo semaphoreInfo = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 
 			for (size_t i = 0; i < m_Semaphores.size(); i++)
 				vkCreateSemaphore(m_Context->GetDevice(), &semaphoreInfo, nullptr, &m_Semaphores[i]);
@@ -141,9 +143,8 @@ namespace Yuki {
 
 	VkResult VulkanSwapchain::AcquireNextImage()
 	{
-		LogInfo("Acquiring with semaphore {}", (void*)m_Semaphores[m_SemaphoreIndex]);
-
-		VkAcquireNextImageInfoKHR acquireImageInfo = {
+		VkAcquireNextImageInfoKHR acquireImageInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
 			.swapchain = m_Swapchain,
 			.timeout = UINT64_MAX,

@@ -24,7 +24,8 @@ private:
 	{
 		Yuki::LogInfo("OnInitialize!");
 
-		Yuki::WindowAttributes windowAttributes = {
+		Yuki::WindowAttributes windowAttributes =
+		{
 			.Title = "Second Window",
 			.Width = 1280,
 			.Height = 720
