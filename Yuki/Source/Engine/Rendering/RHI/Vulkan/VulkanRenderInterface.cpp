@@ -1,10 +1,11 @@
 #include "VulkanRenderInterface.hpp"
 #include "VulkanRenderTarget.hpp"
 #include "VulkanImage2D.hpp"
+#include "VulkanGraphicsPipeline.hpp"
 
 namespace Yuki {
 
-	void VulkanRenderInterface::BeginRendering(CommandBuffer InCmdBuffer, RenderTarget* InRenderTarget)
+	void VulkanRenderInterface::BeginRendering(CommandBuffer* InCmdBuffer, RenderTarget* InRenderTarget)
 	{
 		VulkanRenderTarget* renderTarget = (VulkanRenderTarget*)InRenderTarget;
 
@@ -19,7 +20,7 @@ namespace Yuki {
 			};
 
 			for (const auto& colorAttachmentInfo : renderTarget->GetColorAttachmentInfos())
-				((VulkanImage2D*)colorAttachmentInfo.Image)->Transition(InCmdBuffer.As<VkCommandBuffer>(), imageTransition);
+				((VulkanImage2D*)colorAttachmentInfo.Image)->Transition(InCmdBuffer->As<VkCommandBuffer>(), imageTransition);
 
 			const auto& depthAttachmentInfo = renderTarget->GetDepthAttachmentInfo();
 			if (depthAttachmentInfo.IsValid())
@@ -30,7 +31,7 @@ namespace Yuki {
 					.DstImageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
 				};
 
-				((VulkanImage2D*)depthAttachmentInfo.Image)->Transition(InCmdBuffer.As<VkCommandBuffer>(), depthImageTransition);
+				((VulkanImage2D*)depthAttachmentInfo.Image)->Transition(InCmdBuffer->As<VkCommandBuffer>(), depthImageTransition);
 			}
 		}
 
@@ -50,12 +51,12 @@ namespace Yuki {
 			.pDepthAttachment = &depthRenderingAttachment
 		};
 
-		vkCmdBeginRendering(InCmdBuffer.As<VkCommandBuffer>(), &renderingInfo);
+		vkCmdBeginRendering(InCmdBuffer->As<VkCommandBuffer>(), &renderingInfo);
 	}
 
-	void VulkanRenderInterface::EndRendering(CommandBuffer InCmdBuffer)
+	void VulkanRenderInterface::EndRendering(CommandBuffer* InCmdBuffer)
 	{
-		vkCmdEndRendering(InCmdBuffer.As<VkCommandBuffer>());
+		vkCmdEndRendering(InCmdBuffer->As<VkCommandBuffer>());
 	}
 
 }

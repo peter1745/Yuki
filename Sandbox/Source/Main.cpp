@@ -31,21 +31,6 @@ private:
 		};
 		auto* otherWindow = NewWindow(windowAttributes);
 		otherWindow->Show();
-
-		auto testShader = GetRenderContext()->GetShaderCompiler()->CompileFromFile("Resources/Shaders/Test.glsl");
-
-		auto pipelineBuilder = Yuki::GraphicsPipelineBuilder::New(GetRenderAPI(), GetRenderContext());
-		auto testPipeline = pipelineBuilder->WithShader(testShader)
-		                        ->ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
-		                        ->DepthAttachment()
-		                        ->Build();
-
-		Yuki::RenderTargetInfo renderTargetInfo;
-		renderTargetInfo.Width = 1280;
-		renderTargetInfo.Height = 720;
-		renderTargetInfo.ColorAttachments[0] = Yuki::ImageFormat::BGRA8UNorm;
-		renderTargetInfo.DepthAttachmentFormat = Yuki::ImageFormat::Depth24UNorm;
-		m_RenderTarget = GetRenderContext()->CreateRenderTarget(renderTargetInfo);
 	}
 
 	void OnDestroy() override

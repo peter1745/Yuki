@@ -26,8 +26,8 @@ namespace Yuki {
 
 		void Destroy() override;
 
-		void BeginRendering(CommandBuffer InCmdBuffer) override;
-		void EndRendering(CommandBuffer InCmdBuffer) override;
+		void BeginRendering(CommandBuffer* InCmdBuffer) override;
+		void EndRendering(CommandBuffer* InCmdBuffer) override;
 
 		VkSwapchainKHR GetVkSwapchain() const { return m_Swapchain; }
 		uint32_t GetCurrentImageIndex() const { return m_CurrentImage; }

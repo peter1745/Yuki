@@ -47,4 +47,23 @@ namespace Yuki {
 		return ImageFormat::None;
 	}
 
+	VkBufferUsageFlags VulkanHelper::BufferTypeToVkUsageFlags(BufferType InType)
+	{
+		VkBufferUsageFlags result = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+		switch (InType)
+		{
+		case BufferType::VertexBuffer:
+			result |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+			break;
+		case BufferType::IndexBuffer:
+			result |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+			break;
+		case BufferType::StagingBuffer:
+			break;
+		}
+
+		return result;
+	}
+
 }

@@ -84,6 +84,35 @@ namespace Yuki {
 		vkDestroySurfaceKHR(m_Context->GetInstance(), m_Surface, nullptr);
 	}
 
+	void VulkanViewport::SetViewportAndScissor(CommandBuffer* InCmdBuffer)
+	{
+		VkViewport viewport =
+		{
+			.x = 0.0f,
+			.y = 0.0f,
+			.width = float(m_Width),
+			.height = float(m_Height),
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f,
+		};
+		vkCmdSetViewport(InCmdBuffer->As<VkCommandBuffer>(), 0, 1, &viewport);
+
+		VkRect2D scissor =
+		{
+			.offset =
+			{
+				.x = 0,
+				.y = 0,
+			},
+			.extent =
+			{
+				.width = m_Width,
+				.height = m_Height,
+			},
+		};
+		vkCmdSetScissor(InCmdBuffer->As<VkCommandBuffer>(), 0, 1, &scissor);
+	}
+
 	void VulkanViewport::AcquireNextImage()
 	{
 		LogInfo("Acquiring Next Image (Viewport: {}, Swapchain: {}, VkSwapchain: {})", (void*)this, (void*)m_Swapchain, (void*)m_Swapchain->GetVkSwapchain());

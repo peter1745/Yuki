@@ -4,6 +4,7 @@
 #include "VulkanQueue.hpp"
 
 #include "Rendering/ImageFormat.hpp"
+#include "Rendering/RHI/Buffer.hpp"
 
 namespace Yuki {
 
@@ -25,6 +26,8 @@ namespace Yuki {
 		// Conversion Functions
 		static VkFormat ImageFormatToVkFormat(ImageFormat InFormat);
 		static ImageFormat VkFormatToImageFormat(VkFormat InFormat);
+
+		static VkBufferUsageFlags BufferTypeToVkUsageFlags(BufferType InType);
 
 	};
 

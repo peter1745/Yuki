@@ -4,6 +4,11 @@
 
 namespace Yuki {
 
-	struct GraphicsPipeline {};
+	struct Shader;
+
+	struct GraphicsPipeline
+	{
+		Shader* ShaderHandle;
+	};
 
 }

@@ -29,18 +29,34 @@ namespace Yuki {
 		void WaitDeviceIdle() const override;
 
 	public:
-		Viewport* CreateViewport(GenericWindow* InWindow) override;
-		Image2D* CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat) override;
-		ImageView2D* CreateImageView2D(Image2D* InImage) override;
-		RenderTarget* CreateRenderTarget(const RenderTargetInfo& InInfo) override;
-		Fence* CreateFence() override;
-		CommandBuffer CreateCommandBuffer() override;
+		RenderInterface* CreateRenderInterface() override;
+		void DestroyRenderInterface(RenderInterface* InRenderInterface) override;
 
-		void DestroyFence(Fence* InFence) override;
+		GraphicsPipelineBuilder* CreateGraphicsPipelineBuilder() override;
+		void DestroyGraphicsPipelineBuilder(GraphicsPipelineBuilder* InPipelineBuilder) override;
+
+		Viewport* CreateViewport(GenericWindow* InWindow) override;
 		void DestroyViewport(Viewport* InViewport) override;
+
+		Image2D* CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat) override;
 		void DestroyImage2D(Image2D* InImage) override;
+
+		ImageView2D* CreateImageView2D(Image2D* InImage) override;
 		void DestroyImageView2D(ImageView2D* InImageView) override;
+
+		Buffer* CreateBuffer(const BufferInfo& InInfo) override;
+		void DestroyBuffer(Buffer* InBuffer) override;
+
+		RenderTarget* CreateRenderTarget(const RenderTargetInfo& InInfo) override;
 		void DestroyRenderTarget(RenderTarget* InRenderTarget) override;
+
+		Fence* CreateFence() override;
+		void DestroyFence(Fence* InFence) override;
+
+		CommandBuffer* CreateCommandBuffer() override;
+		void DestroyCommandBuffer(CommandBuffer* InCommandBuffer) override;
+
+		VkCommandBuffer CreateTransientCommandBuffer() const;
 
 	public:
 		VulkanAllocator& GetAllocator() { return m_Allocator; }
@@ -68,6 +84,7 @@ namespace Yuki {
 		VkDebugUtilsMessengerEXT m_DebugUtilsMessengerHandle = VK_NULL_HANDLE;
 
 		VkCommandPool m_CommandPool = VK_NULL_HANDLE;
+		VkCommandPool m_TransientCommandPool = VK_NULL_HANDLE;
 
 		Unique<ShaderManager> m_ShaderManager = nullptr;
 		Unique<VulkanShaderCompiler> m_ShaderCompiler = nullptr;

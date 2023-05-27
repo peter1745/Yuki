@@ -11,7 +11,8 @@ namespace Yuki {
 	class VulkanQueue : public Queue
 	{
 	public:
-		void SubmitCommandBuffers(const InitializerList<CommandBuffer>& InCommandBuffers, const InitializerList<Fence*> InWaits, const InitializerList<Fence*> InSignals) override;
+		void SubmitCommandBuffers(const InitializerList<CommandBuffer*>& InCommandBuffers, const InitializerList<Fence*> InWaits, const InitializerList<Fence*> InSignals) override;
+		void SubmitCommandBuffers(std::span<VkCommandBuffer const> InCommandBuffers, const InitializerList<Fence*> InWaits, const InitializerList<Fence*> InSignals);
 
 		void AcquireImages(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences) override;
 		void Present(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences) override;

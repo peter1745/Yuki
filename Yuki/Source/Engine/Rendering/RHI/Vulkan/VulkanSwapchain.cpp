@@ -33,7 +33,7 @@ namespace Yuki {
 		vkDestroySwapchainKHR(m_Context->GetDevice(), m_Swapchain, nullptr);
 	}
 
-	void VulkanSwapchain::BeginRendering(CommandBuffer InCmdBuffer)
+	void VulkanSwapchain::BeginRendering(CommandBuffer* InCmdBuffer)
 	{
 		VulkanImageTransition imageTransition = {
 			.DstPipelineStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -41,7 +41,7 @@ namespace Yuki {
 			.DstImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 		};
 
-		m_Images[m_CurrentImage]->Transition(InCmdBuffer.As<VkCommandBuffer>(), imageTransition);
+		m_Images[m_CurrentImage]->Transition(InCmdBuffer->As<VkCommandBuffer>(), imageTransition);
 
 		VkClearValue clearColor = {};
 		clearColor.color.float32[0] = 1.0f;
@@ -70,12 +70,12 @@ namespace Yuki {
 			.pColorAttachments = &colorAttachmentInfo
 		};
 
-		vkCmdBeginRendering(InCmdBuffer.As<VkCommandBuffer>(), &renderingInfo);
+		vkCmdBeginRendering(InCmdBuffer->As<VkCommandBuffer>(), &renderingInfo);
 	}
 
-	void VulkanSwapchain::EndRendering(CommandBuffer InCmdBuffer)
+	void VulkanSwapchain::EndRendering(CommandBuffer* InCmdBuffer)
 	{
-		vkCmdEndRendering(InCmdBuffer.As<VkCommandBuffer>());
+		vkCmdEndRendering(InCmdBuffer->As<VkCommandBuffer>());
 
 		VulkanImageTransition imageTransition = {
 			.DstPipelineStage = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
@@ -83,7 +83,7 @@ namespace Yuki {
 			.DstImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 		};
 
-		m_Images[m_CurrentImage]->Transition(InCmdBuffer.As<VkCommandBuffer>(), imageTransition);
+		m_Images[m_CurrentImage]->Transition(InCmdBuffer->As<VkCommandBuffer>(), imageTransition);
 	}
 
 	void VulkanSwapchain::Create(const VulkanSwapchainInfo& InSwapchainInfo)

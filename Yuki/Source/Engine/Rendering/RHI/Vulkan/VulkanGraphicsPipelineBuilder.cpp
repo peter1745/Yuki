@@ -45,11 +45,11 @@ namespace Yuki {
 
 	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::WithShader(ResourceHandle<Shader> InShaderHandle)
 	{
-		Shader* shader = m_ShaderManager->GetShader(InShaderHandle);
+		m_PipelineShader = m_ShaderManager->GetShader(InShaderHandle);
 
-		m_ShaderStageInfos.reserve(shader->ModuleHandles.size());
+		m_ShaderStageInfos.reserve(m_PipelineShader->ModuleHandles.size());
 
-		for (const auto& [moduleType, moduleHandle] : shader->ModuleHandles)
+		for (const auto& [moduleType, moduleHandle] : m_PipelineShader->ModuleHandles)
 		{
 			auto& stageCreateInfo = m_ShaderStageInfos.emplace_back();
 			stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -225,8 +225,10 @@ namespace Yuki {
 		};
 
 		Unique<VulkanGraphicsPipeline> result = Unique<VulkanGraphicsPipeline>::Create();
-		YUKI_VERIFY(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &result->Pipeline) == VK_SUCCESS);
+		result->ShaderHandle = m_PipelineShader;
 		result->Layout = pipelineLayout;
+
+		YUKI_VERIFY(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &result->Pipeline) == VK_SUCCESS);
 
 		return result;
 	}

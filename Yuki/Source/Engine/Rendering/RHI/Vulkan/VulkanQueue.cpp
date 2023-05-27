@@ -5,14 +5,22 @@
 
 namespace Yuki {
 
-	void VulkanQueue::SubmitCommandBuffers(const InitializerList<CommandBuffer>& InCommandBuffers, const InitializerList<Fence*> InWaits, const InitializerList<Fence*> InSignals)
+	void VulkanQueue::SubmitCommandBuffers(const InitializerList<CommandBuffer*>& InCommandBuffers, const InitializerList<Fence*> InWaits, const InitializerList<Fence*> InSignals)
+	{
+		std::vector<VkCommandBuffer> commandBuffers(InCommandBuffers.Size());
+		for (size_t i = 0; i < InCommandBuffers.Size(); i++)
+			commandBuffers[i] = InCommandBuffers[i]->As<VkCommandBuffer>();
+		SubmitCommandBuffers(commandBuffers, InWaits, InSignals);
+	}
+
+	void VulkanQueue::SubmitCommandBuffers(std::span<VkCommandBuffer const> InCommandBuffers, const InitializerList<Fence*> InWaits, const InitializerList<Fence*> InSignals)
 	{
 		std::vector<VkCommandBufferSubmitInfo> commandBufferSubmitInfos;
-		commandBufferSubmitInfos.resize(InCommandBuffers.Size());
-		for (size_t i = 0; i < InCommandBuffers.Size(); i++)
+		commandBufferSubmitInfos.resize(InCommandBuffers.size());
+		for (size_t i = 0; i < InCommandBuffers.size(); i++)
 		{
 			commandBufferSubmitInfos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-			commandBufferSubmitInfos[i].commandBuffer = InCommandBuffers[i].As<VkCommandBuffer>();
+			commandBufferSubmitInfos[i].commandBuffer = InCommandBuffers[i];
 		}
 
 		std::vector<VkSemaphoreSubmitInfo> waitSemaphores;

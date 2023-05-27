@@ -47,6 +47,8 @@ namespace Yuki {
 
 		m_Fence = m_RenderContext->CreateFence();
 
+		m_Renderer = Unique<Renderer>::Create(m_RenderContext.GetPtr());
+
 		m_RunEngineLoop = true;
 	}
 
@@ -78,16 +80,20 @@ namespace Yuki {
 			m_RenderContext->ResetCommandPool();
 
 			m_RenderContext->GetGraphicsQueue()->AcquireImages(viewports, { m_Fence });
+			m_Renderer->Begin();
 
-			VkCommandBufferBeginInfo beginInfo = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, };
-			vkBeginCommandBuffer(m_CommandBuffer.As<VkCommandBuffer>(), &beginInfo);
 			for (auto* viewport : viewports)
 			{
-				viewport->GetSwapchain()->BeginRendering(m_CommandBuffer);
-				viewport->GetSwapchain()->EndRendering(m_CommandBuffer);
+				viewport->SetViewportAndScissor(m_Renderer->GetCommandBuffer());
+
+				viewport->GetSwapchain()->BeginRendering(m_Renderer->GetCommandBuffer());
+
+				m_Renderer->DrawTriangle();
+
+				viewport->GetSwapchain()->EndRendering(m_Renderer->GetCommandBuffer());
 			}
-			vkEndCommandBuffer(m_CommandBuffer.As<VkCommandBuffer>());
-			m_RenderContext->GetGraphicsQueue()->SubmitCommandBuffers({ m_CommandBuffer }, { m_Fence }, { m_Fence });
+			m_Renderer->End();
+			m_RenderContext->GetGraphicsQueue()->SubmitCommandBuffers({ m_Renderer->GetCommandBuffer() }, { m_Fence }, { m_Fence });
 
 			m_RenderContext->GetGraphicsQueue()->Present(viewports, { m_Fence });
 

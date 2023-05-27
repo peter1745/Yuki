@@ -20,6 +20,7 @@ namespace Yuki {
 	private:
 		VkDevice m_Device = VK_NULL_HANDLE;
 		ShaderManager* m_ShaderManager = nullptr;
+		Shader* m_PipelineShader = nullptr;
 
 		List<VkPipelineShaderStageCreateInfo> m_ShaderStageInfos;
 		List<VkVertexInputAttributeDescription> m_VertexInputAttributes;

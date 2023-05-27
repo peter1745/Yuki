@@ -4,6 +4,7 @@
 
 #include "Yuki/EventSystem/EventSystem.hpp"
 #include "Yuki/Rendering/RHI/RenderContext.hpp"
+#include "Yuki/Rendering/Renderer.hpp"
 
 namespace Yuki {
 
@@ -44,7 +45,9 @@ namespace Yuki {
 		Unique<EventSystem> m_EventSystem = nullptr;
 		Unique<RenderContext> m_RenderContext = nullptr;
 
-		CommandBuffer m_CommandBuffer;
+		Unique<Renderer> m_Renderer = nullptr;
+
+		CommandBuffer* m_CommandBuffer;
 
 		Fence* m_Fence = nullptr;
 

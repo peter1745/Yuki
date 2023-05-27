@@ -4,6 +4,7 @@ namespace Yuki {
 
 	class GenericWindow;
 	class Swapchain;
+	class CommandBuffer;
 
 	class Viewport
 	{
@@ -16,6 +17,8 @@ namespace Yuki {
 		virtual uint32_t GetHeight() const = 0;
 
 		virtual Swapchain* GetSwapchain() const = 0;
+
+		virtual void SetViewportAndScissor(CommandBuffer* InCmdBuffer) = 0;
 
 		virtual void AcquireNextImage() = 0;
 		virtual void RecreateSwapchain() = 0;

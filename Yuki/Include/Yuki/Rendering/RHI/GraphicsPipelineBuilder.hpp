@@ -20,9 +20,6 @@ namespace Yuki {
 		virtual GraphicsPipelineBuilder* ColorAttachment(ImageFormat InFormat) = 0;
 		virtual GraphicsPipelineBuilder* DepthAttachment() = 0;
 		virtual Unique<GraphicsPipeline> Build() = 0;
-
-	public:
-		static Unique<GraphicsPipelineBuilder> New(RenderAPI InRenderAPI, RenderContext* InContext);
 	};
 
 }

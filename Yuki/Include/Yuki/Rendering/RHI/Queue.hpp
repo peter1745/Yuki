@@ -16,7 +16,7 @@ namespace Yuki {
 	public:
 		virtual ~Queue() = default;
 
-		virtual void SubmitCommandBuffers(const InitializerList<CommandBuffer>& InCommandBuffers, const InitializerList<Fence*> InWaits, const InitializerList<Fence*> InSignals) = 0;
+		virtual void SubmitCommandBuffers(const InitializerList<CommandBuffer*>& InCommandBuffers, const InitializerList<Fence*> InWaits, const InitializerList<Fence*> InSignals) = 0;
 
 		virtual void AcquireImages(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences) = 0;
 		virtual void Present(std::span<Viewport* const> InViewports, const InitializerList<Fence*> InFences) = 0;

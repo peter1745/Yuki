@@ -78,6 +78,7 @@ namespace Yuki {
 			windowClass.lpszClassName = WindowClassName;
 			windowClass.hInstance = hInstance;
 			windowClass.lpfnWndProc = WindowProc;
+			windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
 			RegisterClassEx(&windowClass);
 
 			s_WindowClassRegistered = true;
@@ -123,7 +124,7 @@ namespace Yuki {
 	void WindowsWindow::ProcessEvents() const
 	{
 		MSG message = {};
-		while (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
+		while (PeekMessage(&message, m_WindowHandle, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&message);
 			DispatchMessage(&message);
