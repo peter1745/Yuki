@@ -35,6 +35,17 @@ workspace "Yuki"
             "4100" -- Unreferenced Formal Parameter
         }
 
+	filter "toolset:clang"
+		disablewarnings {
+			"unused-parameter",
+		}
+
+	filter "toolset:gcc"
+		disablewarnings {
+			"unused-parameter",
+			"missing-field-initializers",
+		}
+
     filter "action:vs*"
         linkoptions { "/ignore:4099" }
 

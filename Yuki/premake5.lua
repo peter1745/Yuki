@@ -1,4 +1,4 @@
-local VulkanSDKPath = os.getenv("VULKAN_SDK") .. "/Include"
+local VulkanSDKPath = os.getenv("VULKAN_SDK") .. "/include"
 
 project "Yuki"
     kind "StaticLib"
@@ -39,6 +39,15 @@ project "Yuki"
         defines { "YUKI_PLATFORM_WINDOWS" }
 
         files {
-            "Source/Platform/**.cpp",
-            "Source/Platform/**.hpp",
+            "Source/Platform/Windows/**.cpp",
+            "Source/Platform/Windows/**.hpp",
         }
+    
+	filter { "system:linux" }
+        defines { "YUKI_PLATFORM_LINUX" }
+
+        files {
+            "Source/Platform/Linux/**.cpp",
+			"Source/Platform/Linux/**.hpp",
+		}
+

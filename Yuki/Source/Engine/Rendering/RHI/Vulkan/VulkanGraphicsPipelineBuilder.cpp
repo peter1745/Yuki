@@ -101,7 +101,8 @@ namespace Yuki {
 
 	Unique<GraphicsPipeline> VulkanGraphicsPipelineBuilder::Build()
 	{
-		VkPipelineRenderingCreateInfo renderingCreateInfo = {
+		VkPipelineRenderingCreateInfo renderingCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
 			.colorAttachmentCount = uint32_t(m_ColorAttachmentFormats.size()),
 			.pColorAttachmentFormats = m_ColorAttachmentFormats.data(),
@@ -109,7 +110,8 @@ namespace Yuki {
 			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 		};
 
-		VkPipelineLayoutCreateInfo layoutCreateInfo = {
+		VkPipelineLayoutCreateInfo layoutCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = 0,
 			.pSetLayouts = nullptr,
@@ -120,13 +122,15 @@ namespace Yuki {
 		VkPipelineLayout pipelineLayout;
 		YUKI_VERIFY(vkCreatePipelineLayout(m_Device, &layoutCreateInfo, nullptr, &pipelineLayout) == VK_SUCCESS);
 
-		VkVertexInputBindingDescription vertexInputBindingDesc = {
+		VkVertexInputBindingDescription vertexInputBindingDesc =
+		{
 			.binding = 0,
 			.stride = m_VertexInputAttributesOffset,
 			.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
 		};
 
-		VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {
+		VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
 			.vertexBindingDescriptionCount = 1,
 			.pVertexBindingDescriptions = &vertexInputBindingDesc,
@@ -134,18 +138,21 @@ namespace Yuki {
 			.pVertexAttributeDescriptions = m_VertexInputAttributes.data()
 		};
 
-		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {
+		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
 			.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
 		};
 
-		VkPipelineViewportStateCreateInfo viewportStateCreateInfo = {
+		VkPipelineViewportStateCreateInfo viewportStateCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
 			.viewportCount = 1,
 			.scissorCount = 1
 		};
 
-		VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {
+		VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 			.depthClampEnable = VK_FALSE,
 			.rasterizerDiscardEnable = VK_FALSE,
@@ -159,13 +166,15 @@ namespace Yuki {
 			.lineWidth = 1.0f,
 		};
 
-		VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = {
+		VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
 			.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
 			.sampleShadingEnable = VK_FALSE
 		};
 
-		VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo = {
+		VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 			.depthTestEnable = m_HasDepthAttachment ? VK_TRUE : VK_FALSE,
 			.depthWriteEnable = m_HasDepthAttachment ? VK_TRUE : VK_FALSE,
@@ -194,21 +203,24 @@ namespace Yuki {
 			.maxDepthBounds = 0.0f,
 		};
 
-		VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {
+		VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
 			.attachmentCount = uint32_t(m_ColorAttachmentBlendStates.size()),
 			.pAttachments = m_ColorAttachmentBlendStates.data()
 		};
 
-		constexpr auto dynamicStates = std::array { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_POLYGON_MODE_EXT };
+		constexpr auto dynamicStates = std::array { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
 
-		VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {
+		VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
 			.dynamicStateCount = uint32_t(dynamicStates.size()),
 			.pDynamicStates = dynamicStates.data()
 		};
 
-		VkGraphicsPipelineCreateInfo pipelineCreateInfo = {
+		VkGraphicsPipelineCreateInfo pipelineCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 			.pNext = &renderingCreateInfo,
 			.stageCount = uint32_t(m_ShaderStageInfos.size()),

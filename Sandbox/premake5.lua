@@ -17,7 +17,7 @@ project "Sandbox"
     }
 
     libdirs {
-        VulkanSDKPath .. "/Lib/"
+        VulkanSDKPath .. "/lib/"
     }
 
     links {
@@ -25,13 +25,19 @@ project "Sandbox"
         "spdlog"
     }
 
-    filter { "configurations:Release" }
+    filter { "configurations:Release or system:linux" }
         links { "shaderc_combined" }
 
-    filter { "configurations:Debug or configurations:RelWithDebug" }
+    filter { "system:windows", "configurations:Debug or configurations:RelWithDebug" }
         links { "shaderc_combinedd" }
-
 
     filter { "system:windows" }
         defines { "YUKI_PLATFORM_WINDOWS" }
 
+    filter { "system:linux" }
+        defines { "YUKI_PLATFORM_LINUX" }
+
+		links {
+			"xcb",
+			"X11"
+		}

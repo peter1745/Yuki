@@ -2,20 +2,15 @@
 
 #include "Core/GenericWindow.hpp"
 
+struct xcb_connection_t;
+
 namespace Yuki {
 
-	class WindowsWindow : public GenericWindow
+	class LinuxWindow : public GenericWindow
 	{
 	public:
-		struct WindowData
-		{
-			WindowsWindow* This = nullptr;
-			WindowAttributes* Attributes = nullptr;
-		};
-
-	public:
-		WindowsWindow(RenderContext* InRenderContext, WindowAttributes InAttributes);
-		~WindowsWindow();
+		LinuxWindow(RenderContext* InRenderContext, WindowAttributes InAttributes);
+		~LinuxWindow();
 
 		void Create() override;
 		void Destroy() override;
@@ -26,19 +21,18 @@ namespace Yuki {
 
 		Viewport* GetViewport() const override { return m_Viewport; }
 
-		HWND GetWindowHandle() const { return m_WindowHandle; }
+		uint32_t GetWindowHandle() const { return m_WindowHandle; }
+
+		xcb_connection_t* GetConnection() const;
 
 	public:
 		const WindowAttributes& GetAttributes() const override { return m_Attributes; }
 
 	private:
-		HWND m_WindowHandle = nullptr;
+		uint32_t m_WindowHandle = 0;
 		WindowAttributes m_Attributes;
-		RenderContext* m_RenderContext;
+		RenderContext* m_RenderContext = nullptr;
 		Viewport* m_Viewport = nullptr;
-
-	private:
-		 WindowData m_WindowData;
 	};
 
 }

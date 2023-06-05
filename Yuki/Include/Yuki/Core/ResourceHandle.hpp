@@ -27,8 +27,7 @@ namespace Yuki {
 		static const ResourceHandle<TResource> Invalid;
 
 	public:
-		ResourceHandle()
-		    : m_Handle(ResourceHandleFactory::NewHandle()) {}
+		ResourceHandle();
 
 		ResourceHandle(const ResourceHandle& InOther)
 		    : m_Handle(InOther.m_Handle) {}
@@ -79,7 +78,7 @@ namespace Yuki {
 	};
 
 	template <typename TResource>
-	__declspec(selectany) const ResourceHandle<TResource> ResourceHandle<TResource>::Invalid = ResourceHandle<TResource>(std::numeric_limits<uint32_t>::max());
+	const ResourceHandle<TResource> ResourceHandle<TResource>::Invalid = ResourceHandle<TResource>(std::numeric_limits<uint32_t>::max());
 
 	class ResourceHandleFactory
 	{
@@ -89,6 +88,12 @@ namespace Yuki {
 		template<typename TResource>
 		friend class ResourceHandle;
 	};
+
+	template<typename TResource>
+	ResourceHandle<TResource>::ResourceHandle()
+		: m_Handle(ResourceHandleFactory::NewHandle())
+	{
+	}
 
 }
 

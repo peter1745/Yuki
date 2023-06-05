@@ -99,7 +99,10 @@ namespace Yuki {
 
 		std::string source = "";
 		if (!FileIO::ReadText(InFilePath, source))
+		{
+			LogError("Couldn't compile shader, file: {} doesn't exist or couldn't be read!", InFilePath.string());
 			return ResourceHandle<Shader>::Invalid;
+		}
 
 		auto shaderModules = ParseShaderSource(source);
 

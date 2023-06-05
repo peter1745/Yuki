@@ -121,7 +121,7 @@ namespace Yuki {
 		ShowWindow(m_WindowHandle, m_Attributes.Maximized ? SW_SHOWMAXIMIZED : SW_SHOW);
 	}
 
-	void WindowsWindow::ProcessEvents() const
+	void WindowsWindow::ProcessEvents()
 	{
 		MSG message = {};
 		while (PeekMessage(&message, m_WindowHandle, 0, 0, PM_REMOVE))

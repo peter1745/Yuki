@@ -28,7 +28,6 @@ namespace Yuki {
 		CommandBuffer* m_CommandBuffer = nullptr;
 
 		Buffer* m_StagingBuffer = nullptr;
-		void* m_StagingBufferMemory = nullptr;
 	};
 
 }

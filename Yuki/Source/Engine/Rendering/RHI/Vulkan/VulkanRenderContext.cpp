@@ -251,16 +251,10 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES
 		};
 
-		VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicStateFeatures =
-		{
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
-			.pNext = &features13
-		};
-
 		VkPhysicalDeviceFeatures2 features2 =
 		{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-			.pNext = &extendedDynamicStateFeatures
+			.pNext = &features13
 		};
 		vkGetPhysicalDeviceFeatures2(InPhysicalDevice, &features2);
 
@@ -268,9 +262,6 @@ namespace Yuki {
 			score += 10;
 
 		if (features13.synchronization2 == VK_TRUE)
-			score += 10;
-
-		if (extendedDynamicStateFeatures.extendedDynamicState3PolygonMode == VK_TRUE)
 			score += 10;
 
 		return score;
@@ -312,7 +303,6 @@ namespace Yuki {
 
 		List<const char*> deviceExtensions;
 		deviceExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-		deviceExtensions.emplace_back(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME);
 
 		VkPhysicalDeviceVulkan13Features features13 =
 		{
@@ -321,17 +311,10 @@ namespace Yuki {
 			.dynamicRendering = VK_TRUE,
 		};
 
-		VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3Features =
-		{
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
-			.pNext = &features13,
-			.extendedDynamicState3PolygonMode = VK_TRUE,
-		};
-
 		VkPhysicalDeviceVulkan12Features features12 =
 		{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-			.pNext = &extendedDynamicState3Features,
+			.pNext = &features13,
 			.timelineSemaphore = VK_TRUE,
 		};
 
