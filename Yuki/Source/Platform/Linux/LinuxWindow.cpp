@@ -1,18 +1,10 @@
 #include "LinuxWindow.hpp"
-//#include "WindowsUtils.hpp"
 
 #include <xcb/xcb.h>
 
 #include <source_location>
 
 namespace Yuki {
-
-	static bool s_XCBInitialized = false;
-	static xcb_connection_t* s_Connection;
-	static xcb_screen_t* s_Screen;
-
-	static xcb_intern_atom_reply_t* s_ProtocolsReply;
-	static xcb_intern_atom_reply_t* s_DeleteWindowReply;
 
 	LinuxWindow::LinuxWindow(RenderContext* InRenderContext, WindowAttributes InAttributes)
 	    : m_Attributes(std::move(InAttributes)), m_RenderContext(InRenderContext)
@@ -23,31 +15,22 @@ namespace Yuki {
 	{
 	}
 
-	static void InitXCB()
-	{
-		int screenp = 0;
-		s_Connection = xcb_connect(NULL, &screenp);
-		YUKI_VERIFY(!xcb_connection_has_error(s_Connection));
-
-		xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(s_Connection));
-
-		for (int i = screenp; i > 0; i--)
-			xcb_screen_next(&iter);
-
-		s_Screen = iter.data;
-	}
-
 	void LinuxWindow::Create()
 	{
 		YUKI_VERIFY(!m_WindowHandle, "Cannot create window multiple times!");
 
-		if (!s_XCBInitialized)
-		{
-			InitXCB();
-			s_XCBInitialized = true;
-		}
+		int screenp = 0;
+		m_Connection = xcb_connect(NULL, &screenp);
+		YUKI_VERIFY(!xcb_connection_has_error(m_Connection));
 
-		m_WindowHandle = xcb_generate_id(s_Connection);
+		xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(m_Connection));
+
+		for (int i = screenp; i > 0; i--)
+			xcb_screen_next(&iter);
+
+		m_Screen = iter.data;
+
+		m_WindowHandle = xcb_generate_id(m_Connection);
 
 		uint32_t eventMask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
 		uint32_t events = XCB_EVENT_MASK_EXPOSURE;
@@ -55,22 +38,22 @@ namespace Yuki {
 		events |= XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE;
 		events |= XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
 
-		uint32_t valueList[] = { s_Screen->white_pixel, events };
+		uint32_t valueList[] = { m_Screen->white_pixel, events };
 
-		xcb_create_window(s_Connection,
+		xcb_create_window(m_Connection,
 						XCB_COPY_FROM_PARENT,
 						m_WindowHandle,
-						s_Screen->root,
+						m_Screen->root,
 						0, 0,
 					   	m_Attributes.Width, m_Attributes.Height,
 						0,
 						XCB_WINDOW_CLASS_INPUT_OUTPUT,
-						s_Screen->root_visual,
+						m_Screen->root_visual,
 						eventMask,
 						valueList);
 
 		// Update Title
-		xcb_change_property(s_Connection,
+		xcb_change_property(m_Connection,
 							XCB_PROP_MODE_REPLACE,
 							m_WindowHandle,
 							XCB_ATOM_WM_NAME, XCB_ATOM_STRING,
@@ -78,17 +61,17 @@ namespace Yuki {
 							m_Attributes.Title.length(), m_Attributes.Title.c_str());
 
 		// Hook up close button
-		xcb_intern_atom_cookie_t windowDeleteCookie = xcb_intern_atom(s_Connection, 0, strlen("WM_DELETE_WINDOW"), "WM_DELETE_WINDOW");
-		xcb_intern_atom_cookie_t protocolsCookie = xcb_intern_atom(s_Connection, 1, strlen("WM_PROTOCOLS"), "WM_PROTOCOLS");
-		s_DeleteWindowReply = xcb_intern_atom_reply(s_Connection, windowDeleteCookie, nullptr);
-		s_ProtocolsReply = xcb_intern_atom_reply(s_Connection, protocolsCookie, nullptr);
-		xcb_change_property(s_Connection,
+		xcb_intern_atom_cookie_t windowDeleteCookie = xcb_intern_atom(m_Connection, 0, strlen("WM_DELETE_WINDOW"), "WM_DELETE_WINDOW");
+		xcb_intern_atom_cookie_t protocolsCookie = xcb_intern_atom(m_Connection, 1, strlen("WM_PROTOCOLS"), "WM_PROTOCOLS");
+		m_DeleteWindowReply = xcb_intern_atom_reply(m_Connection, windowDeleteCookie, nullptr);
+		m_ProtocolsReply = xcb_intern_atom_reply(m_Connection, protocolsCookie, nullptr);
+		xcb_change_property(m_Connection,
 							XCB_PROP_MODE_REPLACE,
 							m_WindowHandle,
-							s_ProtocolsReply->atom, 4, 32, 1, &s_DeleteWindowReply->atom);
+							m_ProtocolsReply->atom, 4, 32, 1, &m_DeleteWindowReply->atom);
 
-		xcb_map_window(s_Connection, m_WindowHandle);
-		xcb_flush(s_Connection);
+		xcb_map_window(m_Connection, m_WindowHandle);
+		xcb_flush(m_Connection);
 
 		m_Viewport = m_RenderContext->CreateViewport(this);
 	}
@@ -97,6 +80,9 @@ namespace Yuki {
 	{
 		m_RenderContext->DestroyViewport(m_Viewport);
 		m_Viewport = nullptr;
+
+		xcb_destroy_window(m_Connection, m_WindowHandle);
+		xcb_disconnect(m_Connection);
 	}
 
 	void LinuxWindow::Show()
@@ -107,7 +93,7 @@ namespace Yuki {
 	{
 		xcb_generic_event_t* event;
 
-		while ((event = xcb_poll_for_event(s_Connection)))
+		while ((event = xcb_poll_for_event(m_Connection)))
 		{
 			switch (event->response_type & ~0x80)
 			{
@@ -134,7 +120,7 @@ namespace Yuki {
 			{
 				xcb_client_message_event_t* clientMessageEvent = (xcb_client_message_event_t*)event;
 
-				if (clientMessageEvent->data.data32[0] == s_DeleteWindowReply->atom)
+				if (clientMessageEvent->data.data32[0] == m_DeleteWindowReply->atom)
 				{
 					WindowCloseEvent closeEvent;
 					closeEvent.Window = this;
@@ -151,7 +137,7 @@ namespace Yuki {
 		}
 	}
 
-	xcb_connection_t* LinuxWindow::GetConnection() const { return s_Connection; }
+	xcb_connection_t* LinuxWindow::GetConnection() const { return m_Connection; }
 
 	Unique<GenericWindow> GenericWindow::New(RenderContext* InRenderContext, WindowAttributes InAttributes)
 	{

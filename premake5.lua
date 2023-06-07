@@ -1,7 +1,7 @@
 require "Premake/premake-vscode/vscode"
 
 workspace "Yuki"
-	configurations { "Debug", "RelWithDebug", "Release" }
+	configurations { "RelWithDebug", "Debug", "Release" }
 	architecture "x86_64"
 
 	language "C++"
