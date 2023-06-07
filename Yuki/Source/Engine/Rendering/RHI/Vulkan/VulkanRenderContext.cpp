@@ -57,7 +57,7 @@ namespace Yuki {
 		List<const char*> enabledLayers;
 		List<const char*> enabledInstanceExtensions;
 
-		bool enableValidationLayers = HasValidationLayerSupport() && true;
+		bool enableValidationLayers = HasValidationLayerSupport() && s_CurrentConfig != Configuration::Release;
 
 		if (enableValidationLayers)
 		{
@@ -83,7 +83,7 @@ namespace Yuki {
 
 		VkInstanceCreateInfo instanceInfo = {
 			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-			.pNext = &messengerCreateInfo,
+			.pNext = s_CurrentConfig == Configuration::Release ? nullptr : &messengerCreateInfo,
 			.pApplicationInfo = &appInfo,
 			.enabledLayerCount = uint32_t(enabledLayers.size()),
 			.ppEnabledLayerNames = enabledLayers.data(),
@@ -94,7 +94,8 @@ namespace Yuki {
 		YUKI_VERIFY(vkCreateInstance(&instanceInfo, nullptr, &m_Instance) == VK_SUCCESS);
 		volkLoadInstanceOnly(m_Instance);
 
-		SetupDebugUtilsMessenger();
+		if constexpr (s_CurrentConfig != Configuration::Release)
+			SetupDebugUtilsMessenger();
 
 		SelectSuitablePhysicalDevice();
 		CreateLogicalDevice(enabledLayers);

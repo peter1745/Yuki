@@ -36,5 +36,5 @@ echo ""
 
 # Run make
 echo "==== Building All ($CONFIG, $CC) ===="
-make -j$JOBS
+make -j$JOBS config=$CONFIG
 
