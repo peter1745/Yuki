@@ -7,8 +7,8 @@ workspace "Yuki"
 	language "C++"
 	cppdialect "C++20"
 
-	targetdir "Build/%{cfg.buildcfg}"
-	objdir "Intermediates/%{cfg.buildcfg}"
+	targetdir "Out/Bin/%{cfg.buildcfg}"
+	objdir "Out/Intermediates/%{cfg.buildcfg}"
 
 	externalanglebrackets "On"
 	externalwarnings "Off"
