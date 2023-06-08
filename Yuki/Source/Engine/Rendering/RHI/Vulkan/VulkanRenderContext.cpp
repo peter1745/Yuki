@@ -69,19 +69,22 @@ namespace Yuki {
 
 		VulkanPlatform::GetRequiredInstanceExtensions(enabledInstanceExtensions);
 
-		VkApplicationInfo appInfo = {
+		VkApplicationInfo appInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 			.apiVersion = VK_API_VERSION_1_3
 		};
 
-		VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = {
+		VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 			.messageSeverity = MessageSeverities,
 			.messageType = MessageTypes,
 			.pfnUserCallback = DebugMessengerCallback,
 		};
 
-		VkInstanceCreateInfo instanceInfo = {
+		VkInstanceCreateInfo instanceInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 			.pNext = s_CurrentConfig == Configuration::Release ? nullptr : &messengerCreateInfo,
 			.pApplicationInfo = &appInfo,
@@ -102,7 +105,8 @@ namespace Yuki {
 
 		m_Allocator.Initialize(m_Instance, m_PhysicalDevice, m_Device);
 
-		VkCommandPoolCreateInfo poolInfo = {
+		VkCommandPoolCreateInfo poolInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 			.queueFamilyIndex = m_GraphicsQueue->GetFamilyIndex()
 		};
@@ -120,6 +124,7 @@ namespace Yuki {
 	{
 		vkDeviceWaitIdle(m_Device);
 		
+		vkDestroyCommandPool(m_Device, m_TransientCommandPool, nullptr);
 		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
 
 		m_Allocator.Destroy();
@@ -170,7 +175,8 @@ namespace Yuki {
 	{
 		VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 
-		VkCommandBufferAllocateInfo allocateInfo = {
+		VkCommandBufferAllocateInfo allocateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 			.commandPool = m_TransientCommandPool,
 			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
@@ -295,7 +301,8 @@ namespace Yuki {
 		uint32_t selectedQueueFamilyIndex = VulkanHelper::SelectGraphicsQueue(m_PhysicalDevice);
 
 		float queuePriority = 1.0f;
-		VkDeviceQueueCreateInfo queueCreateInfo = {
+		VkDeviceQueueCreateInfo queueCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			.queueFamilyIndex = selectedQueueFamilyIndex,
 			.queueCount = 1,
@@ -352,7 +359,8 @@ namespace Yuki {
 
 	void VulkanRenderContext::SetupDebugUtilsMessenger()
 	{
-		VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = {
+		VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 			.messageSeverity = MessageSeverities,
 			.messageType = MessageTypes,

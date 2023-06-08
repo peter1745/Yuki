@@ -108,6 +108,7 @@ namespace Yuki {
 	void Application::Destroy()
 	{
 		OnDestroy();
+		m_Renderer.Reset();
 		m_Windows.clear();
 		m_RenderContext->WaitDeviceIdle();
 		m_RenderContext->DestroyFence(m_Fence);
