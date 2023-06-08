@@ -30,7 +30,7 @@ namespace Yuki {
 		virtual void Create() = 0;
 		virtual void Destroy() = 0;
 
-		virtual void ProcessEvents() const = 0;
+		virtual void ProcessEvents() = 0;
 
 		virtual void Show() = 0;
 

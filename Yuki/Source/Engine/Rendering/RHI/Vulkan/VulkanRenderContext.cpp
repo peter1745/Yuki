@@ -57,7 +57,7 @@ namespace Yuki {
 		List<const char*> enabledLayers;
 		List<const char*> enabledInstanceExtensions;
 
-		bool enableValidationLayers = HasValidationLayerSupport() && true;
+		bool enableValidationLayers = HasValidationLayerSupport() && s_CurrentConfig != Configuration::Release;
 
 		if (enableValidationLayers)
 		{
@@ -69,21 +69,24 @@ namespace Yuki {
 
 		VulkanPlatform::GetRequiredInstanceExtensions(enabledInstanceExtensions);
 
-		VkApplicationInfo appInfo = {
+		VkApplicationInfo appInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 			.apiVersion = VK_API_VERSION_1_3
 		};
 
-		VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = {
+		VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 			.messageSeverity = MessageSeverities,
 			.messageType = MessageTypes,
 			.pfnUserCallback = DebugMessengerCallback,
 		};
 
-		VkInstanceCreateInfo instanceInfo = {
+		VkInstanceCreateInfo instanceInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-			.pNext = &messengerCreateInfo,
+			.pNext = s_CurrentConfig == Configuration::Release ? nullptr : &messengerCreateInfo,
 			.pApplicationInfo = &appInfo,
 			.enabledLayerCount = uint32_t(enabledLayers.size()),
 			.ppEnabledLayerNames = enabledLayers.data(),
@@ -94,14 +97,16 @@ namespace Yuki {
 		YUKI_VERIFY(vkCreateInstance(&instanceInfo, nullptr, &m_Instance) == VK_SUCCESS);
 		volkLoadInstanceOnly(m_Instance);
 
-		SetupDebugUtilsMessenger();
+		if constexpr (s_CurrentConfig != Configuration::Release)
+			SetupDebugUtilsMessenger();
 
 		SelectSuitablePhysicalDevice();
 		CreateLogicalDevice(enabledLayers);
 
 		m_Allocator.Initialize(m_Instance, m_PhysicalDevice, m_Device);
 
-		VkCommandPoolCreateInfo poolInfo = {
+		VkCommandPoolCreateInfo poolInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 			.queueFamilyIndex = m_GraphicsQueue->GetFamilyIndex()
 		};
@@ -119,6 +124,7 @@ namespace Yuki {
 	{
 		vkDeviceWaitIdle(m_Device);
 		
+		vkDestroyCommandPool(m_Device, m_TransientCommandPool, nullptr);
 		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
 
 		m_Allocator.Destroy();
@@ -169,7 +175,8 @@ namespace Yuki {
 	{
 		VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 
-		VkCommandBufferAllocateInfo allocateInfo = {
+		VkCommandBufferAllocateInfo allocateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 			.commandPool = m_TransientCommandPool,
 			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
@@ -251,16 +258,10 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES
 		};
 
-		VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicStateFeatures =
-		{
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
-			.pNext = &features13
-		};
-
 		VkPhysicalDeviceFeatures2 features2 =
 		{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-			.pNext = &extendedDynamicStateFeatures
+			.pNext = &features13
 		};
 		vkGetPhysicalDeviceFeatures2(InPhysicalDevice, &features2);
 
@@ -268,9 +269,6 @@ namespace Yuki {
 			score += 10;
 
 		if (features13.synchronization2 == VK_TRUE)
-			score += 10;
-
-		if (extendedDynamicStateFeatures.extendedDynamicState3PolygonMode == VK_TRUE)
 			score += 10;
 
 		return score;
@@ -303,7 +301,8 @@ namespace Yuki {
 		uint32_t selectedQueueFamilyIndex = VulkanHelper::SelectGraphicsQueue(m_PhysicalDevice);
 
 		float queuePriority = 1.0f;
-		VkDeviceQueueCreateInfo queueCreateInfo = {
+		VkDeviceQueueCreateInfo queueCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			.queueFamilyIndex = selectedQueueFamilyIndex,
 			.queueCount = 1,
@@ -312,7 +311,6 @@ namespace Yuki {
 
 		List<const char*> deviceExtensions;
 		deviceExtensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-		deviceExtensions.emplace_back(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME);
 
 		VkPhysicalDeviceVulkan13Features features13 =
 		{
@@ -321,17 +319,10 @@ namespace Yuki {
 			.dynamicRendering = VK_TRUE,
 		};
 
-		VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3Features =
-		{
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
-			.pNext = &features13,
-			.extendedDynamicState3PolygonMode = VK_TRUE,
-		};
-
 		VkPhysicalDeviceVulkan12Features features12 =
 		{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-			.pNext = &extendedDynamicState3Features,
+			.pNext = &features13,
 			.timelineSemaphore = VK_TRUE,
 		};
 
@@ -368,7 +359,8 @@ namespace Yuki {
 
 	void VulkanRenderContext::SetupDebugUtilsMessenger()
 	{
-		VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = {
+		VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 			.messageSeverity = MessageSeverities,
 			.messageType = MessageTypes,

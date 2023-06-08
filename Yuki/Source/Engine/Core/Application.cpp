@@ -13,7 +13,10 @@ namespace Yuki {
 
 	GenericWindow* Application::NewWindow(WindowAttributes InWindowAttributes)
 	{
-		InWindowAttributes.EventCallback = [this](Event* InEvent) { m_EventSystem->PostEvent(InEvent); };
+		InWindowAttributes.EventCallback = [this](Event* InEvent)
+		{
+			m_EventSystem->PostEvent(InEvent);
+		};
 		Unique<GenericWindow> window = GenericWindow::New(m_RenderContext.GetPtr(), InWindowAttributes);
 		window->Create();
 		return m_Windows.emplace_back(std::move(window)).GetPtr();
@@ -94,8 +97,9 @@ namespace Yuki {
 			m_RenderContext->GetGraphicsQueue()->Present(viewports, { m_Fence });
 
 			// Clean up closed windows
-			const auto it = std::ranges::remove_if(m_Windows, [this](const auto& InWindow) { return std::ranges::find(m_ClosedWindows, InWindow.GetPtr()) != m_ClosedWindows.end(); });
-			m_Windows.erase(it.begin(), it.end());
+			auto it = std::remove_if(m_Windows.begin(), m_Windows.end(), [this](const auto& InWindow) { return std::find(m_ClosedWindows.begin(), m_ClosedWindows.end(), InWindow.GetPtr()) != m_ClosedWindows.end(); });
+			if (it != m_Windows.end())
+				m_Windows.erase(it);
 		}
 
 		m_RenderContext->WaitDeviceIdle();
@@ -104,6 +108,7 @@ namespace Yuki {
 	void Application::Destroy()
 	{
 		OnDestroy();
+		m_Renderer.Reset();
 		m_Windows.clear();
 		m_RenderContext->WaitDeviceIdle();
 		m_RenderContext->DestroyFence(m_Fence);

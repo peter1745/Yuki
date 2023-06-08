@@ -22,7 +22,7 @@ namespace Yuki {
 
 		void Show() override;
 
-		void ProcessEvents() const override;
+		void ProcessEvents() override;
 
 		Viewport* GetViewport() const override { return m_Viewport; }
 

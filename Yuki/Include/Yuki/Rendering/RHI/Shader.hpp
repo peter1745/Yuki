@@ -2,6 +2,11 @@
 
 #include "Yuki/Core/ResourceHandle.hpp"
 
+// I fucking hate Xlib (They define None)
+#ifdef None
+	#undef None
+#endif
+
 namespace Yuki {
 
 	enum class ShaderModuleType

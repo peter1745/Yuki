@@ -66,7 +66,6 @@ namespace Yuki {
 
 	void VulkanCommandBuffer::Draw(uint32_t InVertexCount, uint32_t InInstanceCount, uint32_t InFirstVertex, uint32_t InFirstInstance)
 	{
-		vkCmdSetPolygonModeEXT(m_CommandBuffer, VK_POLYGON_MODE_FILL);
 		vkCmdDraw(m_CommandBuffer, InVertexCount, InInstanceCount, InFirstVertex, InFirstInstance);
 	}
 

@@ -3,7 +3,7 @@
 namespace Yuki {
 
 	class Buffer;
-	class GraphicsPipeline;
+	struct GraphicsPipeline;
 	class Viewport;
 
 	class CommandBuffer

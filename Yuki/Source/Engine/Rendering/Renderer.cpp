@@ -46,6 +46,7 @@ namespace Yuki {
 	Renderer::~Renderer()
 	{
 		m_Context->DestroyBuffer(vertexBuffer);
+		m_Context->DestroyBuffer(m_StagingBuffer);
 	}
 
 	void Renderer::Begin()
@@ -63,7 +64,6 @@ namespace Yuki {
 	void Renderer::End()
 	{
 		m_CommandBuffer->End();
-		//m_Context->GetGraphicsQueue()->SubmitCommandBuffers({m_CommandBuffer}, {}, {});
 	}
 
 	void Renderer::BuildPipelines()

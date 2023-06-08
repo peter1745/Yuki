@@ -83,7 +83,7 @@ namespace Yuki {
 				waitInfos[i] =
 				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = static_cast<VulkanFence* const>(InFences[i])->GetVkSemaphore(),
+					.semaphore = static_cast<VulkanFence*>(InFences[i])->GetVkSemaphore(),
 					.value = InFences[i]->GetValue(),
 					.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
 				};
@@ -162,11 +162,9 @@ namespace Yuki {
 	{
 		if (InViewports.empty())
 			return;
-
-		std::ranges::for_each(InViewports, [](auto* const InViewport)
-		{
-			InViewport->AcquireNextImage();
-		});
+		
+		for (auto* const viewport : InViewports)
+			viewport->AcquireNextImage();
 
 		if (!InFences.Empty())
 		{
@@ -195,7 +193,7 @@ namespace Yuki {
 				signalInfos[i] =
 				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = static_cast<VulkanFence* const>(InFences[i])->GetVkSemaphore(),
+					.semaphore = static_cast<VulkanFence*>(InFences[i])->GetVkSemaphore(),
 					.value = ++value,
 					.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
 				};

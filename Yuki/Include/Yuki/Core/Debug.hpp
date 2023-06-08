@@ -6,6 +6,9 @@
 
 #if defined(YUKI_PLATFORM_WINDOWS)
 	#define YUKI_DEBUG_BREAK __debugbreak()
+#elif defined(YUKI_PLATFORM_LINUX)
+	#include <signal.h>
+	#define YUKI_DEBUG_BREAK raise(SIGTRAP)
 #endif
 
 #define YUKI_VERIFY(cond, ...) \
@@ -15,3 +18,4 @@
 		Yuki::LogError("Verify failed: {} at {}:{}", #cond, location.file_name(), location.line()); \
 		YUKI_DEBUG_BREAK;                         \
 	}
+	

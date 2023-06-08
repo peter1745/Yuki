@@ -1,4 +1,4 @@
-local VulkanSDKPath = os.getenv("VULKAN_SDK") .. "/Include"
+local VulkanSDKPath = os.getenv("VULKAN_SDK") .. "/include"
 
 project "Yuki"
     kind "StaticLib"
@@ -35,10 +35,28 @@ project "Yuki"
 
     defines { "SPDLOG_COMPILED_LIB" }
 
+    filter { "configurations:Debug" }
+        defines { "YUKI_CONFIG_DEBUG" }
+
+    filter { "configurations:RelWithDebug" }
+        defines { "YUKI_CONFIG_REL_WITH_DEBUG" }
+
+    filter { "configurations:Release" }
+        defines { "YUKI_CONFIG_RELEASE" }
+
     filter { "system:windows" }
         defines { "YUKI_PLATFORM_WINDOWS" }
 
         files {
-            "Source/Platform/**.cpp",
-            "Source/Platform/**.hpp",
+            "Source/Platform/Windows/**.cpp",
+            "Source/Platform/Windows/**.hpp",
         }
+    
+	filter { "system:linux" }
+        defines { "YUKI_PLATFORM_LINUX" }
+
+        files {
+            "Source/Platform/Linux/**.cpp",
+			"Source/Platform/Linux/**.hpp",
+		}
+

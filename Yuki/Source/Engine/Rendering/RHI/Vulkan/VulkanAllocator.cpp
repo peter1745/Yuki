@@ -1,12 +1,17 @@
 #include "VulkanAllocator.hpp"
 
+#include <spdlog/fmt/fmt.h>
+
 namespace Yuki {
 
-	VkImage VulkanAllocator::CreateImage(const VkImageCreateInfo* InCreateInfo, VmaAllocation* OutAllocation)
+	VkImage VulkanAllocator::CreateImage(const VkImageCreateInfo* InCreateInfo, VmaAllocation* OutAllocation, std::source_location location)
 	{
 		VkImage result = VK_NULL_HANDLE;
 		VmaAllocationCreateInfo allocationInfo = { .usage = VMA_MEMORY_USAGE_AUTO };
 		vmaCreateImage(m_Allocator, InCreateInfo, &allocationInfo, &result, OutAllocation, nullptr);
+
+		SetAllocationName(OutAllocation, location);
+
 		return result;
 	}
 
@@ -15,7 +20,7 @@ namespace Yuki {
 		vmaDestroyImage(m_Allocator, InImage, InAllocation);
 	}
 
-	VkBuffer VulkanAllocator::CreateBuffer(BufferType InBufferType, const VkBufferCreateInfo* InCreateInfo, VmaAllocation* OutAllocation)
+	VkBuffer VulkanAllocator::CreateBuffer(BufferType InBufferType, const VkBufferCreateInfo* InCreateInfo, VmaAllocation* OutAllocation, std::source_location location)
 	{
 		VkBuffer result = VK_NULL_HANDLE;
 		VmaAllocationCreateInfo allocationInfo = { .usage = VMA_MEMORY_USAGE_AUTO, };
@@ -26,6 +31,9 @@ namespace Yuki {
 		}
 
 		vmaCreateBuffer(m_Allocator, InCreateInfo, &allocationInfo, &result, OutAllocation, nullptr);
+
+		SetAllocationName(OutAllocation, location);
+
 		return result;
 	}
 
@@ -44,6 +52,15 @@ namespace Yuki {
 	void VulkanAllocator::UnmapMemory(VmaAllocation InAllocation)
 	{
 		vmaUnmapMemory(m_Allocator, InAllocation);
+	}
+
+	void VulkanAllocator::SetAllocationName(VmaAllocation* InAllocation, std::source_location location) const
+	{
+		if constexpr (s_CurrentConfig != Configuration::Release)
+		{
+			std::string allocName = fmt::format("{}:{}", location.function_name(), location.line());
+			vmaSetAllocationName(m_Allocator, *InAllocation, allocName.c_str());
+		}
 	}
 
 	void VulkanAllocator::Initialize(VkInstance InInstance, VkPhysicalDevice InPhysicalDevice, VkDevice InDevice)
