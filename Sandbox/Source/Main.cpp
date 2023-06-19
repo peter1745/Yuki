@@ -8,6 +8,7 @@
 #include <Yuki/Rendering/RHI/GraphicsPipelineBuilder.hpp>
 #include <Yuki/Rendering/RHI/ShaderCompiler.hpp>
 #include <Yuki/Rendering/RHI/RenderTarget.hpp>
+#include <Yuki/IO/MeshLoader.hpp>
 
 class TestApplication : public Yuki::Application
 {
@@ -32,6 +33,8 @@ private:
 		};
 		auto* otherWindow = NewWindow(windowAttributes);
 		otherWindow->Show();
+
+		Yuki::MeshLoader::LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
 	}
 
 	void OnDestroy() override
