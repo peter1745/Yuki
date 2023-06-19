@@ -47,9 +47,6 @@ namespace Yuki {
 		Buffer* CreateBuffer(const BufferInfo& InInfo) override;
 		void DestroyBuffer(Buffer* InBuffer) override;
 
-		RenderTarget* CreateRenderTarget(const RenderTargetInfo& InInfo) override;
-		void DestroyRenderTarget(RenderTarget* InRenderTarget) override;
-
 		Fence* CreateFence() override;
 		void DestroyFence(Fence* InFence) override;
 

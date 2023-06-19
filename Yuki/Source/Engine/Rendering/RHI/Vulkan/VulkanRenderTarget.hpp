@@ -6,7 +6,7 @@
 
 namespace Yuki {
 
-	class VulkanRenderTarget : public RenderTarget
+	/*class VulkanRenderTarget : public RenderTarget
 	{
 	public:
 		~VulkanRenderTarget();
@@ -34,6 +34,6 @@ namespace Yuki {
 
 	private:
 		friend class VulkanRenderContext;
-	};
+	};*/
 
 }

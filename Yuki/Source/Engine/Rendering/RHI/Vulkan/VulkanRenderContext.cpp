@@ -162,9 +162,6 @@ namespace Yuki {
 	Buffer* VulkanRenderContext::CreateBuffer(const BufferInfo& InInfo) { return new VulkanBuffer(this, InInfo); }
 	void VulkanRenderContext::DestroyBuffer(Buffer* InBuffer) { delete InBuffer; }
 
-	RenderTarget* VulkanRenderContext::CreateRenderTarget(const RenderTargetInfo& InInfo) { return new VulkanRenderTarget(this, InInfo); }
-	void VulkanRenderContext::DestroyRenderTarget(RenderTarget* InRenderTarget) { delete InRenderTarget; }
-
 	Fence* VulkanRenderContext::CreateFence() { return new VulkanFence(this); }
 	void VulkanRenderContext::DestroyFence(Fence* InFence) { delete InFence; }
 

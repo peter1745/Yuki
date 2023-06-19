@@ -25,12 +25,10 @@ namespace Yuki {
 
 		m_Images.clear();
 
-		m_CurrentImage = 0;
-
 		vkDestroySwapchainKHR(m_Context->GetDevice(), m_Swapchain, nullptr);
 	}
 
-	void VulkanSwapchain::BeginRendering(CommandBuffer* InCmdBuffer)
+	/*void VulkanSwapchain::BeginRendering(CommandBuffer* InCmdBuffer)
 	{
 		VulkanImageTransition imageTransition =
 		{
@@ -85,7 +83,7 @@ namespace Yuki {
 		};
 
 		m_Images[m_CurrentImage]->Transition(InCmdBuffer->As<VkCommandBuffer>(), imageTransition);
-	}
+	}*/
 
 	void VulkanSwapchain::Create(const VulkanSwapchainInfo& InSwapchainInfo)
 	{
@@ -153,7 +151,7 @@ namespace Yuki {
 			.deviceMask = 1
 		};
 
-		return vkAcquireNextImage2KHR(m_Context->GetDevice(), &acquireImageInfo, &m_CurrentImage);
+		return vkAcquireNextImage2KHR(m_Context->GetDevice(), &acquireImageInfo, &m_CurrentImageIndex);
 	}
 
 }

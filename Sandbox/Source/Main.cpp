@@ -19,12 +19,9 @@ public:
 	}
 
 private:
-	Yuki::RenderTarget* m_RenderTarget;
-
 	void OnInitialize() override
 	{
 		Yuki::LogInfo("OnInitialize!");
-
 		Yuki::WindowAttributes windowAttributes =
 		{
 			.Title = "Second Window",
@@ -39,7 +36,6 @@ private:
 
 	void OnDestroy() override
 	{
-		GetRenderContext()->DestroyRenderTarget(m_RenderTarget);
 	}
 };
 

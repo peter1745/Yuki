@@ -48,6 +48,9 @@ workspace "Yuki"
 
     filter "action:vs*"
         linkoptions { "/ignore:4099" }
+		buildoptions {
+			"/Zc:preprocessor"
+		}
 
 group "ThirdParty"
 include "ThirdParty/"

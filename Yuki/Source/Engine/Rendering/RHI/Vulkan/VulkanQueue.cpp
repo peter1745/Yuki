@@ -70,6 +70,31 @@ namespace Yuki {
 		if (InViewports.empty())
 			return;
 
+		// Transition images to present
+		{
+			std::vector<VkCommandBuffer> transitionCommandBuffers(InViewports.size());
+
+			for (size_t i = 0; i < InViewports.size(); i++)
+			{
+				auto* swapchain = static_cast<VulkanSwapchain*>(InViewports[i]->GetSwapchain());
+
+				transitionCommandBuffers[i] = m_Context->CreateTransientCommandBuffer();
+
+				VulkanImageTransition imageTransition =
+				{
+					.DstPipelineStage = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+					.DstAccessFlags = 0,
+					.DstImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+				};
+
+				static_cast<VulkanImage2D*>(swapchain->GetCurrentImage())->Transition(transitionCommandBuffers[i], imageTransition);
+
+				vkEndCommandBuffer(transitionCommandBuffers[i]);
+			}
+
+			SubmitCommandBuffers(transitionCommandBuffers, InFences, {});
+		}
+
 		std::vector<VkResult> presentResults(InViewports.size());
 		std::vector<VkSemaphore> binaryWaits;
 
@@ -97,7 +122,7 @@ namespace Yuki {
 				signalInfos[i] =
 				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = swapchain->GetSemaphore(swapchain->GetSemaphoreIndex()),
+					.semaphore = swapchain->m_Semaphores[swapchain->m_SemaphoreIndex],
 				};
 			}
 
@@ -115,9 +140,8 @@ namespace Yuki {
 			for (size_t i = 0; i < InViewports.size(); i++)
 			{
 				auto* swapchain = static_cast<VulkanSwapchain*>(InViewports[i]->GetSwapchain());
-				uint32_t& semaphoreIndex = swapchain->GetSemaphoreIndex();
-				binaryWaits[i] = swapchain->GetSemaphore(semaphoreIndex);
-				semaphoreIndex = (semaphoreIndex + 1) % swapchain->GetSemaphoreCount();
+				binaryWaits[i] = swapchain->m_Semaphores[swapchain->m_SemaphoreIndex];
+				swapchain->m_SemaphoreIndex = (swapchain->m_SemaphoreIndex + 1) % uint32_t(swapchain->m_Semaphores.size());
 			}
 		}
 
@@ -128,8 +152,8 @@ namespace Yuki {
 		for (size_t i = 0; i < InViewports.size(); i++)
 		{
 			auto* swapchain = static_cast<VulkanSwapchain*>(InViewports[i]->GetSwapchain());
-			swapchains[i] = swapchain->GetVkSwapchain();
-			imageIndices[i] = swapchain->GetCurrentImageIndex();
+			swapchains[i] = swapchain->m_Swapchain;
+			imageIndices[i] = swapchain->m_CurrentImageIndex;
 		}
 
 		VkPresentInfoKHR presentInfo =
@@ -173,15 +197,14 @@ namespace Yuki {
 			for (size_t i = 0; i < InViewports.size(); i++)
 			{
 				auto* swapchain = static_cast<VulkanSwapchain*>(InViewports[i]->GetSwapchain());
-				uint32_t& semaphoreIndex = swapchain->GetSemaphoreIndex();
 
 				waitInfos[i] =
 				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = swapchain->GetSemaphore(semaphoreIndex),
+					.semaphore = swapchain->m_Semaphores[swapchain->m_SemaphoreIndex],
 				};
 
-				semaphoreIndex = (semaphoreIndex + 1) % swapchain->GetSemaphoreCount();
+				swapchain->m_SemaphoreIndex = (swapchain->m_SemaphoreIndex + 1) % uint32_t(swapchain->m_Semaphores.size());
 			}
 
 			std::vector<VkSemaphoreSubmitInfo> signalInfos;

@@ -3,7 +3,7 @@
 
 namespace Yuki {
 
-	VulkanRenderTarget::VulkanRenderTarget(VulkanRenderContext* InContext, const RenderTargetInfo& InInfo)
+	/*VulkanRenderTarget::VulkanRenderTarget(VulkanRenderContext* InContext, const RenderTargetInfo& InInfo)
 		: m_Context(InContext), m_Info(InInfo)
 	{
 		for (uint32_t i = 0; i < RenderTargetInfo::MaxColorAttachments; i++)
@@ -69,6 +69,6 @@ namespace Yuki {
 			m_Context->DestroyImageView2D(m_DepthAttachmentInfo.ImageView);
 			m_Context->DestroyImage2D(m_DepthAttachmentInfo.Image);
 		}
-	}
+	}*/
 
 }
