@@ -23,7 +23,7 @@ namespace Yuki {
 		void RecreateSwapchain() override;
 
 	private:
-			VulkanViewport(VulkanRenderContext* InContext, GenericWindow* InWindow);
+		VulkanViewport(VulkanRenderContext* InContext, GenericWindow* InWindow);
 
 	private:
 		VulkanRenderContext* m_Context = nullptr;

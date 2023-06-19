@@ -4,15 +4,18 @@
 
 namespace Yuki {
 
+	class Image2D;
+	class ImageView2D;
+
 	class Swapchain
 	{
 	public:
 		virtual ~Swapchain() = default;
 
-		virtual void Destroy() = 0;
+		virtual Image2D* GetCurrentImage() const = 0;
+		virtual ImageView2D* GetCurrentImageView() const = 0;
 
-		virtual void BeginRendering(CommandBuffer* InCmdBuffer) = 0;
-		virtual void EndRendering(CommandBuffer* InCmdBuffer) = 0;
+		virtual void Destroy() = 0;
 
 	};
 

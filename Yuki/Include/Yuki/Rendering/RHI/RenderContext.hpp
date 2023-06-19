@@ -16,8 +16,6 @@ namespace Yuki {
 	class GraphicsPipelineBuilder;
 	class Image2D;
 	class ImageView2D;
-	class RenderTarget;
-	struct RenderTargetInfo;
 	class RenderInterface;
 	class Queue;
 	class Fence;
@@ -57,9 +55,6 @@ namespace Yuki {
 		
 		virtual Buffer* CreateBuffer(const BufferInfo& InInfo) = 0;
 		virtual void DestroyBuffer(Buffer* InBuffer) = 0;
-		
-		virtual RenderTarget* CreateRenderTarget(const RenderTargetInfo& InInfo) = 0;
-		virtual void DestroyRenderTarget(RenderTarget* InRenderTarget) = 0;
 		
 		virtual Fence* CreateFence() = 0;
 		virtual void DestroyFence(Fence* InFence) = 0;

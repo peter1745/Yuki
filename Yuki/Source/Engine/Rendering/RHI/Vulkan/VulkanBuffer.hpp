@@ -10,7 +10,7 @@ namespace Yuki {
 	{
 	public:
 		~VulkanBuffer();
-
+		
 		void SetData(void* InData, uint32_t InDataSize, uint32_t InDstOffset = 0) override;
 
 		void UploadData(Buffer* InStagingBuffer, const BufferUploadInfo* InUploadInfo) override;

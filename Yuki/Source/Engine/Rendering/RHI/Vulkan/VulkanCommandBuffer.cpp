@@ -1,6 +1,10 @@
 #include "VulkanCommandBuffer.hpp"
 #include "VulkanBuffer.hpp"
 #include "VulkanGraphicsPipeline.hpp"
+#include "VulkanImage2D.hpp"
+#include "VulkanSwapchain.hpp"
+
+#include "Rendering/RHI/RenderTarget.hpp"
 
 namespace Yuki {
 
@@ -62,6 +66,99 @@ namespace Yuki {
 			},
 		};
 		vkCmdSetScissor(m_CommandBuffer, 0, 1, &scissor);
+	}
+
+	void VulkanCommandBuffer::BeginRendering(RenderTarget* InRenderTarget)
+	{
+		uint32_t colorAttachmentInfosCount = 0;
+		std::array<VkRenderingAttachmentInfo, RenderTarget::MaxColorAttachments> colorAttachmentInfos;
+
+		VkRenderingAttachmentInfo depthAttachmentInfo = { .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+
+		VulkanImageTransition imageTransition =
+		{
+			.DstPipelineStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+			.DstAccessFlags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+			.DstImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+		};
+
+		VkClearValue clearColor = {};
+		clearColor.color.float32[0] = 1.0f;
+		clearColor.color.float32[1] = 0.0f;
+		clearColor.color.float32[2] = 0.0f;
+		clearColor.color.float32[3] = 1.0f;
+
+		for (auto* colorAttachment : InRenderTarget->ColorAttachments)
+		{
+			if (!colorAttachment)
+				continue;
+
+			auto* image = static_cast<VulkanImage2D*>(colorAttachment->GetImage());
+			image->Transition(m_CommandBuffer, imageTransition);
+
+			colorAttachmentInfos[colorAttachmentInfosCount++] =
+			{
+				.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+				.imageView = static_cast<VulkanImageView2D*>(colorAttachment)->GetVkImageView(),
+				.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+				.clearValue = clearColor,
+			};
+		}
+
+		if (InRenderTarget->DepthAttachment)
+		{
+			VulkanImageTransition depthImageTransition =
+			{
+				.DstPipelineStage = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+				.DstAccessFlags = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+				.DstImageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+			};
+
+			auto* image = static_cast<VulkanImage2D*>(InRenderTarget->DepthAttachment->GetImage());
+			image->Transition(m_CommandBuffer, depthImageTransition);
+
+			VkClearValue depthClearValue = { .depthStencil = {.depth = 1.0f } };
+			depthAttachmentInfo.imageView = static_cast<VulkanImageView2D*>(InRenderTarget->DepthAttachment)->GetVkImageView();
+			depthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			depthAttachmentInfo.clearValue = depthClearValue;
+		}
+
+		VkRenderingInfo renderingInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+			.renderArea = {
+				.offset = { 0, 0 },
+				.extent = { InRenderTarget->Width, InRenderTarget->Height },
+			},
+			.layerCount = 1,
+			.viewMask = 0,
+			.colorAttachmentCount = colorAttachmentInfosCount,
+			.pColorAttachments = colorAttachmentInfos.data(),
+			.pDepthAttachment = &depthAttachmentInfo
+		};
+
+		vkCmdBeginRendering(m_CommandBuffer, &renderingInfo);
+	}
+
+	void VulkanCommandBuffer::BeginRendering(Viewport* InViewport)
+	{
+		RenderTarget viewportTarget =
+		{
+			.Width = InViewport->GetWidth(),
+			.Height = InViewport->GetHeight(),
+			.ColorAttachments = { InViewport->GetSwapchain()->GetCurrentImageView() }
+		};
+
+		BeginRendering(&viewportTarget);
+	}
+
+	void VulkanCommandBuffer::EndRendering()
+	{
+		vkCmdEndRendering(m_CommandBuffer);
 	}
 
 	void VulkanCommandBuffer::Draw(uint32_t InVertexCount, uint32_t InInstanceCount, uint32_t InFirstVertex, uint32_t InFirstInstance)

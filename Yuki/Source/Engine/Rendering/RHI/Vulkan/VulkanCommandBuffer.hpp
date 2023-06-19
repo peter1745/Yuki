@@ -16,6 +16,10 @@ namespace Yuki {
 
 		void SetViewport(Viewport* InViewport) override;
 
+		void BeginRendering(RenderTarget* InRenderTarget);
+		void BeginRendering(Viewport* InViewport);
+		void EndRendering();
+
 		void Draw(uint32_t InVertexCount, uint32_t InInstanceCount, uint32_t InFirstVertex, uint32_t InFirstInstance) override;
 
 	private:
