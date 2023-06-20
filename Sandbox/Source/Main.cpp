@@ -42,7 +42,7 @@ private:
 
 		m_Renderer = new Yuki::SceneRenderer(GetRenderContext(), m_Windows[0]->GetViewport());
 
-		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
 
 		m_CameraTransform.SetIdentity();
 	}

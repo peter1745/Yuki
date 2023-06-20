@@ -32,7 +32,7 @@ namespace Yuki {
 	{
 		for (const auto& meshInstance : InMesh.Instances)
 		{
-			m_FrameTransforms.Transform = meshInstance.Transform * Math::Mat4::Translation({ 0.0f, 0.0f, -2.0f });
+			m_FrameTransforms.Transform = meshInstance.Transform;
 			m_CommandBuffer->PushConstants(m_MeshPipeline.GetPtr(), &m_FrameTransforms, sizeof(FrameTransforms), 0);
 			m_CommandBuffer->BindVertexBuffer(meshInstance.SourceMesh->VertexBuffer);
 			m_CommandBuffer->BindIndexBuffer(meshInstance.SourceMesh->IndexBuffer);
