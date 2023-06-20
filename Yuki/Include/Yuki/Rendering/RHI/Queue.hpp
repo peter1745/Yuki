@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/InitializerList.hpp"
+#include "Yuki/Core/InitializerList.hpp"
 
 #include "CommandBuffer.hpp"
 

@@ -4,7 +4,6 @@
 
 #include "Yuki/EventSystem/EventSystem.hpp"
 #include "Yuki/Rendering/RHI/RenderContext.hpp"
-#include "Yuki/Rendering/Renderer.hpp"
 
 namespace Yuki {
 
@@ -41,15 +40,8 @@ namespace Yuki {
 		RenderAPI m_RenderingAPI = RenderAPI::Vulkan;
 
 		List<Unique<GenericWindow>> m_Windows;
-		GenericWindow* m_MainWindow = nullptr;
 		Unique<EventSystem> m_EventSystem = nullptr;
 		Unique<RenderContext> m_RenderContext = nullptr;
-
-		Unique<Renderer> m_Renderer = nullptr;
-
-		CommandBuffer* m_CommandBuffer;
-
-		Fence* m_Fence = nullptr;
 
 		bool m_RunEngineLoop = false;
 

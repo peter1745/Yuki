@@ -34,7 +34,7 @@ namespace Yuki {
 		m_Context->GetAllocator().DestroyBuffer(m_Buffer, m_Allocation);
 	}
 
-	void VulkanBuffer::SetData(void* InData, uint32_t InDataSize, uint32_t InDstOffset /*= 0*/)
+	void VulkanBuffer::SetData(const void* InData, uint32_t InDataSize, uint32_t InDstOffset /*= 0*/)
 	{
 		YUKI_VERIFY(InDataSize + InDstOffset < m_Info.Size);
 

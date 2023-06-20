@@ -7,7 +7,7 @@
 #include "VulkanFence.hpp"
 #include "VulkanGraphicsPipelineBuilder.hpp"
 #include "VulkanRenderInterface.hpp"
-#include "VulkanCommandBuffer.hpp"
+#include "VulkanCommandBufferPool.hpp"
 #include "VulkanBuffer.hpp"
 
 #define VK_VERIFY(res) if (res != VK_SUCCESS) { LogError("Vulkan Validation failed: {}", int32_t(res)); }
@@ -165,8 +165,8 @@ namespace Yuki {
 	Fence* VulkanRenderContext::CreateFence() { return new VulkanFence(this); }
 	void VulkanRenderContext::DestroyFence(Fence* InFence) { delete InFence; }
 
-	CommandBuffer* VulkanRenderContext::CreateCommandBuffer() { return new VulkanCommandBuffer(this, m_CommandPool); }
-	void VulkanRenderContext::DestroyCommandBuffer(CommandBuffer* InCommandBuffer) { delete InCommandBuffer; }
+	CommandBufferPool* VulkanRenderContext::CreateCommandBufferPool(CommandBufferPoolInfo InInfo) { return new VulkanCommandBufferPool(this, std::move(InInfo)); }
+	void VulkanRenderContext::DestroyCommandBufferPool(CommandBufferPool* InCommandBuffer) { delete InCommandBuffer; }
 
 	VkCommandBuffer VulkanRenderContext::CreateTransientCommandBuffer() const
 	{

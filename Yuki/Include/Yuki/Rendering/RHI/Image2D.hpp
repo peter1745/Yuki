@@ -4,6 +4,8 @@
 
 namespace Yuki {
 
+	class ImageView2D;
+
 	class Image2D
 	{
 	public:
@@ -12,6 +14,8 @@ namespace Yuki {
 		virtual uint32_t GetWidth() const = 0;
 		virtual uint32_t GetHeight() const = 0;
 		virtual ImageFormat GetImageFormat() const = 0;
+
+		virtual ImageView2D* GetDefaultImageView() const = 0;
 	};
 
 	class ImageView2D

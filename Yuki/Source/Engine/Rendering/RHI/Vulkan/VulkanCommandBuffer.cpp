@@ -3,17 +3,18 @@
 #include "VulkanGraphicsPipeline.hpp"
 #include "VulkanImage2D.hpp"
 #include "VulkanSwapchain.hpp"
+#include "VulkanCommandBufferPool.hpp"
 
 #include "Rendering/RHI/RenderTarget.hpp"
 
 namespace Yuki {
 
-	VulkanCommandBuffer::VulkanCommandBuffer(VulkanRenderContext* InContext, VkCommandPool InCommandPool)
+	VulkanCommandBuffer::VulkanCommandBuffer(VulkanRenderContext* InContext, VulkanCommandBufferPool* InCommandPool)
 	{
 		VkCommandBufferAllocateInfo allocateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-			.commandPool = InCommandPool,
+			.commandPool = InCommandPool->GetVkCommandPool(),
 			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			.commandBufferCount = 1,
 		};
@@ -37,6 +38,14 @@ namespace Yuki {
 		VkBuffer buffer = static_cast<VulkanBuffer*>(InVertexBuffer)->GetVkBuffer();
 		VkDeviceSize offset = 0;
 		vkCmdBindVertexBuffers(m_CommandBuffer, 0, 1, &buffer, &offset);
+	}
+
+	void VulkanCommandBuffer::BindIndexBuffer(Buffer* InIndexBuffer)
+	{
+		YUKI_VERIFY(InIndexBuffer->GetInfo().Type == BufferType::IndexBuffer);
+		VkBuffer buffer = static_cast<VulkanBuffer*>(InIndexBuffer)->GetVkBuffer();
+		VkDeviceSize offset = 0;
+		vkCmdBindIndexBuffer(m_CommandBuffer, buffer, offset, VK_INDEX_TYPE_UINT32);
 	}
 
 	void VulkanCommandBuffer::BindPipeline(GraphicsPipeline* InPipeline)
@@ -88,6 +97,8 @@ namespace Yuki {
 		clearColor.color.float32[2] = 0.0f;
 		clearColor.color.float32[3] = 1.0f;
 
+		uint32_t width = 0, height = 0;
+
 		for (auto* colorAttachment : InRenderTarget->ColorAttachments)
 		{
 			if (!colorAttachment)
@@ -95,6 +106,9 @@ namespace Yuki {
 
 			auto* image = static_cast<VulkanImage2D*>(colorAttachment->GetImage());
 			image->Transition(m_CommandBuffer, imageTransition);
+
+			width = image->GetWidth();
+			height = image->GetHeight();
 
 			colorAttachmentInfos[colorAttachmentInfosCount++] =
 			{
@@ -132,7 +146,7 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
 			.renderArea = {
 				.offset = { 0, 0 },
-				.extent = { InRenderTarget->Width, InRenderTarget->Height },
+				.extent = { width, height },
 			},
 			.layerCount = 1,
 			.viewMask = 0,
@@ -148,8 +162,6 @@ namespace Yuki {
 	{
 		RenderTarget viewportTarget =
 		{
-			.Width = InViewport->GetWidth(),
-			.Height = InViewport->GetHeight(),
 			.ColorAttachments = { InViewport->GetSwapchain()->GetCurrentImageView() }
 		};
 
@@ -164,6 +176,11 @@ namespace Yuki {
 	void VulkanCommandBuffer::Draw(uint32_t InVertexCount, uint32_t InInstanceCount, uint32_t InFirstVertex, uint32_t InFirstInstance)
 	{
 		vkCmdDraw(m_CommandBuffer, InVertexCount, InInstanceCount, InFirstVertex, InFirstInstance);
+	}
+
+	void VulkanCommandBuffer::DrawIndexed(uint32_t InIndexCount, uint32_t InInstanceCount, uint32_t InFirstIndex, int32_t InVertexOffset, uint32_t InFirstInstance)
+	{
+		vkCmdDrawIndexed(m_CommandBuffer, InIndexCount, InInstanceCount, InFirstIndex, InVertexOffset, InFirstInstance);
 	}
 
 }

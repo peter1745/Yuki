@@ -2,7 +2,7 @@
 
 #include "Yuki/Rendering/RenderAPI.hpp"
 #include "Yuki/Rendering/ImageFormat.hpp"
-#include "Yuki/Rendering/RHI/CommandBuffer.hpp"
+#include "Yuki/Rendering/RHI/CommandBufferPool.hpp"
 #include "Yuki/Rendering/RHI/Buffer.hpp"
 
 #include "Yuki/Memory/Unique.hpp"
@@ -59,8 +59,8 @@ namespace Yuki {
 		virtual Fence* CreateFence() = 0;
 		virtual void DestroyFence(Fence* InFence) = 0;
 		
-		virtual CommandBuffer* CreateCommandBuffer() = 0;
-		virtual void DestroyCommandBuffer(CommandBuffer* InCommandBuffer) = 0;
+		virtual CommandBufferPool* CreateCommandBufferPool(CommandBufferPoolInfo InInfo) = 0;
+		virtual void DestroyCommandBufferPool(CommandBufferPool* InCommandBufferPool) = 0;
 
 	public:
 		static Unique<RenderContext> New(RenderAPI InRenderAPI);

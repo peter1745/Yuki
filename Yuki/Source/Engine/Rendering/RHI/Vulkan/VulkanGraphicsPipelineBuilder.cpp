@@ -106,7 +106,7 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
 			.colorAttachmentCount = uint32_t(m_ColorAttachmentFormats.size()),
 			.pColorAttachmentFormats = m_ColorAttachmentFormats.data(),
-			.depthAttachmentFormat = m_HasDepthAttachment ? VK_FORMAT_D24_UNORM_S8_UINT : VK_FORMAT_UNDEFINED,
+			.depthAttachmentFormat = m_HasDepthAttachment ? VK_FORMAT_X8_D24_UNORM_PACK32 : VK_FORMAT_UNDEFINED,
 			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 		};
 

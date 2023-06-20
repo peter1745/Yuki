@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Yuki/Rendering/MeshData.hpp"
+
 namespace Yuki {
 
 	class MeshLoader
 	{
 	public:
-		static void LoadGLTFMesh(const std::filesystem::path& InFilePath);
+		static MeshData LoadGLTFMesh(const std::filesystem::path& InFilePath);
 	};
 
 }

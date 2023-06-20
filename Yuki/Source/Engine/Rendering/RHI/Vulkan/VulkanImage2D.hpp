@@ -22,6 +22,8 @@ namespace Yuki {
 		uint32_t GetHeight() const override { return m_Height; }
 		ImageFormat GetImageFormat() const override { return m_Format; }
 
+		ImageView2D* GetDefaultImageView() const override { return m_DefaultImageView.GetPtr(); }
+
 		VkImage GetVkImage() const { return m_Image; }
 
 		void Transition(VkCommandBuffer InCommandBuffer, const VulkanImageTransition& InTransitionInfo);
@@ -42,6 +44,8 @@ namespace Yuki {
 		VkPipelineStageFlags2 m_CurrentPipelineStage = VK_PIPELINE_STAGE_2_NONE;
 		VkAccessFlags2 m_CurrentAccessFlags = VK_ACCESS_2_NONE;
 		VkImageLayout m_CurrentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+		Unique<ImageView2D> m_DefaultImageView = nullptr;
 
 	private:
 		friend class VulkanRenderContext;
@@ -67,6 +71,7 @@ namespace Yuki {
 
 	private:
 		friend class VulkanRenderContext;
+		friend class VulkanImage2D;
 	};
 
 }

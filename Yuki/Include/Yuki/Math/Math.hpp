@@ -1,25 +1,20 @@
 #pragma once
 
-namespace Yuki {
+namespace Yuki::Math {
 
-	class Math
+	template<typename T>
+	constexpr T Min(T InValue, T InOtherValue) { return InValue < InOtherValue ? InValue : InOtherValue; }
+
+	template<typename T>
+	constexpr T Clamp(T InValue, T InMin, T InMax)
 	{
-	public:
-		template<typename T>
-		static constexpr T Min(T InValue, T InOtherValue) { return InValue < InOtherValue ? InValue : InOtherValue; }
+		if (InValue > InMax)
+			return InMax;
 
-		template<typename T>
-		static constexpr T Clamp(T InValue, T InMin, T InMax)
-		{
-			if (InValue > InMax)
-				return InMax;
+		if (InValue < InMin)
+			return InMin;
 
-			if (InValue < InMin)
-				return InMin;
-
-			return InValue;
-		}
-
-	};
+		return InValue;
+	}
 
 }

@@ -29,6 +29,8 @@ namespace Yuki {
 			.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 		};
 		m_Image = InContext->GetAllocator().CreateImage(&imageInfo, &m_Allocation);
+
+		m_DefaultImageView = Unique<ImageView2D>(new VulkanImageView2D(InContext, this));
 	}
 
 	VulkanImage2D::VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, VkImage InExistingImage)
@@ -38,6 +40,8 @@ namespace Yuki {
 
 	VulkanImage2D::~VulkanImage2D()
 	{
+		m_DefaultImageView.Reset();
+
 		m_Context->GetAllocator().DestroyImage(m_Image, m_Allocation);
 	}
 
@@ -81,7 +85,8 @@ namespace Yuki {
 	{
 		VkImageAspectFlags aspectMask = IsDepthFormat(InImage->GetImageFormat()) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 
-		VkImageViewCreateInfo imageViewInfo = {
+		VkImageViewCreateInfo imageViewInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 			.image = InImage->GetVkImage(),
 			.viewType = VK_IMAGE_VIEW_TYPE_2D,

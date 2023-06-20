@@ -50,8 +50,8 @@ namespace Yuki {
 		Fence* CreateFence() override;
 		void DestroyFence(Fence* InFence) override;
 
-		CommandBuffer* CreateCommandBuffer() override;
-		void DestroyCommandBuffer(CommandBuffer* InCommandBuffer) override;
+		CommandBufferPool* CreateCommandBufferPool(CommandBufferPoolInfo InInfo) override;
+		void DestroyCommandBufferPool(CommandBufferPool* InCommandBufferPool) override;
 
 		VkCommandBuffer CreateTransientCommandBuffer() const;
 
