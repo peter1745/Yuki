@@ -44,7 +44,8 @@ private:
 		//m_ColorAttachment = GetRenderContext()->CreateImage2D(1920, 1080, Yuki::ImageFormat::BGRA8UNorm);
 		//m_DepthAttachment = GetRenderContext()->CreateImage2D(1920, 1080, Yuki::ImageFormat::Depth24UNorm);
 
-		m_Mesh = Yuki::Mesh::FromMeshData(GetRenderContext(), Yuki::MeshLoader::LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf"));
+
+		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
 	}
 
 	void OnRunLoop() override
@@ -95,7 +96,7 @@ private:
 	Yuki::Image2D* m_ColorAttachment = nullptr;
 	Yuki::Image2D* m_DepthAttachment = nullptr;
 
-	Yuki::Mesh m_Mesh;
+	Yuki::LoadedMesh m_Mesh;
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

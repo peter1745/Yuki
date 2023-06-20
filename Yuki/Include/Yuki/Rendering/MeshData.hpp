@@ -14,19 +14,24 @@ namespace Yuki {
 		Math::Vec2 UV;
 	};
 
-	struct MeshData
+	struct Mesh
 	{
 		std::vector<Vertex> Vertices;
 		std::vector<uint32_t> Indices;
-	};
 
-	struct Mesh
-	{
 		Buffer* VertexBuffer;
 		Buffer* IndexBuffer;
-		uint32_t IndexCount;
+	};
 
-		static Mesh FromMeshData(RenderContext* InRenderContext, const MeshData& InMeshData);
+	struct MeshInstance
+	{
+		Mesh* SourceMesh;
+	};
+
+	struct LoadedMesh
+	{
+		List<Mesh> Meshes;
+		List<MeshInstance> Instances;
 	};
 
 }

@@ -2,7 +2,7 @@
 
 namespace Yuki {
 
-	static Buffer* s_StagingBuffer = nullptr;
+	/*static Buffer* s_StagingBuffer = nullptr;
 
 	Mesh Mesh::FromMeshData(RenderContext* InContext, const MeshData& InMeshData)
 	{
@@ -52,6 +52,6 @@ namespace Yuki {
 		}
 
 		return mesh;
-	}
+	}*/
 
 }

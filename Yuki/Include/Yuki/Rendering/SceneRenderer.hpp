@@ -14,7 +14,7 @@ namespace Yuki {
 		SceneRenderer(RenderContext* InContext, Viewport* InViewport);
 
 		void BeginDraw();
-		void DrawMesh(const Mesh& InMesh);
+		void DrawMesh(const LoadedMesh& InMesh);
 		void EndDraw();
 
 		CommandBuffer* GetCurrentCommandBuffer() const { return m_CommandBuffer; }

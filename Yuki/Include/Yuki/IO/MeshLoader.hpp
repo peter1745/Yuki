@@ -4,10 +4,12 @@
 
 namespace Yuki {
 
+	class RenderContext;
+
 	class MeshLoader
 	{
 	public:
-		static MeshData LoadGLTFMesh(const std::filesystem::path& InFilePath);
+		static LoadedMesh LoadGLTFMesh(RenderContext* InContext, const std::filesystem::path& InFilePath);
 	};
 
 }

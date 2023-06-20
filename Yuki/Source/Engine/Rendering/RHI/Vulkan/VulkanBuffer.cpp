@@ -87,6 +87,7 @@ namespace Yuki {
 		vkEndCommandBuffer(commandBuffer);
 
 		static_cast<VulkanQueue*>(m_Context->GetGraphicsQueue())->SubmitCommandBuffers(std::span<VkCommandBuffer>(&commandBuffer, 1), {}, {});
+		m_Context->GetGraphicsQueue()->WaitIdle();
 	}
 
 }

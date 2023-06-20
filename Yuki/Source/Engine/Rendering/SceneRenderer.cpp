@@ -25,11 +25,14 @@ namespace Yuki {
 		m_CommandBuffer->BeginRendering(m_Viewport);
 	}
 
-	void SceneRenderer::DrawMesh(const Mesh& InMesh)
+	void SceneRenderer::DrawMesh(const LoadedMesh& InMesh)
 	{
-		m_CommandBuffer->BindVertexBuffer(InMesh.VertexBuffer);
-		m_CommandBuffer->BindIndexBuffer(InMesh.IndexBuffer);
-		m_CommandBuffer->DrawIndexed(InMesh.IndexCount, 1, 0, 0, 0);
+		for (const auto& meshInstance : InMesh.Instances)
+		{
+			m_CommandBuffer->BindVertexBuffer(meshInstance.SourceMesh->VertexBuffer);
+			m_CommandBuffer->BindIndexBuffer(meshInstance.SourceMesh->IndexBuffer);
+			m_CommandBuffer->DrawIndexed(meshInstance.SourceMesh->Indices.size(), 1, 0, 0, 0);
+		}
 	}
 
 	void SceneRenderer::EndDraw()
