@@ -13,9 +13,9 @@ namespace Yuki {
 
 		RGBA8UNorm,
 		BGRA8UNorm,
-		Depth24UNorm
+		Depth32SFloat
 	};
 
-	static constexpr bool IsDepthFormat(ImageFormat InFormat) { return InFormat == ImageFormat::Depth24UNorm; }
+	static constexpr bool IsDepthFormat(ImageFormat InFormat) { return InFormat == ImageFormat::Depth32SFloat; }
 
 }

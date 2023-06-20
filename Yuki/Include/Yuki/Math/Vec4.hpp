@@ -19,6 +19,9 @@ namespace Yuki::Math {
 			: Values{InXYZ.X, InXYZ.Y, InXYZ.Z, InW}
 		{}
 
+		Vec4(std::array<float, 4> InValues)
+			: Values(InValues) {}
+
 		Vec4(float X, float Y, float Z, float W)
 			: Values{X, Y, Z, W}
 		{}

@@ -4,6 +4,7 @@
 #include <Yuki/EntryPoint.hpp>
 #include <Yuki/Core/Application.hpp>
 #include <Yuki/Core/Logging.hpp>
+#include <Yuki/Math/Math.hpp>
 #include <Yuki/EventSystem/ApplicationEvents.hpp>
 #include <Yuki/Rendering/RHI/GraphicsPipelineBuilder.hpp>
 #include <Yuki/Rendering/RHI/ShaderCompiler.hpp>
@@ -41,15 +42,15 @@ private:
 
 		m_Renderer = new Yuki::SceneRenderer(GetRenderContext(), m_Windows[0]->GetViewport());
 
-		//m_ColorAttachment = GetRenderContext()->CreateImage2D(1920, 1080, Yuki::ImageFormat::BGRA8UNorm);
-		//m_DepthAttachment = GetRenderContext()->CreateImage2D(1920, 1080, Yuki::ImageFormat::Depth24UNorm);
+		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
 
-
-		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/Susanne.gltf");
+		m_CameraTransform.SetIdentity();
 	}
 
 	void OnRunLoop() override
 	{
+		UpdateInput();
+
 		// Collect Viewports
 		std::vector<Yuki::Viewport*> viewports;
 		viewports.reserve(m_Windows.size());
@@ -66,13 +67,7 @@ private:
 		// Acquire Images for all Viewports
 		GetRenderContext()->GetGraphicsQueue()->AcquireImages(viewports, { m_Fence });
 
-		/*Yuki::RenderTarget renderTarget =
-		{
-			.ColorAttachments = { m_ColorAttachment->GetDefaultImageView() },
-			.DepthAttachment = m_DepthAttachment->GetDefaultImageView()
-		};*/
-
-		m_Renderer->BeginDraw();
+		m_Renderer->BeginDraw(m_CameraTransform);
 		m_Renderer->DrawMesh(m_Mesh);
 		m_Renderer->EndDraw();
 
@@ -80,6 +75,38 @@ private:
 
 		// Present all swapchain images
 		GetRenderContext()->GetGraphicsQueue()->Present(viewports, { m_Fence });
+	}
+
+	void UpdateInput()
+	{
+		const float movementSpeed = 0.01f;
+
+		if (m_Windows[0]->IsKeyPressed(Yuki::KeyCode::W))
+			m_CameraTranslation.Z -= movementSpeed;
+
+		if (m_Windows[0]->IsKeyPressed(Yuki::KeyCode::S))
+			m_CameraTranslation.Z += movementSpeed;
+
+		if (m_Windows[0]->IsKeyPressed(Yuki::KeyCode::D))
+			m_CameraTranslation.X -= movementSpeed;
+
+		if (m_Windows[0]->IsKeyPressed(Yuki::KeyCode::A))
+			m_CameraTranslation.X += movementSpeed;
+
+		if (m_Windows[0]->IsKeyPressed(Yuki::KeyCode::LeftShift))
+			m_CameraTranslation.Y -= movementSpeed;
+
+		if (m_Windows[0]->IsKeyPressed(Yuki::KeyCode::Space))
+			m_CameraTranslation.Y += movementSpeed;
+
+		if (m_Windows[0]->IsKeyPressed(Yuki::KeyCode::Q))
+			m_CameraRotation += 1.0f;
+
+		if (m_Windows[0]->IsKeyPressed(Yuki::KeyCode::E))
+			m_CameraRotation -= 1.0f;
+
+		m_CameraTransform = Yuki::Math::Mat4::Translation(m_CameraTranslation);
+		m_CameraTransform *= Yuki::Math::Mat4::Rotation(Yuki::Math::Quat(Yuki::Math::Radians(m_CameraRotation), { 0.0f, 1.0f, 0.0f }));
 	}
 
 	void OnDestroy() override
@@ -93,10 +120,11 @@ private:
 
 	Yuki::SceneRenderer* m_Renderer = nullptr;
 
-	Yuki::Image2D* m_ColorAttachment = nullptr;
-	Yuki::Image2D* m_DepthAttachment = nullptr;
-
 	Yuki::LoadedMesh m_Mesh;
+
+	Yuki::Math::Mat4 m_CameraTransform;
+	Yuki::Math::Vec3 m_CameraTranslation{0.0f, 0.0f, 0.0f};
+	float m_CameraRotation = 0.0f;
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

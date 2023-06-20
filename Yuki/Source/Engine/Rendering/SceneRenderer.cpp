@@ -13,7 +13,7 @@ namespace Yuki {
 		BuildPipelines();
 	}
 
-	void SceneRenderer::BeginDraw()
+	void SceneRenderer::BeginDraw(const Math::Mat4& InViewMatrix)
 	{
 		m_CommandPool->Reset();
 		m_CommandBuffer = m_CommandPool->NewCommandBuffer();
@@ -25,8 +25,7 @@ namespace Yuki {
 		m_CommandBuffer->BindPipeline(m_MeshPipeline.GetPtr());
 		m_CommandBuffer->BeginRendering(m_Viewport);
 
-		m_FrameTransforms.ViewProjection = Math::Mat4::PerspectiveInfReversedZ(Math::Radians(90.0f), 1920.0f / 1080.0f, 0.05f);
-		//m_FrameTransforms.ViewProjection *= Math::Mat4::Rotation(Math::Quat(Math::Radians(180.0f), { 0.0f, 1.0f, 0.0f }));
+		m_FrameTransforms.ViewProjection = Math::Mat4::PerspectiveInfReversedZ(Math::Radians(70.0f), 1920.0f / 1080.0f, 0.05f) * Math::Mat4::InvertAffine(InViewMatrix);
 	}
 
 	void SceneRenderer::DrawMesh(const LoadedMesh& InMesh)

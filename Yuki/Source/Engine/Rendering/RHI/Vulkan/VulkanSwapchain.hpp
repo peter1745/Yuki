@@ -30,6 +30,7 @@ namespace Yuki {
 
 		Image2D* GetCurrentImage() const override { return m_Images[m_CurrentImageIndex]; }
 		ImageView2D* GetCurrentImageView() const override { return m_ImageViews[m_CurrentImageIndex]; }
+		Image2D* GetDepthImage() const override { return m_DepthImage; }
 
 	private:
 		void Create(const VulkanSwapchainInfo& InSwapchainInfo);
@@ -42,6 +43,7 @@ namespace Yuki {
 		VkSwapchainKHR m_Swapchain = VK_NULL_HANDLE;
 		List<VulkanImage2D*> m_Images;
 		List<VulkanImageView2D*> m_ImageViews;
+		VulkanImage2D* m_DepthImage = nullptr;
 		uint32_t m_CurrentImageIndex = 0;
 
 		List<VkSemaphore> m_Semaphores;

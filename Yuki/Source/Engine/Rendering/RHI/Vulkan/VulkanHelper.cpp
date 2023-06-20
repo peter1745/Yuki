@@ -27,7 +27,7 @@ namespace Yuki {
 		case ImageFormat::None: return VK_FORMAT_UNDEFINED;
 		case ImageFormat::RGBA8UNorm: return VK_FORMAT_R8G8B8A8_UNORM;
 		case ImageFormat::BGRA8UNorm: return VK_FORMAT_B8G8R8A8_UNORM;
-		case ImageFormat::Depth24UNorm: return VK_FORMAT_X8_D24_UNORM_PACK32; // TODO(Peter): VK_FORMAT_D32_SFLOAT for AMD
+		case ImageFormat::Depth32SFloat: return VK_FORMAT_D32_SFLOAT; // TODO(Peter): VK_FORMAT_D32_SFLOAT for AMD
 		}
 
 		YUKI_VERIFY(false);
@@ -40,7 +40,7 @@ namespace Yuki {
 		{
 		case VK_FORMAT_R8G8B8A8_UNORM: return ImageFormat::RGBA8UNorm;
 		case VK_FORMAT_B8G8R8A8_UNORM: return ImageFormat::BGRA8UNorm;
-		case VK_FORMAT_X8_D24_UNORM_PACK32: return ImageFormat::Depth24UNorm;
+		case VK_FORMAT_D32_SFLOAT: return ImageFormat::Depth32SFloat;
 		default:
 			break;
 		}

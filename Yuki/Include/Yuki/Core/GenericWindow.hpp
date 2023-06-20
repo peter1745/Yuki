@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Yuki/IO/KeyCodes.hpp"
+
 #include "Yuki/Memory/Unique.hpp"
 
 #include "Yuki/EventSystem/Event.hpp"
@@ -37,6 +39,8 @@ namespace Yuki {
 		virtual const WindowAttributes& GetAttributes() const = 0;
 
 		virtual Viewport* GetViewport() const = 0;
+
+		virtual bool IsKeyPressed(KeyCode InKeyCode) const = 0;
 
 	public:
 		static Unique<GenericWindow> New(RenderContext* InRenderContext, WindowAttributes InAttributes);

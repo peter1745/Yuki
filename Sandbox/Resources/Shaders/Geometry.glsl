@@ -13,17 +13,22 @@ layout(push_constant, scalar) uniform PushConstants
     mat4 Transform;
 } InPushConstants;
 
+layout(location = 0) out vec3 OutNormal;
+
 void main()
 {
     gl_Position = InPushConstants.ViewProjection * InPushConstants.Transform * vec4(InVertexPos, 1.0);
+    OutNormal = InVertexNormal;
 }
 
 #stage : fragment
 #version 450 core
 
+layout(location = 0) in vec3 InNormal;
+
 layout(location = 0) out vec4 OutColor;
 
 void main()
 {
-    OutColor = vec4(0.2, 0.3, 0.8, 1.0);
+    OutColor = vec4(InNormal * 0.5 + 0.5, 1.0);
 }

@@ -131,6 +131,14 @@ namespace Yuki {
 		}
 	}
 
+	bool WindowsWindow::IsKeyPressed(KeyCode InKeyCode) const
+	{
+		if (m_WindowHandle != GetFocus())
+			return false;
+
+		return 0x80000000 & GetAsyncKeyState(static_cast<int>(InKeyCode));
+	}
+
 	Unique<GenericWindow> GenericWindow::New(RenderContext* InRenderContext, WindowAttributes InAttributes)
 	{
 		return Unique<WindowsWindow>::Create(InRenderContext, std::move(InAttributes));

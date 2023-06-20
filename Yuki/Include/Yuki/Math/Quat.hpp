@@ -8,7 +8,9 @@ namespace Yuki::Math {
 	{
 		Vec4 Value;
 
-		explicit Quat(float InAngle, const Vec3& InAxis);
+		Quat(const Vec4& InValue)
+			: Value(InValue) {}
+		Quat(float InAngle, const Vec3& InAxis);
 	};
 
 }

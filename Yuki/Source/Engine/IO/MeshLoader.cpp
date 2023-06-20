@@ -25,7 +25,8 @@ namespace Yuki {
 	void ProcessNodeHierarchy(fastgltf::Asset* InAsset, LoadedMesh& InMeshStorage, fastgltf::Node& InNode, const Math::Mat4& InParentTransform)
 	{
 		auto& TRS = std::get<fastgltf::Node::TRS>(InNode.transform);
-		Math::Mat4 transform = InParentTransform * (Math::Mat4::Translation(Math::Vec3{TRS.translation}) * Math::Mat4::Scale(Math::Vec3{TRS.scale}));
+		Math::Mat4 modelTransform = Math::Mat4::Translation(Math::Vec3{TRS.translation}) * Math::Mat4::Rotation(Math::Quat{ TRS.rotation }) * Math::Mat4::Scale(Math::Vec3{TRS.scale});
+		Math::Mat4 transform = InParentTransform * modelTransform;
 
 		if (InNode.meshIndex.has_value())
 		{

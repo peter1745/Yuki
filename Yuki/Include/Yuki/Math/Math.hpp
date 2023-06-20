@@ -10,7 +10,7 @@ namespace Yuki::Math {
 	template<typename T>
 	constexpr T Radians(T InValue)
 	{
-		return InValue * T(180.0 / PI<T>());
+		return InValue * T(PI<T>() / 180.0);
 	}
 
 	template<typename T>

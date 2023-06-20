@@ -13,7 +13,7 @@ namespace Yuki {
 	public:
 		SceneRenderer(RenderContext* InContext, Viewport* InViewport);
 
-		void BeginDraw();
+		void BeginDraw(const Math::Mat4& InViewMatrix);
 		void DrawMesh(const LoadedMesh& InMesh);
 		void EndDraw();
 

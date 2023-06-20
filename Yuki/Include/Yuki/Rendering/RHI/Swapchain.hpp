@@ -14,6 +14,7 @@ namespace Yuki {
 
 		virtual Image2D* GetCurrentImage() const = 0;
 		virtual ImageView2D* GetCurrentImageView() const = 0;
+		virtual Image2D* GetDepthImage() const = 0;
 
 		virtual void Destroy() = 0;
 

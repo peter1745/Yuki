@@ -26,6 +26,8 @@ namespace Yuki {
 
 		Viewport* GetViewport() const override { return m_Viewport; }
 
+		bool IsKeyPressed(KeyCode InKeyCode) const override;
+
 		HWND GetWindowHandle() const { return m_WindowHandle; }
 
 	public:

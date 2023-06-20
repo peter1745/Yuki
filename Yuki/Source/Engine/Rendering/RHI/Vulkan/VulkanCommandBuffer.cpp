@@ -147,7 +147,8 @@ namespace Yuki {
 	{
 		RenderTarget viewportTarget =
 		{
-			.ColorAttachments = { InViewport->GetSwapchain()->GetCurrentImageView() }
+			.ColorAttachments = { InViewport->GetSwapchain()->GetCurrentImageView() },
+			.DepthAttachment = InViewport->GetSwapchain()->GetDepthImage()->GetDefaultImageView()
 		};
 
 		BeginRendering(&viewportTarget);
