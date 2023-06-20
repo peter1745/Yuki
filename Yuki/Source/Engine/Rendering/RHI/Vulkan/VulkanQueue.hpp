@@ -7,6 +7,7 @@
 namespace Yuki {
 
 	class VulkanRenderContext;
+	class VulkanCommandBufferPool;
 
 	class VulkanQueue : public Queue
 	{
@@ -25,6 +26,8 @@ namespace Yuki {
 		VulkanRenderContext* m_Context = nullptr;
 		VkQueue m_Queue = VK_NULL_HANDLE;
 		uint32_t m_QueueFamily = 0;
+
+		VulkanCommandBufferPool* m_PresentTransitionPool = nullptr;
 
 		friend class VulkanRenderContext;
 	};

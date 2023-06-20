@@ -1,5 +1,6 @@
 #include "Rendering/SceneRenderer.hpp"
 #include "Rendering/RHI/ShaderCompiler.hpp"
+#include "Math/Math.hpp"
 
 namespace Yuki {
 
@@ -23,12 +24,17 @@ namespace Yuki {
 
 		m_CommandBuffer->BindPipeline(m_MeshPipeline.GetPtr());
 		m_CommandBuffer->BeginRendering(m_Viewport);
+
+		m_FrameTransforms.ViewProjection = Math::Mat4::PerspectiveInfReversedZ(Math::Radians(90.0f), 1920.0f / 1080.0f, 0.05f);
+		//m_FrameTransforms.ViewProjection *= Math::Mat4::Rotation(Math::Quat(Math::Radians(180.0f), { 0.0f, 1.0f, 0.0f }));
 	}
 
 	void SceneRenderer::DrawMesh(const LoadedMesh& InMesh)
 	{
 		for (const auto& meshInstance : InMesh.Instances)
 		{
+			m_FrameTransforms.Transform = meshInstance.Transform * Math::Mat4::Translation({ 0.0f, 0.0f, -2.0f });
+			m_CommandBuffer->PushConstants(m_MeshPipeline.GetPtr(), &m_FrameTransforms, sizeof(FrameTransforms), 0);
 			m_CommandBuffer->BindVertexBuffer(meshInstance.SourceMesh->VertexBuffer);
 			m_CommandBuffer->BindIndexBuffer(meshInstance.SourceMesh->IndexBuffer);
 			m_CommandBuffer->DrawIndexed(meshInstance.SourceMesh->Indices.size(), 1, 0, 0, 0);
@@ -53,6 +59,7 @@ namespace Yuki {
 				->AddVertexInput(0, ShaderDataType::Float3)
 				->AddVertexInput(1, ShaderDataType::Float3)
 				->AddVertexInput(2, ShaderDataType::Float2)
+				->PushConstant(0, sizeof(FrameTransforms))
 				->Build();
 		}
 

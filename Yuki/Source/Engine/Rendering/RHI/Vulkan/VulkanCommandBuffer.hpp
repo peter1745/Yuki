@@ -23,8 +23,12 @@ namespace Yuki {
 		void BeginRendering(Viewport* InViewport);
 		void EndRendering();
 
+		void PushConstants(GraphicsPipeline* InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset) override;
+
 		void Draw(uint32_t InVertexCount, uint32_t InInstanceCount, uint32_t InFirstVertex, uint32_t InFirstInstance) override;
 		void DrawIndexed(uint32_t InIndexCount, uint32_t InInstanceCount, uint32_t InFirstIndex, int32_t InVertexOffset, uint32_t InFirstInstance) override;
+
+		void TransitionImage(Image2D* InImage, ImageLayout InNewLayout) override;
 
 	private:
 		VulkanCommandBuffer(VulkanRenderContext* InContext, VulkanCommandBufferPool* InCommandPool);

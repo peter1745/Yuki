@@ -45,41 +45,6 @@ namespace Yuki {
 		m_Context->GetAllocator().DestroyImage(m_Image, m_Allocation);
 	}
 
-	void VulkanImage2D::Transition(VkCommandBuffer InCommandBuffer, const VulkanImageTransition& InTransitionInfo)
-	{
-		VkImageAspectFlags aspectFlags = IsDepthFormat(m_Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-
-		VkImageMemoryBarrier2 barrier = {
-			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-			.srcStageMask = m_CurrentPipelineStage,
-			.srcAccessMask = m_CurrentAccessFlags,
-			.dstStageMask = InTransitionInfo.DstPipelineStage,
-			.dstAccessMask = InTransitionInfo.DstAccessFlags,
-			.oldLayout = m_CurrentLayout,
-			.newLayout = InTransitionInfo.DstImageLayout,
-			.image = m_Image,
-			.subresourceRange = {
-			    .aspectMask = aspectFlags,
-			    .baseMipLevel = 0,
-			    .levelCount = 1,
-			    .baseArrayLayer = 0,
-			    .layerCount = 1,
-			}
-		};
-
-		VkDependencyInfo dependencyInfo = {
-			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-			.imageMemoryBarrierCount = 1,
-			.pImageMemoryBarriers = &barrier,
-		};
-
-		vkCmdPipelineBarrier2(InCommandBuffer, &dependencyInfo);
-
-		m_CurrentPipelineStage = InTransitionInfo.DstPipelineStage;
-		m_CurrentAccessFlags = InTransitionInfo.DstAccessFlags;
-		m_CurrentLayout = InTransitionInfo.DstImageLayout;
-	}
-
 	VulkanImageView2D::VulkanImageView2D(VulkanRenderContext* InContext, VulkanImage2D* InImage)
 		: m_Context(InContext), m_Image(InImage)
 	{

@@ -6,6 +6,11 @@ namespace Yuki {
 
 	class ImageView2D;
 
+	enum class ImageLayout
+	{
+		ColorAttachment, DepthAttachment, Present
+	};
+
 	class Image2D
 	{
 	public:

@@ -6,13 +6,6 @@
 
 namespace Yuki {
 
-	struct VulkanImageTransition
-	{
-		VkPipelineStageFlags2 DstPipelineStage;
-		VkAccessFlags2 DstAccessFlags;
-		VkImageLayout DstImageLayout;
-	};
-
 	class VulkanImage2D : public Image2D
 	{
 	public:
@@ -25,8 +18,6 @@ namespace Yuki {
 		ImageView2D* GetDefaultImageView() const override { return m_DefaultImageView.GetPtr(); }
 
 		VkImage GetVkImage() const { return m_Image; }
-
-		void Transition(VkCommandBuffer InCommandBuffer, const VulkanImageTransition& InTransitionInfo);
 
 	private:
 		VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat);
@@ -50,6 +41,7 @@ namespace Yuki {
 	private:
 		friend class VulkanRenderContext;
 		friend class VulkanSwapchain;
+		friend class VulkanCommandBuffer;
 	};
 
 	class VulkanImageView2D : public ImageView2D

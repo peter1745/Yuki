@@ -45,7 +45,7 @@ private:
 		//m_DepthAttachment = GetRenderContext()->CreateImage2D(1920, 1080, Yuki::ImageFormat::Depth24UNorm);
 
 
-		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/Susanne.gltf");
 	}
 
 	void OnRunLoop() override
@@ -76,7 +76,7 @@ private:
 		m_Renderer->DrawMesh(m_Mesh);
 		m_Renderer->EndDraw();
 
-		GetRenderContext()->GetGraphicsQueue()->SubmitCommandBuffers({ m_Renderer->GetCurrentCommandBuffer() }, { m_Fence }, { m_Fence });
+		GetRenderContext()->GetGraphicsQueue()->SubmitCommandBuffers({ m_Renderer->GetCurrentCommandBuffer() }, { m_Fence }, {});
 
 		// Present all swapchain images
 		GetRenderContext()->GetGraphicsQueue()->Present(viewports, { m_Fence });

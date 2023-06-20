@@ -4,6 +4,7 @@
 #include "VulkanImage2D.hpp"
 #include "VulkanSwapchain.hpp"
 #include "VulkanCommandBufferPool.hpp"
+#include "VulkanHelper.hpp"
 
 #include "Rendering/RHI/RenderTarget.hpp"
 
@@ -84,17 +85,10 @@ namespace Yuki {
 
 		VkRenderingAttachmentInfo depthAttachmentInfo = { .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 
-		VulkanImageTransition imageTransition =
-		{
-			.DstPipelineStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-			.DstAccessFlags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-			.DstImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-		};
-
 		VkClearValue clearColor = {};
-		clearColor.color.float32[0] = 1.0f;
-		clearColor.color.float32[1] = 0.0f;
-		clearColor.color.float32[2] = 0.0f;
+		clearColor.color.float32[0] = 0.1f;
+		clearColor.color.float32[1] = 0.1f;
+		clearColor.color.float32[2] = 0.1f;
 		clearColor.color.float32[3] = 1.0f;
 
 		uint32_t width = 0, height = 0;
@@ -104,11 +98,10 @@ namespace Yuki {
 			if (!colorAttachment)
 				continue;
 
-			auto* image = static_cast<VulkanImage2D*>(colorAttachment->GetImage());
-			image->Transition(m_CommandBuffer, imageTransition);
+			TransitionImage(colorAttachment->GetImage(), ImageLayout::ColorAttachment);
 
-			width = image->GetWidth();
-			height = image->GetHeight();
+			width = colorAttachment->GetImage()->GetWidth();
+			height = colorAttachment->GetImage()->GetHeight();
 
 			colorAttachmentInfos[colorAttachmentInfosCount++] =
 			{
@@ -123,17 +116,9 @@ namespace Yuki {
 
 		if (InRenderTarget->DepthAttachment)
 		{
-			VulkanImageTransition depthImageTransition =
-			{
-				.DstPipelineStage = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-				.DstAccessFlags = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-				.DstImageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
-			};
+			TransitionImage(InRenderTarget->DepthAttachment->GetImage(), ImageLayout::DepthAttachment);
 
-			auto* image = static_cast<VulkanImage2D*>(InRenderTarget->DepthAttachment->GetImage());
-			image->Transition(m_CommandBuffer, depthImageTransition);
-
-			VkClearValue depthClearValue = { .depthStencil = {.depth = 1.0f } };
+			VkClearValue depthClearValue = { .depthStencil = {.depth = 0.0f } };
 			depthAttachmentInfo.imageView = static_cast<VulkanImageView2D*>(InRenderTarget->DepthAttachment)->GetVkImageView();
 			depthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 			depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -173,6 +158,12 @@ namespace Yuki {
 		vkCmdEndRendering(m_CommandBuffer);
 	}
 
+	void VulkanCommandBuffer::PushConstants(GraphicsPipeline* InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset)
+	{
+		auto* pipeline = static_cast<VulkanGraphicsPipeline*>(InPipeline);
+		vkCmdPushConstants(m_CommandBuffer, pipeline->Layout, VK_SHADER_STAGE_ALL, InOffset, InDataSize, InData);
+	}
+
 	void VulkanCommandBuffer::Draw(uint32_t InVertexCount, uint32_t InInstanceCount, uint32_t InFirstVertex, uint32_t InFirstInstance)
 	{
 		vkCmdDraw(m_CommandBuffer, InVertexCount, InInstanceCount, InFirstVertex, InFirstInstance);
@@ -181,6 +172,47 @@ namespace Yuki {
 	void VulkanCommandBuffer::DrawIndexed(uint32_t InIndexCount, uint32_t InInstanceCount, uint32_t InFirstIndex, int32_t InVertexOffset, uint32_t InFirstInstance)
 	{
 		vkCmdDrawIndexed(m_CommandBuffer, InIndexCount, InInstanceCount, InFirstIndex, InVertexOffset, InFirstInstance);
+	}
+
+	void VulkanCommandBuffer::TransitionImage(Image2D* InImage, ImageLayout InNewLayout)
+	{
+		auto* image = static_cast<VulkanImage2D*>(InImage);
+
+		VkImageAspectFlags aspectFlags = IsDepthFormat(InImage->GetImageFormat()) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+
+		VkImageLayout imageLayout = VulkanHelper::ImageLayoutToVkImageLayout(InNewLayout);
+
+		VkImageMemoryBarrier2 barrier =
+		{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+			.srcStageMask = image->m_CurrentPipelineStage,
+			.srcAccessMask = image->m_CurrentAccessFlags,
+			.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, // TODO(Peter): Handle this properly (preferably in an abstracted way)
+			.dstAccessMask = 0, // TODO(Peter): Handle this properly (preferably in an abstracted way)
+			.oldLayout = image->m_CurrentLayout,
+			.newLayout = imageLayout,
+			.image = image->GetVkImage(),
+			.subresourceRange = {
+				.aspectMask = aspectFlags,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			}
+		};
+
+		VkDependencyInfo dependencyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+			.imageMemoryBarrierCount = 1,
+			.pImageMemoryBarriers = &barrier,
+		};
+
+		vkCmdPipelineBarrier2(m_CommandBuffer, &dependencyInfo);
+
+		image->m_CurrentPipelineStage = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		image->m_CurrentAccessFlags = 0;
+		image->m_CurrentLayout = imageLayout;
 	}
 
 }

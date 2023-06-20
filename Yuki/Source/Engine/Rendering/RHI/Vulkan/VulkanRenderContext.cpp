@@ -187,6 +187,11 @@ namespace Yuki {
 		return commandBuffer;
 	}
 
+	void VulkanRenderContext::DestroyTransientCommandBuffer(VkCommandBuffer InCommandBuffer) const
+	{
+		vkFreeCommandBuffers(m_Device, m_TransientCommandPool, 1, &InCommandBuffer);
+	}
+
 	VkSurfaceCapabilitiesKHR VulkanRenderContext::QuerySurfaceCapabilities(VkSurfaceKHR InSurface) const
 	{
 		VkSurfaceCapabilitiesKHR surfaceCapabilities;
@@ -320,6 +325,7 @@ namespace Yuki {
 		{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
 			.pNext = &features13,
+			.scalarBlockLayout = VK_TRUE,
 			.timelineSemaphore = VK_TRUE,
 		};
 

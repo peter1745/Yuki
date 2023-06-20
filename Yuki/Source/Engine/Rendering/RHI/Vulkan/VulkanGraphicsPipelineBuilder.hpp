@@ -13,6 +13,7 @@ namespace Yuki {
 
 		GraphicsPipelineBuilder* WithShader(ResourceHandle<Shader> InShaderHandle) override;
 		GraphicsPipelineBuilder* AddVertexInput(uint32_t InLocation, ShaderDataType InDataType) override;
+		GraphicsPipelineBuilder* PushConstant(uint32_t InOffset, uint32_t InSize) override;
 		GraphicsPipelineBuilder* ColorAttachment(ImageFormat InFormat) override;
 		GraphicsPipelineBuilder* DepthAttachment() override;
 		Unique<GraphicsPipeline> Build() override;
@@ -25,6 +26,8 @@ namespace Yuki {
 		List<VkPipelineShaderStageCreateInfo> m_ShaderStageInfos;
 		List<VkVertexInputAttributeDescription> m_VertexInputAttributes;
 		uint32_t m_VertexInputAttributesOffset = 0;
+
+		List<VkPushConstantRange> m_PushConstants;
 
 		List<VkFormat> m_ColorAttachmentFormats;
 		List<VkPipelineColorBlendAttachmentState> m_ColorAttachmentBlendStates;

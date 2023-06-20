@@ -32,6 +32,12 @@ namespace Yuki {
 
 		Unique<GraphicsPipeline> m_MeshPipeline = nullptr;
 
+		struct FrameTransforms
+		{
+			Math::Mat4 ViewProjection;
+			Math::Mat4 Transform;
+		} m_FrameTransforms;
+
 	};
 
 }

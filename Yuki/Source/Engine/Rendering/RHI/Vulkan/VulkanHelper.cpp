@@ -67,4 +67,17 @@ namespace Yuki {
 		return result;
 	}
 
+	VkImageLayout VulkanHelper::ImageLayoutToVkImageLayout(ImageLayout InLayout)
+	{
+		switch (InLayout)
+		{
+		case ImageLayout::ColorAttachment: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		case ImageLayout::DepthAttachment: return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+		case ImageLayout::Present: return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		}
+
+		YUKI_VERIFY(false);
+		return VK_IMAGE_LAYOUT_UNDEFINED;
+	}
+
 }

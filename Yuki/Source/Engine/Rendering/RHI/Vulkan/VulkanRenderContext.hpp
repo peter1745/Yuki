@@ -54,6 +54,7 @@ namespace Yuki {
 		void DestroyCommandBufferPool(CommandBufferPool* InCommandBufferPool) override;
 
 		VkCommandBuffer CreateTransientCommandBuffer() const;
+		void DestroyTransientCommandBuffer(VkCommandBuffer InCommandBuffer) const;
 
 	public:
 		VulkanAllocator& GetAllocator() { return m_Allocator; }

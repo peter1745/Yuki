@@ -74,6 +74,19 @@ namespace Yuki {
 		return this;
 	}
 
+	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::PushConstant(uint32_t InOffset, uint32_t InSize)
+	{
+		VkPushConstantRange range =
+		{
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.offset = InOffset,
+			.size = InSize,
+		};
+		m_PushConstants.emplace_back(std::move(range));
+		
+		return this;
+	}
+
 	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::ColorAttachment(ImageFormat InFormat)
 	{
 		YUKI_VERIFY(InFormat != ImageFormat::Depth24UNorm);
@@ -106,7 +119,7 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
 			.colorAttachmentCount = uint32_t(m_ColorAttachmentFormats.size()),
 			.pColorAttachmentFormats = m_ColorAttachmentFormats.data(),
-			.depthAttachmentFormat = m_HasDepthAttachment ? VK_FORMAT_X8_D24_UNORM_PACK32 : VK_FORMAT_UNDEFINED,
+			.depthAttachmentFormat = m_HasDepthAttachment ? VK_FORMAT_D32_SFLOAT : VK_FORMAT_UNDEFINED,
 			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 		};
 
@@ -115,8 +128,8 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = 0,
 			.pSetLayouts = nullptr,
-			.pushConstantRangeCount = 0,
-			.pPushConstantRanges = nullptr
+			.pushConstantRangeCount = uint32_t(m_PushConstants.size()),
+			.pPushConstantRanges = m_PushConstants.data(),
 		};
 
 		VkPipelineLayout pipelineLayout;
@@ -178,7 +191,7 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 			.depthTestEnable = m_HasDepthAttachment ? VK_TRUE : VK_FALSE,
 			.depthWriteEnable = m_HasDepthAttachment ? VK_TRUE : VK_FALSE,
-			.depthCompareOp = VK_COMPARE_OP_LESS,
+			.depthCompareOp = VK_COMPARE_OP_GREATER,
 			.depthBoundsTestEnable = VK_FALSE,
 			.stencilTestEnable = VK_FALSE,
 			.front = {

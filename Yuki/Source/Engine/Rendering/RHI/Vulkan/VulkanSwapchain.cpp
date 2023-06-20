@@ -28,63 +28,6 @@ namespace Yuki {
 		vkDestroySwapchainKHR(m_Context->GetDevice(), m_Swapchain, nullptr);
 	}
 
-	/*void VulkanSwapchain::BeginRendering(CommandBuffer* InCmdBuffer)
-	{
-		VulkanImageTransition imageTransition =
-		{
-			.DstPipelineStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-			.DstAccessFlags = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-			.DstImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-		};
-
-		m_Images[m_CurrentImage]->Transition(InCmdBuffer->As<VkCommandBuffer>(), imageTransition);
-
-		VkClearValue clearColor = {};
-		clearColor.color.float32[0] = 1.0f;
-		clearColor.color.float32[1] = 0.0f;
-		clearColor.color.float32[2] = 0.0f;
-		clearColor.color.float32[3] = 1.0f;
-
-		VkRenderingAttachmentInfo colorAttachmentInfo =
-		{
-			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-			.imageView = m_ImageViews[m_CurrentImage]->GetVkImageView(),
-			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.clearValue = clearColor,
-		};
-
-		VkRenderingInfo renderingInfo =
-		{
-			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-			.renderArea = {
-			    .offset = { 0, 0 },
-			    .extent = { m_Images[m_CurrentImage]->GetWidth(), m_Images[m_CurrentImage]->GetHeight() },
-			},
-			.layerCount = 1,
-			.viewMask = 0,
-			.colorAttachmentCount = 1,
-			.pColorAttachments = &colorAttachmentInfo
-		};
-
-		vkCmdBeginRendering(InCmdBuffer->As<VkCommandBuffer>(), &renderingInfo);
-	}
-
-	void VulkanSwapchain::EndRendering(CommandBuffer* InCmdBuffer)
-	{
-		vkCmdEndRendering(InCmdBuffer->As<VkCommandBuffer>());
-
-		VulkanImageTransition imageTransition =
-		{
-			.DstPipelineStage = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
-			.DstAccessFlags = 0,
-			.DstImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-		};
-
-		m_Images[m_CurrentImage]->Transition(InCmdBuffer->As<VkCommandBuffer>(), imageTransition);
-	}*/
-
 	void VulkanSwapchain::Create(const VulkanSwapchainInfo& InSwapchainInfo)
 	{
 		uint32_t queueFamilyIndex = static_cast<VulkanQueue*>(m_Context->GetGraphicsQueue())->GetFamilyIndex();

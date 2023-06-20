@@ -22,16 +22,20 @@ namespace Yuki {
 
 	static Buffer* s_StagingBuffer = nullptr;
 
-	void ProcessNodeHierarchy(fastgltf::Asset* InAsset, LoadedMesh& InMeshStorage, fastgltf::Node& InNode)
+	void ProcessNodeHierarchy(fastgltf::Asset* InAsset, LoadedMesh& InMeshStorage, fastgltf::Node& InNode, const Math::Mat4& InParentTransform)
 	{
+		auto& TRS = std::get<fastgltf::Node::TRS>(InNode.transform);
+		Math::Mat4 transform = InParentTransform * (Math::Mat4::Translation(Math::Vec3{TRS.translation}) * Math::Mat4::Scale(Math::Vec3{TRS.scale}));
+
 		if (InNode.meshIndex.has_value())
 		{
 			auto& meshInstance = InMeshStorage.Instances.emplace_back();
 			meshInstance.SourceMesh = &InMeshStorage.Meshes[InNode.meshIndex.value()];
+			meshInstance.Transform = transform;
 		}
 
 		for (auto childNodeIndex : InNode.children)
-			ProcessNodeHierarchy(InAsset, InMeshStorage, InAsset->nodes[childNodeIndex]);
+			ProcessNodeHierarchy(InAsset, InMeshStorage, InAsset->nodes[childNodeIndex], transform);
 	}
 
 	LoadedMesh MeshLoader::LoadGLTFMesh(RenderContext* InContext, const std::filesystem::path& InFilePath)
@@ -183,11 +187,11 @@ namespace Yuki {
 
 		result.Instances.reserve(scene->nodeIndices.size());
 
+		Math::Mat4 transform;
+		transform.SetIdentity();
+
 		for (auto nodeIndex : scene->nodeIndices)
-		{
-			auto& rootNode = asset->nodes[nodeIndex];
-			ProcessNodeHierarchy(asset.get(), result, rootNode);
-		}
+			ProcessNodeHierarchy(asset.get(), result, asset->nodes[nodeIndex], transform);
 
 		return result;
 	}

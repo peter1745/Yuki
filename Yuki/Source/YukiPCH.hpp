@@ -12,6 +12,8 @@
 
 #include <functional>
 
+#include <cmath>
+
 #include <random>
 
 #include <ranges>

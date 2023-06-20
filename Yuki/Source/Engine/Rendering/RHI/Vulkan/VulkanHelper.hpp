@@ -3,7 +3,7 @@
 #include "Core/Core.hpp"
 #include "VulkanQueue.hpp"
 
-#include "Rendering/ImageFormat.hpp"
+#include "Rendering/RHI/Image2D.hpp"
 #include "Rendering/RHI/Buffer.hpp"
 
 namespace Yuki {
@@ -28,6 +28,8 @@ namespace Yuki {
 		static ImageFormat VkFormatToImageFormat(VkFormat InFormat);
 
 		static VkBufferUsageFlags BufferTypeToVkUsageFlags(BufferType InType);
+
+		static VkImageLayout ImageLayoutToVkImageLayout(ImageLayout InLayout);
 
 	};
 

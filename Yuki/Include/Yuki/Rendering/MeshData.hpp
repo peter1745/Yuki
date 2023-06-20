@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Yuki/Math/Vec3.hpp"
 #include "Yuki/Math/Vec2.hpp"
+#include "Yuki/Math/Mat4.hpp"
 
 #include "Yuki/Rendering/RHI/RenderContext.hpp"
 
@@ -26,6 +26,7 @@ namespace Yuki {
 	struct MeshInstance
 	{
 		Mesh* SourceMesh;
+		Math::Mat4 Transform;
 	};
 
 	struct LoadedMesh
