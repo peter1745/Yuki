@@ -12,6 +12,8 @@ namespace Yuki {
 	class CommandBufferPool
 	{
 	public:
+		virtual ~CommandBufferPool() = default;
+
 		virtual CommandBuffer* NewCommandBuffer() = 0;
 
 		virtual void Reset() = 0;

@@ -88,7 +88,6 @@ namespace Yuki {
 
 		for (auto& material : InAsset->materials)
 		{
-			auto& materialData = InMeshData.Materials.emplace_back();
 			YUKI_VERIFY(material.pbrData.has_value());
 
 			auto& pbrData = material.pbrData.value();
@@ -170,7 +169,7 @@ namespace Yuki {
 					fastgltf::iterateAccessor<Math::Vec3>(*asset, positionAccessor, [&](Math::Vec3 InPosition)
 					{
 						meshData.Vertices[vertexID].Position = InPosition;
-						meshData.Vertices[vertexID].MaterialIndex = primitive.materialIndex.value_or(0);
+						meshData.Vertices[vertexID].MaterialIndex = uint32_t(primitive.materialIndex.value_or(0));
 						vertexID++;
 					});
 					vertexID = baseVertexOffset;

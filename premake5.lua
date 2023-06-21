@@ -32,7 +32,8 @@ workspace "Yuki"
 		defines { "_CRT_SECURE_NO_WARNINGS" }
 
 		disablewarnings {
-            "4100" -- Unreferenced Formal Parameter
+            "4100", -- Unreferenced Formal Parameter
+			"4201"
         }
 
 	filter "toolset:clang"
