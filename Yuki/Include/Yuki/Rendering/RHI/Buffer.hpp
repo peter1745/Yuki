@@ -25,8 +25,6 @@ namespace Yuki {
 
 		virtual void SetData(const void* InData, uint32_t InDataSize, uint32_t InDstOffset = 0) = 0;
 
-		virtual void UploadData(Buffer* InStagingBuffer, const BufferUploadInfo* InUploadInfo = nullptr) = 0;
-
 		virtual const BufferInfo& GetInfo() const = 0;
 
 	};

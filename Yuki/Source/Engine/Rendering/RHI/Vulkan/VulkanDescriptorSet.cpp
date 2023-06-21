@@ -33,6 +33,14 @@ namespace Yuki {
 		vkCreateDescriptorPool(InContext->GetDevice(), &descriptorPoolInfo, nullptr, &m_Pool);
 	}
 
+	VulkanDescriptorPool::~VulkanDescriptorPool()
+	{
+		for (auto descriptorSet : m_Sets)
+			vkDestroyDescriptorSetLayout(m_Context->GetDevice(), descriptorSet->m_Layout->Handle, nullptr);
+
+		vkDestroyDescriptorPool(m_Context->GetDevice(), m_Pool, nullptr);
+	}
+
 	DescriptorSet* VulkanDescriptorPool::AllocateSet(DescriptorSetLayout* InSetLayout)
 	{
 		auto* setLayout = static_cast<VulkanDescriptorSetLayout*>(InSetLayout);

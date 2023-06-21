@@ -35,13 +35,15 @@ namespace Yuki {
 	VulkanImage2D::VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, VkImage InExistingImage)
 		: m_Context(InContext), m_Width(InWidth), m_Height(InHeight), m_Format(InFormat), m_Image(InExistingImage)
 	{
+		m_DefaultImageView = Unique<ImageView2D>(new VulkanImageView2D(InContext, this));
 	}
 
 	VulkanImage2D::~VulkanImage2D()
 	{
 		m_DefaultImageView.Reset();
 
-		m_Context->GetAllocator().DestroyImage(m_Image, m_Allocation);
+		if (m_Allocation)
+			m_Context->GetAllocator().DestroyImage(m_Image, m_Allocation);
 	}
 
 	VulkanImageView2D::VulkanImageView2D(VulkanRenderContext* InContext, VulkanImage2D* InImage)

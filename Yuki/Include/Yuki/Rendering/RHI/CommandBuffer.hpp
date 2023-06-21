@@ -8,7 +8,7 @@
 namespace Yuki {
 
 	class Buffer;
-	struct GraphicsPipeline;
+	class GraphicsPipeline;
 	class Viewport;
 	struct RenderTarget;
 

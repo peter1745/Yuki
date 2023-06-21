@@ -4,11 +4,14 @@
 
 namespace Yuki {
 
-	struct Shader;
+	class Shader;
 
-	struct GraphicsPipeline
+	class GraphicsPipeline
 	{
-		Shader* ShaderHandle;
+	public:
+		virtual ~GraphicsPipeline() = default;
+
+		virtual Shader* GetShader() = 0;
 	};
 
 }

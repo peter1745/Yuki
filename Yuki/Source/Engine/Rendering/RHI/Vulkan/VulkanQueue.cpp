@@ -72,7 +72,7 @@ namespace Yuki {
 			return;
 
 		if (m_PresentTransitionPool == nullptr)
-			m_PresentTransitionPool = (VulkanCommandBufferPool*)m_Context->CreateCommandBufferPool({ .IsTransient = false });
+			m_PresentTransitionPool = m_Context->CreateCommandBufferPool({ .IsTransient = false });
 
 		// Transition images to present
 		{

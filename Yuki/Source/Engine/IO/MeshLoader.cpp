@@ -211,47 +211,6 @@ namespace Yuki {
 					vertexID = baseVertexOffset;
 				}
 			}
-
-			if (s_StagingBuffer == nullptr)
-			{
-				Yuki::BufferInfo bufferInfo =
-				{
-					.Type = BufferType::StagingBuffer,
-					.Size = 100 * 1024 * 1024,
-					.PersistentlyMapped = true
-				};
-				s_StagingBuffer = InContext->CreateBuffer(bufferInfo);
-			}
-
-			{
-				uint32_t vertexDataSize = sizeof(Vertex) * uint32_t(meshData.Vertices.size());
-
-				s_StagingBuffer->SetData(meshData.Vertices.data(), vertexDataSize);
-
-				Yuki::BufferInfo bufferInfo =
-				{
-					.Type = BufferType::VertexBuffer,
-					.Size = vertexDataSize
-				};
-				meshData.VertexBuffer = InContext->CreateBuffer(bufferInfo);
-				YUKI_VERIFY(bufferInfo.Size < 100 * 1024 * 1024);
-				meshData.VertexBuffer->UploadData(s_StagingBuffer);
-			}
-
-			{
-				uint32_t indexDataSize = sizeof(uint32_t) * uint32_t(meshData.Indices.size());
-
-				s_StagingBuffer->SetData(meshData.Indices.data(), indexDataSize);
-
-				Yuki::BufferInfo bufferInfo =
-				{
-					.Type = BufferType::IndexBuffer,
-					.Size = indexDataSize
-				};
-				meshData.IndexBuffer = InContext->CreateBuffer(bufferInfo);
-				YUKI_VERIFY(bufferInfo.Size < 100 * 1024 * 1024);
-				meshData.IndexBuffer->UploadData(s_StagingBuffer);
-			}
 		}
 		YUKI_STOPWATCH_STOP();
 

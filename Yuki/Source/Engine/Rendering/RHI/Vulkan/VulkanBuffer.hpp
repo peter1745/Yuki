@@ -13,8 +13,6 @@ namespace Yuki {
 		
 		void SetData(const void* InData, uint32_t InDataSize, uint32_t InDstOffset = 0) override;
 
-		void UploadData(Buffer* InStagingBuffer, const BufferUploadInfo* InUploadInfo) override;
-
 		const BufferInfo& GetInfo() const override { return m_Info; }
 
 		VkBuffer GetVkBuffer() const { return m_Buffer; }

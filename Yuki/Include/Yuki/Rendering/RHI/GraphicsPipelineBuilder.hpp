@@ -17,7 +17,7 @@ namespace Yuki {
 		virtual ~GraphicsPipelineBuilder() = default;
 
 		virtual GraphicsPipelineBuilder& Start() = 0;
-		virtual GraphicsPipelineBuilder& WithShader(ResourceHandle<Shader> InShaderHandle) = 0;
+		virtual GraphicsPipelineBuilder& WithShader(Shader* InShader) = 0;
 		virtual GraphicsPipelineBuilder& AddVertexInput(uint32_t InLocation, ShaderDataType InDataType) = 0;
 		virtual GraphicsPipelineBuilder& PushConstant(uint32_t InOffset, uint32_t InSize) = 0;
 		virtual GraphicsPipelineBuilder& AddDescriptorSetLayout(DescriptorSetLayout* InLayout) = 0;

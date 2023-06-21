@@ -19,10 +19,7 @@ namespace Yuki {
 		m_Semaphores.clear();
 		m_SemaphoreIndex = 0;
 
-		for (auto imageView : m_ImageViews)
-			m_Context->DestroyImageView2D(imageView);
 		m_ImageViews.clear();
-
 		m_Images.clear();
 
 		vkDestroySwapchainKHR(m_Context->GetDevice(), m_Swapchain, nullptr);
@@ -57,15 +54,15 @@ namespace Yuki {
 			List<VkImage> swapchainImages;
 			VulkanHelper::Enumerate(vkGetSwapchainImagesKHR, swapchainImages, m_Context->GetDevice(), m_Swapchain);
 			m_Images.reserve(swapchainImages.size());
-			for (auto image : swapchainImages)
-				m_Images.emplace_back(new VulkanImage2D(m_Context, InSwapchainInfo.ImageExtent.width, InSwapchainInfo.ImageExtent.height, VulkanHelper::VkFormatToImageFormat(InSwapchainInfo.SurfaceFormat.format), image));
+			for (auto& image : swapchainImages)
+				m_Images.emplace_back(Unique(new VulkanImage2D(m_Context, InSwapchainInfo.ImageExtent.width, InSwapchainInfo.ImageExtent.height, VulkanHelper::VkFormatToImageFormat(InSwapchainInfo.SurfaceFormat.format), image)));
 
 			m_ImageViews.reserve(m_Images.size());
-			for (auto image : m_Images)
-				m_ImageViews.emplace_back(static_cast<VulkanImageView2D*>(m_Context->CreateImageView2D(image)));
+			for (auto& image : m_Images)
+				m_ImageViews.emplace_back(m_Context->CreateImageView2D(image));
 		}
 
-		m_DepthImage = (VulkanImage2D*)m_Context->CreateImage2D(InSwapchainInfo.ImageExtent.width, InSwapchainInfo.ImageExtent.height, ImageFormat::Depth32SFloat, ImageUsage::DepthAttachment);
+		m_DepthImage = m_Context->CreateImage2D(InSwapchainInfo.ImageExtent.width, InSwapchainInfo.ImageExtent.height, ImageFormat::Depth32SFloat, ImageUsage::DepthAttachment);
 
 		// Create binary semaphores
 		{

@@ -33,7 +33,7 @@ workspace "Yuki"
 
 		disablewarnings {
             "4100", -- Unreferenced Formal Parameter
-			"4201"
+			"4201" -- Anonymous Struct
         }
 
 		buildoptions {

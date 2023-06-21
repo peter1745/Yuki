@@ -24,7 +24,7 @@ namespace Yuki {
 
 		void ProcessEvents() override;
 
-		Viewport* GetViewport() const override { return m_Viewport; }
+		Viewport* GetViewport() const override { return m_Viewport.GetPtr(); }
 
 		bool IsKeyPressed(KeyCode InKeyCode) const override;
 
@@ -37,7 +37,7 @@ namespace Yuki {
 		HWND m_WindowHandle = nullptr;
 		WindowAttributes m_Attributes;
 		RenderContext* m_RenderContext;
-		Viewport* m_Viewport = nullptr;
+		Unique<Viewport> m_Viewport = nullptr;
 
 	private:
 		 WindowData m_WindowData;

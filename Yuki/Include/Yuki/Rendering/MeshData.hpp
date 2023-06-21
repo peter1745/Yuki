@@ -25,8 +25,8 @@ namespace Yuki {
 		List<Vertex> Vertices;
 		List<uint32_t> Indices;
 
-		Buffer* VertexBuffer = nullptr;
-		Buffer* IndexBuffer = nullptr;
+		Unique<Buffer> VertexBuffer = nullptr;
+		Unique<Buffer> IndexBuffer = nullptr;
 	};
 
 	struct MeshInstance
@@ -47,7 +47,7 @@ namespace Yuki {
 		List<Mesh> Meshes;
 		List<MeshInstance> Instances;
 		List<LoadedImage> LoadedImages;
-		List<Image2D*> Textures;
+		List<Unique<Image2D>> Textures;
 		List<MeshMaterial> Materials;
 	};
 

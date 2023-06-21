@@ -10,6 +10,8 @@ namespace Yuki {
 	class VulkanCommandBufferPool : public CommandBufferPool
 	{
 	public:
+		~VulkanCommandBufferPool();
+
 		CommandBuffer* NewCommandBuffer() override;
 
 		void Reset() override;

@@ -44,10 +44,12 @@ namespace Yuki {
 		return 0;
 	}
 
-	struct Shader
+	class Shader
 	{
-		std::string Name;
-		Map<ShaderModuleType, void*> ModuleHandles;
+	public:
+		virtual ~Shader() = default;
+
+		virtual std::string_view GetName() const = 0;
 	};
 
 }

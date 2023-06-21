@@ -22,4 +22,9 @@ namespace Yuki {
 		vkCreateSampler(InContext->GetDevice(), &samplerInfo, nullptr, &m_Sampler);
 	}
 
+	VulkanSampler::~VulkanSampler()
+	{
+		vkDestroySampler(m_Context->GetDevice(), m_Sampler, nullptr);
+	}
+
 }

@@ -9,7 +9,7 @@ namespace Yuki {
 	public:
 		virtual ~ShaderCompiler() = default;
 
-		virtual ResourceHandle<Shader> CompileFromFile(const std::filesystem::path& InFilePath) = 0;
+		virtual Unique<Shader> CompileFromFile(const std::filesystem::path& InFilePath) = 0;
 	};
 
 }

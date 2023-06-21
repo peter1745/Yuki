@@ -50,44 +50,4 @@ namespace Yuki {
 		}
 	}
 
-	void VulkanBuffer::UploadData(Buffer* InStagingBuffer, const BufferUploadInfo* InUploadInfo)
-	{
-		uint32_t srcOffset = 0;
-		uint32_t dstOffset = 0;
-		uint32_t size = m_Info.Size;
-
-		if (InUploadInfo != nullptr)
-		{
-			srcOffset = InUploadInfo->SrcOffset;
-			dstOffset = InUploadInfo->DstOffset;
-			size = InUploadInfo->Size;
-		}
-
-		VkCommandBuffer commandBuffer = m_Context->CreateTransientCommandBuffer();
-
-		VkBufferCopy2 copyRegion =
-		{
-			.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
-			.srcOffset = srcOffset,
-			.dstOffset = dstOffset,
-			.size = size,
-		};
-
-		VkCopyBufferInfo2 bufferCopyInfo =
-		{
-			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
-			.srcBuffer = static_cast<VulkanBuffer*>(InStagingBuffer)->m_Buffer,
-			.dstBuffer = m_Buffer,
-			.regionCount = 1,
-			.pRegions = &copyRegion
-		};
-
-		vkCmdCopyBuffer2(commandBuffer, &bufferCopyInfo);
-
-		vkEndCommandBuffer(commandBuffer);
-
-		static_cast<VulkanQueue*>(m_Context->GetGraphicsQueue())->SubmitCommandBuffers(std::span<VkCommandBuffer>(&commandBuffer, 1), {}, {});
-		m_Context->GetGraphicsQueue()->WaitIdle();
-	}
-
 }

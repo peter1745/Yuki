@@ -32,4 +32,9 @@ namespace Yuki {
 		vkCreateCommandPool(InContext->GetDevice(), &poolInfo, nullptr, &m_CommandPool);
 	}
 
+	VulkanCommandBufferPool::~VulkanCommandBufferPool()
+	{
+		vkDestroyCommandPool(m_Context->GetDevice(), m_CommandPool, nullptr);
+	}
+
 }

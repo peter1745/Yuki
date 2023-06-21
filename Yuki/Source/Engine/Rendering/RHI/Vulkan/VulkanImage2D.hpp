@@ -30,8 +30,8 @@ namespace Yuki {
 		uint32_t m_Height;
 		ImageFormat m_Format;
 
-		VkImage m_Image;
-		VmaAllocation m_Allocation;
+		VkImage m_Image = VK_NULL_HANDLE;
+		VmaAllocation m_Allocation = nullptr;
 
 		VkPipelineStageFlags2 m_CurrentPipelineStage = VK_PIPELINE_STAGE_2_NONE;
 		VkAccessFlags2 m_CurrentAccessFlags = VK_ACCESS_2_NONE;

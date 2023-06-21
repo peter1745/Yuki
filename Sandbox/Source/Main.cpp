@@ -40,10 +40,10 @@ private:
 
 		m_Fence = GetRenderContext()->CreateFence();
 
-		m_Renderer = new Yuki::SceneRenderer(GetRenderContext(), m_Windows[0]->GetViewport());
+		m_Renderer = new Yuki::SceneRenderer(GetRenderContext());
 
-		//m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
-		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
+		//m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
 
 		m_CameraTransform.SetIdentity();
 	}
@@ -68,10 +68,17 @@ private:
 		// Acquire Images for all Viewports
 		GetRenderContext()->GetGraphicsQueue()->AcquireImages(viewports, { m_Fence });
 
-		m_Renderer->BeginDraw(m_CameraTransform);
-		m_Renderer->DrawMesh(m_Mesh);
-		m_Renderer->EndDraw();
+		m_Renderer->BeginFrame();
 
+		if (!viewports.empty() && viewports[0])
+		{
+			m_Renderer->SetTargetViewport(viewports[0]);
+			m_Renderer->BeginDraw(m_CameraTransform);
+			m_Renderer->DrawMesh(m_Mesh);
+			m_Renderer->EndDraw();
+		}
+
+		m_Renderer->EndFrame();
 		GetRenderContext()->GetGraphicsQueue()->SubmitCommandBuffers({ m_Renderer->GetCurrentCommandBuffer() }, { m_Fence }, {});
 
 		// Present all swapchain images
@@ -112,12 +119,20 @@ private:
 
 	void OnDestroy() override
 	{
-		GetRenderContext()->DestroyFence(m_Fence);
+		m_Mesh.Meshes.clear();
+		m_Mesh.Instances.clear();
+		m_Mesh.LoadedImages.clear();
+		m_Mesh.Textures.clear();
+		m_Mesh.Materials.clear();
+
+		m_Fence.Release();
+
+		delete m_Renderer;
 	}
 
 private:
 	std::vector<Yuki::GenericWindow*> m_Windows;
-	Yuki::Fence* m_Fence = nullptr;
+	Yuki::Unique<Yuki::Fence> m_Fence = nullptr;
 
 	Yuki::SceneRenderer* m_Renderer = nullptr;
 

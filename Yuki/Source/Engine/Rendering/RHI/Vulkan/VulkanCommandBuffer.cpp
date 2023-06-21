@@ -54,12 +54,12 @@ namespace Yuki {
 
 	void VulkanCommandBuffer::BindPipeline(GraphicsPipeline* InPipeline)
 	{
-		vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VulkanGraphicsPipeline*>(InPipeline)->Pipeline);
+		vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VulkanGraphicsPipeline*>(InPipeline)->GetVkPipeline());
 	}
 
 	void VulkanCommandBuffer::BindDescriptorSets(GraphicsPipeline* InPipeline, std::span<DescriptorSet* const> InDescriptorSets)
 	{
-		auto pipelineLayout = static_cast<VulkanGraphicsPipeline*>(InPipeline)->Layout;
+		auto pipelineLayout = static_cast<VulkanGraphicsPipeline*>(InPipeline)->GetVkPipelineLayout();
 
 		List<VkDescriptorSet> descriptorSets;
 		descriptorSets.reserve(InDescriptorSets.size());
@@ -177,7 +177,7 @@ namespace Yuki {
 	void VulkanCommandBuffer::PushConstants(GraphicsPipeline* InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset)
 	{
 		auto* pipeline = static_cast<VulkanGraphicsPipeline*>(InPipeline);
-		vkCmdPushConstants(m_CommandBuffer, pipeline->Layout, VK_SHADER_STAGE_ALL, InOffset, InDataSize, InData);
+		vkCmdPushConstants(m_CommandBuffer, pipeline->GetVkPipelineLayout(), VK_SHADER_STAGE_ALL, InOffset, InDataSize, InData);
 	}
 
 	void VulkanCommandBuffer::Draw(uint32_t InVertexCount, uint32_t InInstanceCount, uint32_t InFirstVertex, uint32_t InFirstInstance)

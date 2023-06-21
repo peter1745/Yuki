@@ -11,6 +11,8 @@ namespace Yuki {
 	class VulkanSampler : public Sampler
 	{
 	public:
+		~VulkanSampler();
+
 		VkSampler GetVkSampler() const { return m_Sampler; }
 
 	private:

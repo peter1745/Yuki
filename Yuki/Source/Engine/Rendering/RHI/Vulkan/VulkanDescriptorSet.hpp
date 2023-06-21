@@ -34,6 +34,8 @@ namespace Yuki {
 	class VulkanDescriptorPool : public DescriptorPool
 	{
 	public:
+		~VulkanDescriptorPool();
+
 		DescriptorSet* AllocateSet(DescriptorSetLayout* InSetLayout) override;
 
 	private:

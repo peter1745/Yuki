@@ -73,13 +73,13 @@ namespace Yuki {
 
 		if (!s_WindowClassRegistered)
 		{
-			WNDCLASSEX windowClass = {};
-			windowClass.cbSize = sizeof(WNDCLASSEX);
+			WNDCLASSEXW windowClass = {};
+			windowClass.cbSize = sizeof(WNDCLASSEXW);
 			windowClass.lpszClassName = WindowClassName;
 			windowClass.hInstance = hInstance;
 			windowClass.lpfnWndProc = WindowProc;
 			windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-			RegisterClassEx(&windowClass);
+			RegisterClassExW(&windowClass);
 
 			s_WindowClassRegistered = true;
 		}
@@ -89,7 +89,7 @@ namespace Yuki {
 		m_WindowData.This = this;
 		m_WindowData.Attributes = &m_Attributes;
 
-		m_WindowHandle = CreateWindowEx(
+		m_WindowHandle = CreateWindowExW(
 		    0,
 		    WindowClassName,
 		    title.c_str(),
@@ -112,8 +112,7 @@ namespace Yuki {
 
 	void WindowsWindow::Destroy()
 	{
-		m_RenderContext->DestroyViewport(m_Viewport);
-		m_Viewport = nullptr;
+		m_Viewport.Release();
 	}
 
 	void WindowsWindow::Show()

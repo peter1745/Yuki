@@ -41,10 +41,9 @@ namespace Yuki {
 		return VK_FORMAT_UNDEFINED;
 	}
 
-	VulkanGraphicsPipelineBuilder::VulkanGraphicsPipelineBuilder(RenderContext* InContext)
-	    : m_ShaderManager(InContext->GetShaderManager())
+	VulkanGraphicsPipelineBuilder::VulkanGraphicsPipelineBuilder(VulkanRenderContext* InContext)
+		: m_Context(InContext)
 	{
-		m_Device = ((VulkanRenderContext*)InContext)->GetDevice();
 	}
 
 	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::Start()
@@ -61,13 +60,13 @@ namespace Yuki {
 		return *this;
 	}
 
-	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::WithShader(ResourceHandle<Shader> InShaderHandle)
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::WithShader(Shader* InShader)
 	{
-		m_PipelineShader = m_ShaderManager->GetShader(InShaderHandle);
+		m_PipelineShader = static_cast<VulkanShader*>(InShader);
 
-		m_ShaderStageInfos.reserve(m_PipelineShader->ModuleHandles.size());
+		m_ShaderStageInfos.reserve(m_PipelineShader->m_ModuleHandles.size());
 
-		for (const auto& [moduleType, moduleHandle] : m_PipelineShader->ModuleHandles)
+		for (const auto& [moduleType, moduleHandle] : m_PipelineShader->m_ModuleHandles)
 		{
 			auto& stageCreateInfo = m_ShaderStageInfos.emplace_back();
 			stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -162,7 +161,7 @@ namespace Yuki {
 		};
 
 		VkPipelineLayout pipelineLayout;
-		YUKI_VERIFY(vkCreatePipelineLayout(m_Device, &layoutCreateInfo, nullptr, &pipelineLayout) == VK_SUCCESS);
+		YUKI_VERIFY(vkCreatePipelineLayout(m_Context->GetDevice(), &layoutCreateInfo, nullptr, &pipelineLayout) == VK_SUCCESS);
 
 		VkVertexInputBindingDescription vertexInputBindingDesc =
 		{
@@ -278,11 +277,12 @@ namespace Yuki {
 			.layout = pipelineLayout,
 		};
 
-		Unique<VulkanGraphicsPipeline> result = Unique<VulkanGraphicsPipeline>::Create();
-		result->ShaderHandle = m_PipelineShader;
-		result->Layout = pipelineLayout;
+		auto* result = new VulkanGraphicsPipeline();
+		result->m_Context = m_Context;
+		result->m_Shader = m_PipelineShader;
+		result->m_Layout = pipelineLayout;
 
-		YUKI_VERIFY(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &result->Pipeline) == VK_SUCCESS);
+		YUKI_VERIFY(vkCreateGraphicsPipelines(m_Context->GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &result->m_Pipeline) == VK_SUCCESS);
 
 		return result;
 	}
