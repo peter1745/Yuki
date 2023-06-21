@@ -1,5 +1,6 @@
 #include "VulkanDescriptorSet.hpp"
 #include "VulkanRenderContext.hpp"
+#include "VulkanBuffer.hpp"
 #include "VulkanHelper.hpp"
 
 namespace Yuki {
@@ -79,6 +80,30 @@ namespace Yuki {
 			.descriptorCount = uint32_t(descriptorImageInfos.size()),
 			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 			.pImageInfo = descriptorImageInfos.data(),
+		};
+
+		vkUpdateDescriptorSets(m_Context->GetDevice(), 1, &writeDescriptor, 0, nullptr);
+	}
+
+	void VulkanDescriptorSet::Write(uint32_t InBinding, Buffer* InBuffer)
+	{
+		VkDescriptorBufferInfo descriptorBufferInfo =
+		{
+			.buffer = static_cast<VulkanBuffer*>(InBuffer)->GetVkBuffer(),
+			.offset = 0,
+			.range = VK_WHOLE_SIZE,
+		};
+
+		VkWriteDescriptorSet writeDescriptor =
+		{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.pNext = nullptr,
+			.dstSet = m_Set,
+			.dstBinding = InBinding,
+			.dstArrayElement = 0,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			.pBufferInfo = &descriptorBufferInfo,
 		};
 
 		vkUpdateDescriptorSets(m_Context->GetDevice(), 1, &writeDescriptor, 0, nullptr);

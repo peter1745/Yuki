@@ -58,7 +58,7 @@ namespace Yuki {
 		virtual Viewport* CreateViewport(GenericWindow* InWindow) = 0;
 		virtual void DestroyViewport(Viewport* InViewport) = 0;
 
-		virtual Image2D* CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat) = 0;
+		virtual Image2D* CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;
 		virtual void DestroyImage2D(Image2D* InImage) = 0;
 		
 		virtual ImageView2D* CreateImageView2D(Image2D* InImage) = 0;

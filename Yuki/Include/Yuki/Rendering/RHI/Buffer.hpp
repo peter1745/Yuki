@@ -2,7 +2,7 @@
 
 namespace Yuki {
 
-	enum class BufferType { VertexBuffer, IndexBuffer, StagingBuffer };
+	enum class BufferType { VertexBuffer, IndexBuffer, StorageBuffer, StagingBuffer };
 
 	struct BufferInfo
 	{

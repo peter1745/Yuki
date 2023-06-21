@@ -23,6 +23,8 @@ namespace Yuki {
 
 		static uint32_t SelectGraphicsQueue(VkPhysicalDevice InPhysicalDevice);
 
+		static void TransitionImage(VkCommandBuffer InCommandBuffer, VkImage InImage, VkPipelineStageFlags2 InSrcStage, VkAccessFlags2 InSrcAccess, VkImageLayout InSrcLayout, VkPipelineStageFlags2 InDstStage, VkAccessFlags2 InDstAccess, VkImageLayout InDstLayout, VkImageAspectFlags InAspectFlags);
+
 	public:
 		// Conversion Functions
 		static VkFormat ImageFormatToVkFormat(ImageFormat InFormat);
@@ -31,6 +33,7 @@ namespace Yuki {
 		static VkBufferUsageFlags BufferTypeToVkUsageFlags(BufferType InType);
 
 		static VkImageLayout ImageLayoutToVkImageLayout(ImageLayout InLayout);
+		static VkFlags ImageUsageToVkFlags(ImageUsage InUsage);
 
 		static VkDescriptorType DescriptorTypeToVkDescriptorType(DescriptorType InType);
 	};

@@ -36,6 +36,10 @@ workspace "Yuki"
 			"4201"
         }
 
+		buildoptions {
+			"/openmp:llvm"
+		}
+
 	filter "toolset:clang"
 		disablewarnings {
 			"unused-parameter",

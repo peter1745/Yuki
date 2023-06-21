@@ -33,6 +33,7 @@ namespace Yuki {
 
 		void CopyToBuffer(Buffer* InDstBuffer, uint32_t InDstOffset, Buffer* InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) override;
 		void CopyToImage(Image2D* InDstImage, Buffer* InSrcBuffer, uint32_t InSrcOffset) override;
+		void BlitImage(Image2D* InDstImage, Image2D* InSrcImage) override;
 
 	private:
 		VulkanCommandBuffer(VulkanRenderContext* InContext, VulkanCommandBufferPool* InCommandPool);

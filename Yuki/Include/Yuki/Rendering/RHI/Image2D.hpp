@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Yuki/Core/EnumFlags.hpp"
 #include "Yuki/Rendering/ImageFormat.hpp"
 
 namespace Yuki {
@@ -8,8 +9,18 @@ namespace Yuki {
 
 	enum class ImageLayout
 	{
-		ColorAttachment, DepthAttachment, Present
+		ColorAttachment, DepthAttachment, ShaderReadOnly, Present
 	};
+
+	enum class ImageUsage
+	{
+		ColorAttachment = 1 << 0,
+		DepthAttachment = 1 << 1,
+		Sampled = 1 << 2,
+		TransferDestination = 1 << 3,
+		TransferSource = 1 << 4,
+	};
+	YUKI_ENUM_FLAGS(ImageUsage);
 
 	class Image2D
 	{

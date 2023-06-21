@@ -198,33 +198,7 @@ namespace Yuki {
 
 		VkImageLayout imageLayout = VulkanHelper::ImageLayoutToVkImageLayout(InNewLayout);
 
-		VkImageMemoryBarrier2 barrier =
-		{
-			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-			.srcStageMask = image->m_CurrentPipelineStage,
-			.srcAccessMask = image->m_CurrentAccessFlags,
-			.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, // TODO(Peter): Handle this properly (preferably in an abstracted way)
-			.dstAccessMask = 0, // TODO(Peter): Handle this properly (preferably in an abstracted way)
-			.oldLayout = image->m_CurrentLayout,
-			.newLayout = imageLayout,
-			.image = image->GetVkImage(),
-			.subresourceRange = {
-				.aspectMask = aspectFlags,
-				.baseMipLevel = 0,
-				.levelCount = 1,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
-			}
-		};
-
-		VkDependencyInfo dependencyInfo =
-		{
-			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-			.imageMemoryBarrierCount = 1,
-			.pImageMemoryBarriers = &barrier,
-		};
-
-		vkCmdPipelineBarrier2(m_CommandBuffer, &dependencyInfo);
+		VulkanHelper::TransitionImage(m_CommandBuffer, image->GetVkImage(), image->m_CurrentPipelineStage, image->m_CurrentAccessFlags, image->m_CurrentLayout, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 0, imageLayout, aspectFlags);
 
 		image->m_CurrentPipelineStage = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		image->m_CurrentAccessFlags = 0;
@@ -262,33 +236,9 @@ namespace Yuki {
 		VkImageAspectFlags aspectMask = IsDepthFormat(InDstImage->GetImageFormat()) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 
 		{
-			VkImageMemoryBarrier2 barrier =
-			{
-				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-				.srcStageMask = static_cast<VulkanImage2D*>(InDstImage)->m_CurrentPipelineStage,
-				.srcAccessMask = static_cast<VulkanImage2D*>(InDstImage)->m_CurrentAccessFlags,
-				.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, // TODO(Peter): Handle this properly (preferably in an abstracted way)
-				.dstAccessMask = 0, // TODO(Peter): Handle this properly (preferably in an abstracted way)
-				.oldLayout = static_cast<VulkanImage2D*>(InDstImage)->m_CurrentLayout,
-				.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				.image = static_cast<VulkanImage2D*>(InDstImage)->GetVkImage(),
-				.subresourceRange = {
-					.aspectMask = aspectMask,
-					.baseMipLevel = 0,
-					.levelCount = 1,
-					.baseArrayLayer = 0,
-					.layerCount = 1,
-				}
-			};
-
-			VkDependencyInfo dependencyInfo =
-			{
-				.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-				.imageMemoryBarrierCount = 1,
-				.pImageMemoryBarriers = &barrier,
-			};
-
-			vkCmdPipelineBarrier2(m_CommandBuffer, &dependencyInfo);
+			auto* image = static_cast<VulkanImage2D*>(InDstImage);
+			VulkanHelper::TransitionImage(m_CommandBuffer, image->GetVkImage(), image->m_CurrentPipelineStage, image->m_CurrentAccessFlags, image->m_CurrentLayout,
+											VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 0, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, aspectMask);
 		}
 
 		VkBufferImageCopy2 region =
@@ -322,33 +272,69 @@ namespace Yuki {
 		vkCmdCopyBufferToImage2(m_CommandBuffer, &copyInfo);
 
 		{
-			VkImageMemoryBarrier2 barrier =
-			{
-				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-				.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-				.srcAccessMask = 0,
-				.dstStageMask = static_cast<VulkanImage2D*>(InDstImage)->m_CurrentPipelineStage, // TODO(Peter): Handle this properly (preferably in an abstracted way)
-				.dstAccessMask = static_cast<VulkanImage2D*>(InDstImage)->m_CurrentAccessFlags, // TODO(Peter): Handle this properly (preferably in an abstracted way)
-				.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-				.image = static_cast<VulkanImage2D*>(InDstImage)->GetVkImage(),
-				.subresourceRange = {
-					.aspectMask = aspectMask,
-					.baseMipLevel = 0,
-					.levelCount = 1,
-					.baseArrayLayer = 0,
-					.layerCount = 1,
-				}
-			};
+			auto* image = static_cast<VulkanImage2D*>(InDstImage);
+			VulkanHelper::TransitionImage(m_CommandBuffer, image->GetVkImage(), VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 0, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, image->m_CurrentPipelineStage, image->m_CurrentAccessFlags, image->m_CurrentLayout, aspectMask);
+		}
+	}
 
-			VkDependencyInfo dependencyInfo =
-			{
-				.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-				.imageMemoryBarrierCount = 1,
-				.pImageMemoryBarriers = &barrier,
-			};
+	void VulkanCommandBuffer::BlitImage(Image2D* InDstImage, Image2D* InSrcImage)
+	{
+		VkImageAspectFlags srcAspectMask = IsDepthFormat(InSrcImage->GetImageFormat()) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+		VkImageAspectFlags dstAspectMask = IsDepthFormat(InDstImage->GetImageFormat()) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 
-			vkCmdPipelineBarrier2(m_CommandBuffer, &dependencyInfo);
+		{
+			auto* dstImage = static_cast<VulkanImage2D*>(InDstImage);
+			VulkanHelper::TransitionImage(m_CommandBuffer, dstImage->GetVkImage(), dstImage->m_CurrentPipelineStage, dstImage->m_CurrentAccessFlags, dstImage->m_CurrentLayout, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 0, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstAspectMask);
+			auto* srcImage = static_cast<VulkanImage2D*>(InSrcImage);
+			VulkanHelper::TransitionImage(m_CommandBuffer, srcImage->GetVkImage(), srcImage->m_CurrentPipelineStage, srcImage->m_CurrentAccessFlags, srcImage->m_CurrentLayout, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 0, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstAspectMask);
+		}
+
+		VkImageBlit2 imageBlit =
+		{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+			.pNext = nullptr,
+			.srcSubresource = {
+				.aspectMask = srcAspectMask,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.srcOffsets = {
+				{ 0, 0, 0 },
+				{ int32_t(InSrcImage->GetWidth()), int32_t(InSrcImage->GetHeight()), 1 }
+			},
+			.dstSubresource = {
+				.aspectMask = dstAspectMask,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.dstOffsets = {
+				{ 0, 0, 0 },
+				{ int32_t(InDstImage->GetWidth()), int32_t(InDstImage->GetHeight()), 1 }
+			},
+		};
+
+		VkBlitImageInfo2 blitImageInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+			.pNext = nullptr,
+			.srcImage = static_cast<VulkanImage2D*>(InSrcImage)->GetVkImage(),
+			.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			.dstImage = static_cast<VulkanImage2D*>(InDstImage)->GetVkImage(),
+			.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			.regionCount = 1,
+			.pRegions = &imageBlit,
+			.filter = VK_FILTER_LINEAR,
+		};
+
+		vkCmdBlitImage2(m_CommandBuffer, &blitImageInfo);
+
+		{
+			auto* dstImage = static_cast<VulkanImage2D*>(InDstImage);
+			VulkanHelper::TransitionImage(m_CommandBuffer, dstImage->GetVkImage(), VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 0, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstImage->m_CurrentPipelineStage, dstImage->m_CurrentAccessFlags, dstImage->m_CurrentLayout, dstAspectMask);
+			auto* srcImage = static_cast<VulkanImage2D*>(InSrcImage);
+			VulkanHelper::TransitionImage(m_CommandBuffer, srcImage->GetVkImage(), VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 0, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcImage->m_CurrentPipelineStage, srcImage->m_CurrentAccessFlags, srcImage->m_CurrentLayout, dstAspectMask);
 		}
 	}
 

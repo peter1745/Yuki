@@ -44,7 +44,7 @@ namespace Yuki {
 		Viewport* CreateViewport(GenericWindow* InWindow) override;
 		void DestroyViewport(Viewport* InViewport) override;
 
-		Image2D* CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat) override;
+		Image2D* CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
 		void DestroyImage2D(Image2D* InImage) override;
 
 		ImageView2D* CreateImageView2D(Image2D* InImage) override;

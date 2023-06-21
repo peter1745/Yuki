@@ -4,6 +4,7 @@
 #include "Rendering/RHI/GraphicsPipelineBuilder.hpp"
 #include "Rendering/RHI/SetLayoutBuilder.hpp"
 #include "Math/Math.hpp"
+#include "Core/Stopwatch.hpp"
 
 namespace Yuki {
 
@@ -21,6 +22,12 @@ namespace Yuki {
 
 		CreateDescriptorSets();
 		BuildPipelines();
+
+		m_MaterialStorageBuffer = InContext->CreateBuffer({
+			.Type = BufferType::StorageBuffer,
+			.Size = sizeof(MeshMaterial) * 65536,
+			.PersistentlyMapped = false,
+		});
 	}
 
 	void SceneRenderer::BeginDraw(const Math::Mat4& InViewMatrix)
@@ -49,20 +56,44 @@ namespace Yuki {
 				CommandBuffer* commandBuffer = m_CommandPool->NewCommandBuffer();
 				commandBuffer->Begin();
 
-				Image2D* image = m_Context->CreateImage2D(loadedImage.Width, loadedImage.Height, ImageFormat::RGBA8UNorm);
+				Image2D* oldImage = nullptr;
+				Image2D* image = m_Context->CreateImage2D(loadedImage.Width, loadedImage.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | ImageUsage::TransferDestination);
+				commandBuffer->TransitionImage(image, ImageLayout::ShaderReadOnly);
 
 				m_StagingBuffer->SetData(loadedImage.Data.data(), uint32_t(loadedImage.Data.size()));
 				commandBuffer->CopyToImage(image, m_StagingBuffer, 0);
+
+				if (loadedImage.Width > 2048 && loadedImage.Height > 2048)
+				{
+					oldImage = image;
+					image = m_Context->CreateImage2D(2048, 2048, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
+					commandBuffer->TransitionImage(image, ImageLayout::ShaderReadOnly);
+					commandBuffer->BlitImage(image, oldImage);
+				}
+
 				commandBuffer->End();
-				
+
 				m_Context->GetGraphicsQueue()->SubmitCommandBuffers({ commandBuffer }, {}, {});
 				m_Context->GetGraphicsQueue()->WaitIdle();
 
+				if (oldImage)
+					m_Context->DestroyImage2D(oldImage);
+
 				InMesh.Textures.emplace_back(std::move(image));
 			}
+
+			CommandBuffer* commandBuffer = m_CommandPool->NewCommandBuffer();
+			commandBuffer->Begin();
+			m_StagingBuffer->SetData(InMesh.Materials.data(), InMesh.Materials.size() * sizeof(MeshMaterial));
+			commandBuffer->CopyToBuffer(m_MaterialStorageBuffer, 0, m_StagingBuffer, 0, 0);
+			commandBuffer->End();
+			m_Context->GetGraphicsQueue()->SubmitCommandBuffers({ commandBuffer }, {}, {});
+			m_Context->GetGraphicsQueue()->WaitIdle();
+
+			m_MaterialDescriptorSet->Write(0, m_MaterialStorageBuffer);
 		}
 
-		m_MaterialDescriptorSet->Write(0, InMesh.Textures, m_Sampler);
+		m_MaterialDescriptorSet->Write(1, InMesh.Textures, m_Sampler);
 
 		for (auto& meshInstance : InMesh.Instances)
 		{
@@ -84,7 +115,8 @@ namespace Yuki {
 	{
 		DescriptorCount descriptorPoolCounts[] =
 		{
-			{ DescriptorType::CombinedImageSampler, 10000 }
+			{ DescriptorType::CombinedImageSampler, 65536 },
+			{ DescriptorType::StorageBuffer, 65536 },
 		};
 		m_DescriptorPool = m_Context->CreateDescriptorPool(descriptorPoolCounts);
 
@@ -93,6 +125,7 @@ namespace Yuki {
 		{
 			auto* materialSetLayout = setLayoutBuilder->Start()
 				.Stages(ShaderStage::Vertex | ShaderStage::Fragment)
+				.Binding(65536, DescriptorType::StorageBuffer)
 				.Binding(256, DescriptorType::CombinedImageSampler)
 				.Build();
 			m_MaterialDescriptorSet = m_DescriptorPool->AllocateSet(materialSetLayout);
@@ -109,6 +142,8 @@ namespace Yuki {
 
 		{
 			auto shader = m_Context->GetShaderCompiler()->CompileFromFile("Resources/Shaders/Geometry.glsl");
+
+			YUKI_STOPWATCH_START_N("Create Pipeline");
 			m_MeshPipeline = pipelineBuilder->Start()
 				.WithShader(shader)
 				.ColorAttachment(ImageFormat::BGRA8UNorm)
@@ -120,6 +155,7 @@ namespace Yuki {
 				.PushConstant(0, sizeof(FrameTransforms))
 				.AddDescriptorSetLayout(m_MaterialDescriptorSet->GetLayout())
 				.Build();
+			YUKI_STOPWATCH_STOP();
 		}
 
 		m_Context->DestroyGraphicsPipelineBuilder(pipelineBuilder);

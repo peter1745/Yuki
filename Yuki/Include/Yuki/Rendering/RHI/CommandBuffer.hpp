@@ -41,6 +41,8 @@ namespace Yuki {
 		virtual void CopyToBuffer(Buffer* InDstBuffer, uint32_t InDstOffset, Buffer* InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) = 0;
 		virtual void CopyToImage(Image2D* InDstImage, Buffer* InSrcBuffer, uint32_t InSrcOffset) = 0;
 
+		virtual void BlitImage(Image2D* InDstImage, Image2D* InSrcImage) = 0;
+
 		template<typename T>
 		T As() const { return static_cast<T>(GetUnderlyingHandle()); }
 

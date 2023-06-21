@@ -3,12 +3,10 @@
 
 namespace Yuki {
 
-	VulkanImage2D::VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat)
+	VulkanImage2D::VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage)
 		: m_Context(InContext), m_Width(InWidth), m_Height(InHeight), m_Format(InFormat)
 	{
 		uint32_t queueFamilyIndex = static_cast<VulkanQueue*>(InContext->GetGraphicsQueue())->GetFamilyIndex();
-
-		VkFlags baseImageUsage = IsDepthFormat(InFormat) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 		VkImageCreateInfo imageInfo =
 		{
@@ -23,7 +21,7 @@ namespace Yuki {
 			.arrayLayers = 1,
 			.samples = VK_SAMPLE_COUNT_1_BIT,
 			.tiling = VK_IMAGE_TILING_OPTIMAL,
-			.usage = baseImageUsage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			.usage = VulkanHelper::ImageUsageToVkFlags(InUsage),
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 1,
 			.pQueueFamilyIndices = &queueFamilyIndex,

@@ -21,7 +21,7 @@ namespace Yuki {
 		VkImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
 
 	private:
-		VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat);
+		VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage);
 		VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, VkImage InExistingImage);
 
 	private:

@@ -6,10 +6,12 @@ namespace Yuki {
 
 	class Image2D;
 	class Sampler;
+	class Buffer;
 
 	enum class DescriptorType
 	{
 		UniformBuffer,
+		StorageBuffer,
 		CombinedImageSampler
 	};
 
@@ -21,6 +23,7 @@ namespace Yuki {
 		virtual ~DescriptorSet() = default;
 
 		virtual void Write(uint32_t InBinding, std::span<Image2D* const> InImages, Sampler* InSampler) = 0;
+		virtual void Write(uint32_t InBinding, Buffer* InBuffer) = 0;
 
 		virtual DescriptorSetLayout* GetLayout() const = 0;
 	};

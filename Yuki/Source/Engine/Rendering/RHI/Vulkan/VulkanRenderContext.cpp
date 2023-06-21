@@ -161,7 +161,7 @@ namespace Yuki {
 	Viewport* VulkanRenderContext::CreateViewport(GenericWindow* InWindow) { return new VulkanViewport(this, InWindow); }
 	void VulkanRenderContext::DestroyViewport(Viewport* InViewport) { delete InViewport; }
 
-	Image2D* VulkanRenderContext::CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat) { return new VulkanImage2D(this, InWidth, InHeight, InFormat); }
+	Image2D* VulkanRenderContext::CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) { return new VulkanImage2D(this, InWidth, InHeight, InFormat, InUsage); }
 	void VulkanRenderContext::DestroyImage2D(Image2D* InImage) { delete InImage; }
 
 	ImageView2D* VulkanRenderContext::CreateImageView2D(Image2D* InImage) { return new VulkanImageView2D(this, (VulkanImage2D*)InImage); }
@@ -338,6 +338,7 @@ namespace Yuki {
 			.pNext = &features13,
 			.shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
 			.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+			.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE,
 			.descriptorBindingPartiallyBound = VK_TRUE,
 			.runtimeDescriptorArray = VK_TRUE,
 			.scalarBlockLayout = VK_TRUE,

@@ -35,12 +35,23 @@ layout(location = 0) in vec3 InNormal;
 layout(location = 1) in vec2 InUV;
 layout(location = 2) in flat uint InMaterialIndex;
 
-layout(set = 0, binding = 0) uniform sampler2D InAlbedoTextures[];
+struct Material
+{
+    uint AlbedoTextureIndex;
+};
+
+layout(set = 0, binding = 0) buffer MaterialsBuffer
+{
+    Material Materials[];
+};
+layout(set = 0, binding = 1) uniform sampler2D InAlbedoTextures[];
 
 layout(location = 0) out vec4 OutColor;
 
 void main()
 {
+    Material material = Materials[InMaterialIndex];
+
     OutColor = vec4(InNormal * 0.5 + 0.5, 1.0);
-    OutColor = texture(InAlbedoTextures[nonuniformEXT(InMaterialIndex)], InUV);
+    OutColor = texture(InAlbedoTextures[nonuniformEXT(material.AlbedoTextureIndex)], InUV);
 }

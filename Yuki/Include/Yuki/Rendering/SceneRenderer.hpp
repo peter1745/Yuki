@@ -40,6 +40,8 @@ namespace Yuki {
 
 		Sampler* m_Sampler = nullptr;
 
+		Buffer* m_MaterialStorageBuffer = nullptr;
+
 		Unique<GraphicsPipeline> m_MeshPipeline = nullptr;
 
 		struct FrameTransforms

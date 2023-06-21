@@ -65,7 +65,7 @@ namespace Yuki {
 				m_ImageViews.emplace_back(static_cast<VulkanImageView2D*>(m_Context->CreateImageView2D(image)));
 		}
 
-		m_DepthImage = (VulkanImage2D*)m_Context->CreateImage2D(InSwapchainInfo.ImageExtent.width, InSwapchainInfo.ImageExtent.height, ImageFormat::Depth32SFloat);
+		m_DepthImage = (VulkanImage2D*)m_Context->CreateImage2D(InSwapchainInfo.ImageExtent.width, InSwapchainInfo.ImageExtent.height, ImageFormat::Depth32SFloat, ImageUsage::DepthAttachment);
 
 		// Create binary semaphores
 		{

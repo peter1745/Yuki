@@ -1,6 +1,7 @@
 #include "VulkanShaderCompiler.hpp"
 
 #include "Core/StringHelper.hpp"
+#include "Core/Stopwatch.hpp"
 #include "IO/FileIO.hpp"
 
 #include <shaderc/shaderc.hpp>
@@ -104,8 +105,11 @@ namespace Yuki {
 			return ResourceHandle<Shader>::Invalid;
 		}
 
+		YUKI_STOPWATCH_START_N("Pre-Process Shader Source");
 		auto shaderModules = ParseShaderSource(source);
+		YUKI_STOPWATCH_STOP();
 
+		YUKI_STOPWATCH_START_N("Compile Shader Modules");
 		Map<ShaderModuleType, std::vector<uint32_t>> compiledByteCode;
 		for (const auto& [shaderModuleType, moduleSource] : shaderModules)
 		{
@@ -119,6 +123,7 @@ namespace Yuki {
 
 			compiledByteCode[shaderModuleType] = std::vector<uint32_t>(result.begin(), result.end());
 		}
+		YUKI_STOPWATCH_STOP();
 
 		Shader* shader = new Shader();
 		shader->Name = InFilePath.stem().string();

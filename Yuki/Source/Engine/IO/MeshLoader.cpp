@@ -43,14 +43,19 @@ namespace Yuki {
 
 	void ProcessMaterials(RenderContext* InContext, fastgltf::Asset* InAsset, const std::filesystem::path& InBasePath, LoadedMesh& InMeshData)
 	{
-		for (auto& textureInfo : InAsset->textures)
+		InMeshData.LoadedImages.resize(InAsset->textures.size());
+
+#pragma omp parallel for
+		for (size_t i = 0; i < InAsset->textures.size(); i++)
 		{
+			YUKI_STOPWATCH_START_N("Load Texture (CPU)");
+			auto& textureInfo = InAsset->textures[i];
+
 			YUKI_VERIFY(textureInfo.imageIndex.has_value());
 			auto& imageInfo = InAsset->images[textureInfo.imageIndex.value()];
 
 			int width, height;
 			stbi_uc* imageData = nullptr;
-
 			std::visit(ImageVisitor
 			{
 				[&](fastgltf::sources::URI& InURI)
@@ -77,27 +82,33 @@ namespace Yuki {
 
 			YUKI_VERIFY(imageData);
 
-			auto& loadedImage = InMeshData.LoadedImages.emplace_back();
+			auto& loadedImage = InMeshData.LoadedImages[i];
 			loadedImage.Width = uint32_t(width);
 			loadedImage.Height = uint32_t(height);
 			loadedImage.Data.resize(width * height * 4);
 			memcpy(loadedImage.Data.data(), imageData, width * height * 4);
 
 			stbi_image_free(imageData);
+			YUKI_STOPWATCH_STOP();
 		}
 
+		YUKI_STOPWATCH_START_N("Process Materials");
 		for (auto& material : InAsset->materials)
 		{
-			YUKI_VERIFY(material.pbrData.has_value());
+			auto& meshMaterial = InMeshData.Materials.emplace_back();
+
+			if (!material.pbrData.has_value())
+				continue;
 
 			auto& pbrData = material.pbrData.value();
-			YUKI_VERIFY(pbrData.baseColorTexture.has_value());
+
+			if (!pbrData.baseColorTexture.has_value())
+				continue;
 
 			auto& colorTexture = pbrData.baseColorTexture.value();
-
-			auto& meshMaterial = InMeshData.Materials.emplace_back();
 			meshMaterial.AlbedoTextureIndex = uint32_t(colorTexture.textureIndex);
 		}
+		YUKI_STOPWATCH_STOP();
 	}
 
 	LoadedMesh MeshLoader::LoadGLTFMesh(RenderContext* InContext, const std::filesystem::path& InFilePath)
@@ -114,6 +125,7 @@ namespace Yuki {
 			fastgltf::Options::DecomposeNodeMatrices |
 			fastgltf::Options::LoadExternalImages;
 
+		YUKI_STOPWATCH_START_N("Load GLTF File");
 		switch (fastgltf::determineGltfFileType(&dataBuffer))
 		{
 		case fastgltf::GltfType::glTF:
@@ -127,9 +139,13 @@ namespace Yuki {
 			break;
 		}
 		}
+		YUKI_STOPWATCH_STOP();
 
 		YUKI_VERIFY(parser.getError() == fastgltf::Error::None);
+		
+		YUKI_STOPWATCH_START_N("Parse GLTF File");
 		YUKI_VERIFY(gltfAsset->parse() == fastgltf::Error::None);
+		YUKI_STOPWATCH_STOP();
 
 		auto asset = gltfAsset->getParsedAsset();
 
@@ -138,7 +154,7 @@ namespace Yuki {
 
 		ProcessMaterials(InContext, asset.get(), InFilePath.parent_path(), result);
 
-		YUKI_STOPWATCH_START();
+		YUKI_STOPWATCH_START_N("Process Vertex Data");
 		for (auto& mesh : asset->meshes)
 		{
 			Mesh& meshData = result.Meshes.emplace_back();
@@ -251,8 +267,10 @@ namespace Yuki {
 		Math::Mat4 transform;
 		transform.SetIdentity();
 
+		YUKI_STOPWATCH_START_N("Process Node Hierarchy");
 		for (auto nodeIndex : scene->nodeIndices)
 			ProcessNodeHierarchy(asset.get(), result, asset->nodes[nodeIndex], transform);
+		YUKI_STOPWATCH_STOP();
 
 		return result;
 	}

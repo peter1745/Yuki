@@ -18,6 +18,7 @@ namespace Yuki {
 	{
 	public:
 		void Write(uint32_t InBinding, std::span<Image2D* const> InImages, Sampler* InSampler) override;
+		void Write(uint32_t InBinding, Buffer* InBuffer) override;
 
 		DescriptorSetLayout* GetLayout() const override { return m_Layout.GetPtr(); }
 
