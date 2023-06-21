@@ -39,39 +39,6 @@ namespace Yuki {
 			for (const auto& window : m_Windows)
 				window->ProcessEvents();
 
-			/*m_Fence->Wait();
-
-			std::vector<Viewport*> viewports;
-			viewports.reserve(m_Windows.size());
-			for (const auto& window : m_Windows)
-			{
-				Viewport* viewport = window->GetViewport();
-
-				if (!viewport)
-					continue;
-
-				viewports.emplace_back(viewport);
-			}
-
-			m_RenderContext->ResetCommandPool();
-
-			m_RenderContext->GetGraphicsQueue()->AcquireImages(viewports, { m_Fence });
-			m_Renderer->Begin();
-
-			for (auto* viewport : viewports)
-			{
-				m_Renderer->GetCommandBuffer()->SetViewport(viewport);
-				m_Renderer->GetCommandBuffer()->BeginRendering(viewport);
-
-				m_Renderer->DrawTriangle();
-
-				m_Renderer->GetCommandBuffer()->EndRendering();
-			}
-			m_Renderer->End();
-			m_RenderContext->GetGraphicsQueue()->SubmitCommandBuffers({ m_Renderer->GetCommandBuffer() }, { m_Fence }, { m_Fence });
-
-			m_RenderContext->GetGraphicsQueue()->Present(viewports, { m_Fence });*/
-
 			OnRunLoop();
 
 			// Clean up closed windows
