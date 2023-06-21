@@ -16,6 +16,7 @@ namespace Yuki {
 		void BindVertexBuffer(Buffer* InVertexBuffer) override;
 		void BindIndexBuffer(Buffer* InIndexBuffer) override;
 		void BindPipeline(GraphicsPipeline* InPipeline) override;
+		void BindDescriptorSets(GraphicsPipeline* InPipeline, std::span<DescriptorSet* const> InDescriptorSets) override;
 
 		void SetViewport(Viewport* InViewport) override;
 
@@ -29,6 +30,9 @@ namespace Yuki {
 		void DrawIndexed(uint32_t InIndexCount, uint32_t InInstanceCount, uint32_t InFirstIndex, int32_t InVertexOffset, uint32_t InFirstInstance) override;
 
 		void TransitionImage(Image2D* InImage, ImageLayout InNewLayout) override;
+
+		void CopyToBuffer(Buffer* InDstBuffer, uint32_t InDstOffset, Buffer* InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) override;
+		void CopyToImage(Image2D* InDstImage, Buffer* InSrcBuffer, uint32_t InSrcOffset) override;
 
 	private:
 		VulkanCommandBuffer(VulkanRenderContext* InContext, VulkanCommandBufferPool* InCommandPool);

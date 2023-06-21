@@ -4,8 +4,11 @@
 #include "Yuki/Rendering/ImageFormat.hpp"
 #include "Yuki/Rendering/RHI/CommandBufferPool.hpp"
 #include "Yuki/Rendering/RHI/Buffer.hpp"
+#include "Yuki/Rendering/RHI/DescriptorSet.hpp"
 
 #include "Yuki/Memory/Unique.hpp"
+
+#include <span>
 
 namespace Yuki {
 
@@ -14,11 +17,13 @@ namespace Yuki {
 	class ShaderManager;
 	class ShaderCompiler;
 	class GraphicsPipelineBuilder;
+	class SetLayoutBuilder;
 	class Image2D;
 	class ImageView2D;
 	class RenderInterface;
 	class Queue;
 	class Fence;
+	class Sampler;
 
 	class RenderContext
 	{
@@ -44,6 +49,12 @@ namespace Yuki {
 		virtual GraphicsPipelineBuilder* CreateGraphicsPipelineBuilder() = 0;
 		virtual void DestroyGraphicsPipelineBuilder(GraphicsPipelineBuilder* InPipelineBuilder) = 0;
 
+		virtual SetLayoutBuilder* CreateSetLayoutBuilder() = 0;
+		virtual void DestroySetLayoutBuilder(SetLayoutBuilder* InSetLayoutBuilder) = 0;
+
+		virtual DescriptorPool* CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) = 0;
+		virtual void DestroyDescriptorPool(DescriptorPool* InDescriptorPool) = 0;
+
 		virtual Viewport* CreateViewport(GenericWindow* InWindow) = 0;
 		virtual void DestroyViewport(Viewport* InViewport) = 0;
 
@@ -52,7 +63,10 @@ namespace Yuki {
 		
 		virtual ImageView2D* CreateImageView2D(Image2D* InImage) = 0;
 		virtual void DestroyImageView2D(ImageView2D* InImageView) = 0;
-		
+
+		virtual Sampler* CreateSampler() = 0;
+		virtual void DestroySampler(Sampler* InSampler) = 0;
+
 		virtual Buffer* CreateBuffer(const BufferInfo& InInfo) = 0;
 		virtual void DestroyBuffer(Buffer* InBuffer) = 0;
 		

@@ -6,6 +6,8 @@
 #include <fastgltf/types.hpp>
 #include <fastgltf/tools.hpp>
 
+#include <stb_image/stb_image.h>
+
 namespace fastgltf {
 
 	template<>
@@ -37,6 +39,66 @@ namespace Yuki {
 
 		for (auto childNodeIndex : InNode.children)
 			ProcessNodeHierarchy(InAsset, InMeshStorage, InAsset->nodes[childNodeIndex], transform);
+	}
+
+	void ProcessMaterials(RenderContext* InContext, fastgltf::Asset* InAsset, const std::filesystem::path& InBasePath, LoadedMesh& InMeshData)
+	{
+		for (auto& textureInfo : InAsset->textures)
+		{
+			YUKI_VERIFY(textureInfo.imageIndex.has_value());
+			auto& imageInfo = InAsset->images[textureInfo.imageIndex.value()];
+
+			int width, height;
+			stbi_uc* imageData = nullptr;
+
+			std::visit(ImageVisitor
+			{
+				[&](fastgltf::sources::URI& InURI)
+				{
+					imageData = stbi_load(fmt::format("{}/{}", InBasePath.string(), InURI.uri.path()).c_str(), &width, &height, nullptr, STBI_rgb_alpha);
+				},
+				[&](fastgltf::sources::Vector& InVector)
+				{
+					imageData = stbi_load_from_memory(InVector.bytes.data(), uint32_t(InVector.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
+				},
+				[&](fastgltf::sources::ByteView& InByteView)
+				{
+					imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(InByteView.bytes.data()), uint32_t(InByteView.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
+				},
+				[&](fastgltf::sources::BufferView& InBufferView)
+				{
+					auto& view = InAsset->bufferViews[InBufferView.bufferViewIndex];
+					auto& buffer = InAsset->buffers[view.bufferIndex];
+					auto* bytes = fastgltf::DefaultBufferDataAdapter{}(buffer)+view.byteOffset;
+					imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(bytes), uint32_t(view.byteLength), &width, &height, nullptr, STBI_rgb_alpha);
+				},
+				[&](auto&) {}
+			}, imageInfo.data);
+
+			YUKI_VERIFY(imageData);
+
+			auto& loadedImage = InMeshData.LoadedImages.emplace_back();
+			loadedImage.Width = uint32_t(width);
+			loadedImage.Height = uint32_t(height);
+			loadedImage.Data.resize(width * height * 4);
+			memcpy(loadedImage.Data.data(), imageData, width * height * 4);
+
+			stbi_image_free(imageData);
+		}
+
+		for (auto& material : InAsset->materials)
+		{
+			auto& materialData = InMeshData.Materials.emplace_back();
+			YUKI_VERIFY(material.pbrData.has_value());
+
+			auto& pbrData = material.pbrData.value();
+			YUKI_VERIFY(pbrData.baseColorTexture.has_value());
+
+			auto& colorTexture = pbrData.baseColorTexture.value();
+
+			auto& meshMaterial = InMeshData.Materials.emplace_back();
+			meshMaterial.AlbedoTextureIndex = uint32_t(colorTexture.textureIndex);
+		}
 	}
 
 	LoadedMesh MeshLoader::LoadGLTFMesh(RenderContext* InContext, const std::filesystem::path& InFilePath)
@@ -75,6 +137,8 @@ namespace Yuki {
 		LoadedMesh result = {};
 		result.Meshes.reserve(asset->meshes.size());
 
+		ProcessMaterials(InContext, asset.get(), InFilePath.parent_path(), result);
+
 		YUKI_STOPWATCH_START();
 		for (auto& mesh : asset->meshes)
 		{
@@ -105,7 +169,9 @@ namespace Yuki {
 				{
 					fastgltf::iterateAccessor<Math::Vec3>(*asset, positionAccessor, [&](Math::Vec3 InPosition)
 					{
-						meshData.Vertices[vertexID++].Position = InPosition;
+						meshData.Vertices[vertexID].Position = InPosition;
+						meshData.Vertices[vertexID].MaterialIndex = primitive.materialIndex.value_or(0);
+						vertexID++;
 					});
 					vertexID = baseVertexOffset;
 				}
@@ -143,11 +209,6 @@ namespace Yuki {
 			}
 
 			{
-				if (result.Meshes.size() > 114)
-				{
-					for (size_t i = 0; i < 6; i++)
-						LogInfo("V{}: {}", i, meshData.Vertices[i].Position);
-				}
 				uint32_t vertexDataSize = sizeof(Vertex) * uint32_t(meshData.Vertices.size());
 
 				s_StagingBuffer->SetData(meshData.Vertices.data(), vertexDataSize);

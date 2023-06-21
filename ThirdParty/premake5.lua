@@ -34,3 +34,13 @@ project "fastgltf"
 		"simdjson/include/simdjson/"
 	}
 
+project "stb_image"
+	kind "StaticLib"
+
+	files {
+		"stb_image/src/stb_image.cpp"
+	}
+
+	includedirs {
+		"stb_image/include/stb_image/"
+	}

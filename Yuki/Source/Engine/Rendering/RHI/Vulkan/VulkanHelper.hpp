@@ -4,6 +4,7 @@
 #include "VulkanQueue.hpp"
 
 #include "Rendering/RHI/Image2D.hpp"
+#include "Rendering/RHI/DescriptorSet.hpp"
 #include "Rendering/RHI/Buffer.hpp"
 
 namespace Yuki {
@@ -31,6 +32,7 @@ namespace Yuki {
 
 		static VkImageLayout ImageLayoutToVkImageLayout(ImageLayout InLayout);
 
+		static VkDescriptorType DescriptorTypeToVkDescriptorType(DescriptorType InType);
 	};
 
 }

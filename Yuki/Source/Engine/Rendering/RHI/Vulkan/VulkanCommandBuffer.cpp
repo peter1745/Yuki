@@ -4,9 +4,12 @@
 #include "VulkanImage2D.hpp"
 #include "VulkanSwapchain.hpp"
 #include "VulkanCommandBufferPool.hpp"
+#include "VulkanDescriptorSet.hpp"
 #include "VulkanHelper.hpp"
 
 #include "Rendering/RHI/RenderTarget.hpp"
+
+#include "Math/Math.hpp"
 
 namespace Yuki {
 
@@ -52,6 +55,18 @@ namespace Yuki {
 	void VulkanCommandBuffer::BindPipeline(GraphicsPipeline* InPipeline)
 	{
 		vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VulkanGraphicsPipeline*>(InPipeline)->Pipeline);
+	}
+
+	void VulkanCommandBuffer::BindDescriptorSets(GraphicsPipeline* InPipeline, std::span<DescriptorSet* const> InDescriptorSets)
+	{
+		auto pipelineLayout = static_cast<VulkanGraphicsPipeline*>(InPipeline)->Layout;
+
+		List<VkDescriptorSet> descriptorSets;
+		descriptorSets.reserve(InDescriptorSets.size());
+		for (auto* set : InDescriptorSets)
+			descriptorSets.emplace_back(static_cast<VulkanDescriptorSet*>(set)->m_Set);
+
+		vkCmdBindDescriptorSets(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 	}
 
 	void VulkanCommandBuffer::SetViewport(Viewport* InViewport)
@@ -214,6 +229,127 @@ namespace Yuki {
 		image->m_CurrentPipelineStage = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		image->m_CurrentAccessFlags = 0;
 		image->m_CurrentLayout = imageLayout;
+	}
+
+	void VulkanCommandBuffer::CopyToBuffer(Buffer* InDstBuffer, uint32_t InDstOffset, Buffer* InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize)
+	{
+		uint32_t size = InSize;
+		if (size == 0)
+			size = Math::Min(InDstBuffer->GetInfo().Size - InDstOffset, InSrcBuffer->GetInfo().Size - InSrcOffset);
+
+		VkBufferCopy2 copyRegion =
+		{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+			.srcOffset = InSrcOffset,
+			.dstOffset = InDstOffset,
+			.size = size,
+		};
+
+		VkCopyBufferInfo2 bufferCopyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+			.srcBuffer = static_cast<VulkanBuffer*>(InSrcBuffer)->GetVkBuffer(),
+			.dstBuffer = static_cast<VulkanBuffer*>(InDstBuffer)->GetVkBuffer(),
+			.regionCount = 1,
+			.pRegions = &copyRegion
+		};
+
+		vkCmdCopyBuffer2(m_CommandBuffer, &bufferCopyInfo);
+	}
+
+	void VulkanCommandBuffer::CopyToImage(Image2D* InDstImage, Buffer* InSrcBuffer, uint32_t InSrcOffset)
+	{
+		VkImageAspectFlags aspectMask = IsDepthFormat(InDstImage->GetImageFormat()) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+
+		{
+			VkImageMemoryBarrier2 barrier =
+			{
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = static_cast<VulkanImage2D*>(InDstImage)->m_CurrentPipelineStage,
+				.srcAccessMask = static_cast<VulkanImage2D*>(InDstImage)->m_CurrentAccessFlags,
+				.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, // TODO(Peter): Handle this properly (preferably in an abstracted way)
+				.dstAccessMask = 0, // TODO(Peter): Handle this properly (preferably in an abstracted way)
+				.oldLayout = static_cast<VulkanImage2D*>(InDstImage)->m_CurrentLayout,
+				.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.image = static_cast<VulkanImage2D*>(InDstImage)->GetVkImage(),
+				.subresourceRange = {
+					.aspectMask = aspectMask,
+					.baseMipLevel = 0,
+					.levelCount = 1,
+					.baseArrayLayer = 0,
+					.layerCount = 1,
+				}
+			};
+
+			VkDependencyInfo dependencyInfo =
+			{
+				.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+				.imageMemoryBarrierCount = 1,
+				.pImageMemoryBarriers = &barrier,
+			};
+
+			vkCmdPipelineBarrier2(m_CommandBuffer, &dependencyInfo);
+		}
+
+		VkBufferImageCopy2 region =
+		{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+			.pNext = nullptr,
+			.bufferOffset = InSrcOffset,
+			.bufferRowLength = 0,
+			.bufferImageHeight = 0,
+			.imageSubresource = {
+				.aspectMask = aspectMask,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.imageOffset = { 0, 0, 0 },
+			.imageExtent = { InDstImage->GetWidth(), InDstImage->GetHeight(), 1 },
+		};
+
+		VkCopyBufferToImageInfo2 copyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2,
+			.pNext = nullptr,
+			.srcBuffer = static_cast<VulkanBuffer*>(InSrcBuffer)->GetVkBuffer(),
+			.dstImage = static_cast<VulkanImage2D*>(InDstImage)->GetVkImage(),
+			.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			.regionCount = 1,
+			.pRegions = &region,
+		};
+
+		vkCmdCopyBufferToImage2(m_CommandBuffer, &copyInfo);
+
+		{
+			VkImageMemoryBarrier2 barrier =
+			{
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+				.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+				.srcAccessMask = 0,
+				.dstStageMask = static_cast<VulkanImage2D*>(InDstImage)->m_CurrentPipelineStage, // TODO(Peter): Handle this properly (preferably in an abstracted way)
+				.dstAccessMask = static_cast<VulkanImage2D*>(InDstImage)->m_CurrentAccessFlags, // TODO(Peter): Handle this properly (preferably in an abstracted way)
+				.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				.image = static_cast<VulkanImage2D*>(InDstImage)->GetVkImage(),
+				.subresourceRange = {
+					.aspectMask = aspectMask,
+					.baseMipLevel = 0,
+					.levelCount = 1,
+					.baseArrayLayer = 0,
+					.layerCount = 1,
+				}
+			};
+
+			VkDependencyInfo dependencyInfo =
+			{
+				.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+				.imageMemoryBarrierCount = 1,
+				.pImageMemoryBarriers = &barrier,
+			};
+
+			vkCmdPipelineBarrier2(m_CommandBuffer, &dependencyInfo);
+		}
 	}
 
 }

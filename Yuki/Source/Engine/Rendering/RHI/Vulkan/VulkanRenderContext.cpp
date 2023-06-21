@@ -9,6 +9,8 @@
 #include "VulkanRenderInterface.hpp"
 #include "VulkanCommandBufferPool.hpp"
 #include "VulkanBuffer.hpp"
+#include "VulkanSampler.hpp"
+#include "VulkanSetLayoutBuilder.hpp"
 
 #define VK_VERIFY(res) if (res != VK_SUCCESS) { LogError("Vulkan Validation failed: {}", int32_t(res)); }
 
@@ -150,6 +152,12 @@ namespace Yuki {
 	GraphicsPipelineBuilder* VulkanRenderContext::CreateGraphicsPipelineBuilder() { return new VulkanGraphicsPipelineBuilder(this); }
 	void VulkanRenderContext::DestroyGraphicsPipelineBuilder(GraphicsPipelineBuilder* InPipelineBuilder) { delete InPipelineBuilder; }
 
+	SetLayoutBuilder* VulkanRenderContext::CreateSetLayoutBuilder() { return new VulkanSetLayoutBuilder(this); }
+	void VulkanRenderContext::DestroySetLayoutBuilder(SetLayoutBuilder* InSetLayoutBuilder) { delete InSetLayoutBuilder; }
+
+	DescriptorPool* VulkanRenderContext::CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) { return new VulkanDescriptorPool(this, InDescriptorCounts); }
+	void VulkanRenderContext::DestroyDescriptorPool(DescriptorPool* InDescriptorPool) { delete InDescriptorPool; }
+
 	Viewport* VulkanRenderContext::CreateViewport(GenericWindow* InWindow) { return new VulkanViewport(this, InWindow); }
 	void VulkanRenderContext::DestroyViewport(Viewport* InViewport) { delete InViewport; }
 
@@ -158,6 +166,9 @@ namespace Yuki {
 
 	ImageView2D* VulkanRenderContext::CreateImageView2D(Image2D* InImage) { return new VulkanImageView2D(this, (VulkanImage2D*)InImage); }
 	void VulkanRenderContext::DestroyImageView2D(ImageView2D* InImageView) { delete InImageView; }
+
+	Sampler* VulkanRenderContext::CreateSampler() { return new VulkanSampler(this); }
+	void VulkanRenderContext::DestroySampler(Sampler* InSampler) { delete InSampler; }
 
 	Buffer* VulkanRenderContext::CreateBuffer(const BufferInfo& InInfo) { return new VulkanBuffer(this, InInfo); }
 	void VulkanRenderContext::DestroyBuffer(Buffer* InBuffer) { delete InBuffer; }
@@ -325,6 +336,10 @@ namespace Yuki {
 		{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
 			.pNext = &features13,
+			.shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+			.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+			.descriptorBindingPartiallyBound = VK_TRUE,
+			.runtimeDescriptorArray = VK_TRUE,
 			.scalarBlockLayout = VK_TRUE,
 			.timelineSemaphore = VK_TRUE,
 		};

@@ -25,6 +25,7 @@ project "Sandbox"
         "spdlog",
 		"fastgltf",
 		"simdjson",
+        "stb_image",
     }
 
     filter { "configurations:Debug" }

@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Yuki/Rendering/RHI/Image2D.hpp"
+#include "Yuki/Rendering/RHI/DescriptorSet.hpp"
+
+#include <span>
 
 namespace Yuki {
 
@@ -20,6 +23,7 @@ namespace Yuki {
 		virtual void BindVertexBuffer(Buffer* InVertexBuffer) = 0;
 		virtual void BindIndexBuffer(Buffer* InIndexBuffer) = 0;
 		virtual void BindPipeline(GraphicsPipeline* InPipeline) = 0;
+		virtual void BindDescriptorSets(GraphicsPipeline* InPipeline, std::span<DescriptorSet* const> InDescriptorSets) = 0;
 
 		virtual void SetViewport(Viewport* InViewport) = 0;
 
@@ -33,6 +37,9 @@ namespace Yuki {
 		virtual void DrawIndexed(uint32_t InIndexCount, uint32_t InInstanceCount, uint32_t InFirstIndex, int32_t InVertexOffset, uint32_t InFirstInstance) = 0;
 
 		virtual void TransitionImage(Image2D* InImage, ImageLayout InNewLayout) = 0;
+
+		virtual void CopyToBuffer(Buffer* InDstBuffer, uint32_t InDstOffset, Buffer* InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) = 0;
+		virtual void CopyToImage(Image2D* InDstImage, Buffer* InSrcBuffer, uint32_t InSrcOffset) = 0;
 
 		template<typename T>
 		T As() const { return static_cast<T>(GetUnderlyingHandle()); }

@@ -12,12 +12,18 @@ namespace Yuki {
 		Math::Vec3 Position;
 		Math::Vec3 Normal;
 		Math::Vec2 UV;
+		uint32_t MaterialIndex;
+	};
+
+	struct MeshMaterial
+	{
+		uint32_t AlbedoTextureIndex;
 	};
 
 	struct Mesh
 	{
-		std::vector<Vertex> Vertices;
-		std::vector<uint32_t> Indices;
+		List<Vertex> Vertices;
+		List<uint32_t> Indices;
 
 		Buffer* VertexBuffer;
 		Buffer* IndexBuffer;
@@ -29,10 +35,20 @@ namespace Yuki {
 		Math::Mat4 Transform;
 	};
 
+	struct LoadedImage
+	{
+		uint32_t Width;
+		uint32_t Height;
+		List<std::byte> Data;
+	};
+
 	struct LoadedMesh
 	{
 		List<Mesh> Meshes;
 		List<MeshInstance> Instances;
+		List<LoadedImage> LoadedImages;
+		List<Image2D*> Textures;
+		List<MeshMaterial> Materials;
 	};
 
 }

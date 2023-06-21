@@ -30,6 +30,7 @@ project "Yuki"
         "../ThirdParty/volk/Include/",
         "../ThirdParty/ankerl/include/",
         "../ThirdParty/fastgltf/include/",
+        "../ThirdParty/stb_image/include/",
 
         VulkanSDKPath,
     }

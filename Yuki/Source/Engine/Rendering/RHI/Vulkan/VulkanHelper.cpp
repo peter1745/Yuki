@@ -80,4 +80,16 @@ namespace Yuki {
 		return VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 
+	VkDescriptorType VulkanHelper::DescriptorTypeToVkDescriptorType(DescriptorType InType)
+	{
+		switch (InType)
+		{
+		case DescriptorType::UniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		case DescriptorType::CombinedImageSampler: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		}
+
+		YUKI_VERIFY(false);
+		return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+	}
+
 }

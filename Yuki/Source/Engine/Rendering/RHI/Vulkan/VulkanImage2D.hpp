@@ -18,6 +18,7 @@ namespace Yuki {
 		ImageView2D* GetDefaultImageView() const override { return m_DefaultImageView.GetPtr(); }
 
 		VkImage GetVkImage() const { return m_Image; }
+		VkImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
 
 	private:
 		VulkanImage2D(VulkanRenderContext* InContext, uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat);

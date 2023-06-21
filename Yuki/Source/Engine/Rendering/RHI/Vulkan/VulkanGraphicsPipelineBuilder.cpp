@@ -31,6 +31,10 @@ namespace Yuki {
 		case ShaderDataType::Int2: return VK_FORMAT_R32G32_SINT;
 		case ShaderDataType::Int3: return VK_FORMAT_R32G32B32_SINT;
 		case ShaderDataType::Int4: return VK_FORMAT_R32G32B32A32_SINT;
+		case ShaderDataType::UInt: return VK_FORMAT_R32_UINT;
+		case ShaderDataType::UInt2: return VK_FORMAT_R32G32_UINT;
+		case ShaderDataType::UInt3: return VK_FORMAT_R32G32B32_UINT;
+		case ShaderDataType::UInt4: return VK_FORMAT_R32G32B32A32_UINT;
 		}
 
 		YUKI_VERIFY(false);
@@ -43,7 +47,21 @@ namespace Yuki {
 		m_Device = ((VulkanRenderContext*)InContext)->GetDevice();
 	}
 
-	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::WithShader(ResourceHandle<Shader> InShaderHandle)
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::Start()
+	{
+		m_PipelineShader = nullptr;
+		m_ShaderStageInfos.clear();
+		m_VertexInputAttributes.clear();
+		m_VertexInputAttributesOffset = 0;
+		m_PushConstants.clear();
+		m_ColorAttachmentFormats.clear();
+		m_ColorAttachmentBlendStates.clear();
+		m_HasDepthAttachment = false;
+
+		return *this;
+	}
+
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::WithShader(ResourceHandle<Shader> InShaderHandle)
 	{
 		m_PipelineShader = m_ShaderManager->GetShader(InShaderHandle);
 
@@ -58,10 +76,10 @@ namespace Yuki {
 			stageCreateInfo.pName = "main";
 		}
 
-		return this;
+		return *this;
 	}
 
-	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::AddVertexInput(uint32_t InLocation, ShaderDataType InDataType)
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::AddVertexInput(uint32_t InLocation, ShaderDataType InDataType)
 	{
 		auto& vertexInputAttribute = m_VertexInputAttributes.emplace_back();
 		vertexInputAttribute.location = InLocation;
@@ -71,10 +89,10 @@ namespace Yuki {
 
 		m_VertexInputAttributesOffset += ShaderDataTypeSize(InDataType);
 
-		return this;
+		return *this;
 	}
 
-	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::PushConstant(uint32_t InOffset, uint32_t InSize)
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::PushConstant(uint32_t InOffset, uint32_t InSize)
 	{
 		VkPushConstantRange range =
 		{
@@ -84,10 +102,16 @@ namespace Yuki {
 		};
 		m_PushConstants.emplace_back(std::move(range));
 		
-		return this;
+		return *this;
 	}
 
-	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::ColorAttachment(ImageFormat InFormat)
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::AddDescriptorSetLayout(DescriptorSetLayout* InLayout)
+	{
+		m_DescriptorSetLayouts.emplace_back(static_cast<VulkanDescriptorSetLayout*>(InLayout));
+		return *this;
+	}
+
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::ColorAttachment(ImageFormat InFormat)
 	{
 		YUKI_VERIFY(InFormat != ImageFormat::Depth32SFloat);
 
@@ -103,13 +127,13 @@ namespace Yuki {
 		blendStateInfo.alphaBlendOp = VK_BLEND_OP_ADD;
 		blendStateInfo.colorWriteMask = 0xF;
 
-		return this;
+		return *this;
 	}
 
-	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::DepthAttachment()
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::DepthAttachment()
 	{
 		m_HasDepthAttachment = true;
-		return this;
+		return *this;
 	}
 
 	Unique<GraphicsPipeline> VulkanGraphicsPipelineBuilder::Build()
@@ -123,11 +147,16 @@ namespace Yuki {
 			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 		};
 
+		List<VkDescriptorSetLayout> descriptorSetLayouts;
+		descriptorSetLayouts.reserve(m_DescriptorSetLayouts.size());
+		for (auto* descriptorSetLayout : m_DescriptorSetLayouts)
+			descriptorSetLayouts.emplace_back(descriptorSetLayout->Handle);
+
 		VkPipelineLayoutCreateInfo layoutCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-			.setLayoutCount = 0,
-			.pSetLayouts = nullptr,
+			.setLayoutCount = uint32_t(descriptorSetLayouts.size()),
+			.pSetLayouts = descriptorSetLayouts.data(),
 			.pushConstantRangeCount = uint32_t(m_PushConstants.size()),
 			.pPushConstantRanges = m_PushConstants.data(),
 		};

@@ -2,7 +2,7 @@
 
 #include "Rendering/RHI/RenderContext.hpp"
 
-#include "Vulkan.hpp"
+#include "VulkanInclude.hpp"
 #include "VulkanPlatform.hpp"
 #include "VulkanShaderCompiler.hpp"
 #include "VulkanQueue.hpp"
@@ -35,6 +35,12 @@ namespace Yuki {
 		GraphicsPipelineBuilder* CreateGraphicsPipelineBuilder() override;
 		void DestroyGraphicsPipelineBuilder(GraphicsPipelineBuilder* InPipelineBuilder) override;
 
+		SetLayoutBuilder* CreateSetLayoutBuilder() override;
+		void DestroySetLayoutBuilder(SetLayoutBuilder* InSetLayoutBuilder) override;
+
+		DescriptorPool* CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) override;
+		void DestroyDescriptorPool(DescriptorPool* InDescriptorPool) override;
+
 		Viewport* CreateViewport(GenericWindow* InWindow) override;
 		void DestroyViewport(Viewport* InViewport) override;
 
@@ -43,6 +49,9 @@ namespace Yuki {
 
 		ImageView2D* CreateImageView2D(Image2D* InImage) override;
 		void DestroyImageView2D(ImageView2D* InImageView) override;
+
+		Sampler* CreateSampler() override;
+		void DestroySampler(Sampler* InSampler) override;
 
 		Buffer* CreateBuffer(const BufferInfo& InInfo) override;
 		void DestroyBuffer(Buffer* InBuffer) override;
