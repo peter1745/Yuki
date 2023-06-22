@@ -13,12 +13,17 @@ project "spdlog"
 project "simdjson"
 	kind "StaticLib"
 
+	defines {
+		"SIMDJSON_DISABLE_DEPRECATED_API=1"
+	}
+
 	files {
+
 		"simdjson/src/simdjson.cpp"
 	}
 
 	includedirs {
-		"simdjson/include/simdjson/"
+		"simdjson/include/"
 	}
 
 project "fastgltf"
@@ -31,7 +36,7 @@ project "fastgltf"
 
 	includedirs {
 		"fastgltf/include/",
-		"simdjson/include/simdjson/"
+		"simdjson/include/"
 	}
 
 project "stb_image"

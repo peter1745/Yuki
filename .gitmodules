@@ -10,3 +10,6 @@
 	path = ThirdParty/fastgltf
 	url = https://github.com/spnda/fastgltf
 	shallow = true
+[submodule "ThirdParty/simdjson"]
+	path = ThirdParty/simdjson
+	url = https://github.com/simdjson/simdjson
