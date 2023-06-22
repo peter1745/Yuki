@@ -6,8 +6,11 @@
     }
     
     #define VMA_DEBUG_LOG(format, ...)\
-        sprintf(Yuki::s_FormatBuffer, format __VA_OPT__(,) __VA_ARGS__);\
-        Yuki::LogError("[VMA]: {}", Yuki::s_FormatBuffer)
+		if (std::string_view(format).starts_with("UNFREED ALLOCATION"))\
+		{\
+			sprintf(Yuki::s_FormatBuffer, format __VA_OPT__(,) __VA_ARGS__);\
+			Yuki::LogError("[VMA]: {}", Yuki::s_FormatBuffer);\
+		}
 #endif
 
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1

@@ -28,8 +28,9 @@ namespace Yuki {
 
 		VkSwapchainKHR GetVkSwapchain() const { return m_Swapchain; }
 
-		Image2D* GetCurrentImage() const override { return m_Images[m_CurrentImageIndex]; }
-		ImageView2D* GetCurrentImageView() const override { return m_ImageViews[m_CurrentImageIndex]; }
+		Image2D* GetCurrentImage() const override { return m_Images[m_CurrentImageIndex].GetPtr(); }
+		ImageView2D* GetCurrentImageView() const override { return m_ImageViews[m_CurrentImageIndex].GetPtr(); }
+		Image2D* GetDepthImage() const override { return m_DepthImage.GetPtr(); }
 
 	private:
 		void Create(const VulkanSwapchainInfo& InSwapchainInfo);
@@ -40,8 +41,9 @@ namespace Yuki {
 	private:
 		VulkanRenderContext* m_Context = nullptr;
 		VkSwapchainKHR m_Swapchain = VK_NULL_HANDLE;
-		List<VulkanImage2D*> m_Images;
-		List<VulkanImageView2D*> m_ImageViews;
+		List<Unique<VulkanImage2D>> m_Images;
+		List<Unique<VulkanImageView2D>> m_ImageViews;
+		Unique<VulkanImage2D> m_DepthImage = nullptr;
 		uint32_t m_CurrentImageIndex = 0;
 
 		List<VkSemaphore> m_Semaphores;

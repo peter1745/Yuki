@@ -2,7 +2,7 @@
 
 #include "Rendering/RHI/RenderContext.hpp"
 
-#include "Vulkan.hpp"
+#include "VulkanInclude.hpp"
 #include "VulkanPlatform.hpp"
 #include "VulkanShaderCompiler.hpp"
 #include "VulkanQueue.hpp"
@@ -24,36 +24,20 @@ namespace Yuki {
 
 		Queue* GetGraphicsQueue() const override { return m_GraphicsQueue.GetPtr(); }
 
-		void ResetCommandPool() override;
-
 		void WaitDeviceIdle() const override;
 
 	public:
-		RenderInterface* CreateRenderInterface() override;
-		void DestroyRenderInterface(RenderInterface* InRenderInterface) override;
-
-		GraphicsPipelineBuilder* CreateGraphicsPipelineBuilder() override;
-		void DestroyGraphicsPipelineBuilder(GraphicsPipelineBuilder* InPipelineBuilder) override;
-
-		Viewport* CreateViewport(GenericWindow* InWindow) override;
-		void DestroyViewport(Viewport* InViewport) override;
-
-		Image2D* CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat) override;
-		void DestroyImage2D(Image2D* InImage) override;
-
-		ImageView2D* CreateImageView2D(Image2D* InImage) override;
-		void DestroyImageView2D(ImageView2D* InImageView) override;
-
-		Buffer* CreateBuffer(const BufferInfo& InInfo) override;
-		void DestroyBuffer(Buffer* InBuffer) override;
-
-		Fence* CreateFence() override;
-		void DestroyFence(Fence* InFence) override;
-
-		CommandBuffer* CreateCommandBuffer() override;
-		void DestroyCommandBuffer(CommandBuffer* InCommandBuffer) override;
-
-		VkCommandBuffer CreateTransientCommandBuffer() const;
+		Unique<RenderInterface> CreateRenderInterface() override;
+		Unique<GraphicsPipelineBuilder> CreateGraphicsPipelineBuilder() override;
+		Unique<SetLayoutBuilder> CreateSetLayoutBuilder() override;
+		Unique<DescriptorPool> CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) override;
+		Unique<Viewport> CreateViewport(GenericWindow* InWindow) override;
+		Unique<Image2D> CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
+		Unique<ImageView2D> CreateImageView2D(Image2D* InImage) override;
+		Unique<Sampler> CreateSampler() override;
+		Unique<Buffer> CreateBuffer(const BufferInfo& InInfo) override;
+		Unique<Fence> CreateFence() override;
+		Unique<CommandBufferPool> CreateCommandBufferPool(CommandBufferPoolInfo InInfo) override;
 
 	public:
 		VulkanAllocator& GetAllocator() { return m_Allocator; }
@@ -79,9 +63,6 @@ namespace Yuki {
 		VulkanAllocator m_Allocator;
 
 		VkDebugUtilsMessengerEXT m_DebugUtilsMessengerHandle = VK_NULL_HANDLE;
-
-		VkCommandPool m_CommandPool = VK_NULL_HANDLE;
-		VkCommandPool m_TransientCommandPool = VK_NULL_HANDLE;
 
 		Unique<ShaderManager> m_ShaderManager = nullptr;
 		Unique<VulkanShaderCompiler> m_ShaderCompiler = nullptr;

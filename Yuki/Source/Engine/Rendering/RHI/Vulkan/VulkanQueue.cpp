@@ -2,6 +2,7 @@
 #include "VulkanRenderContext.hpp"
 #include "VulkanSwapchain.hpp"
 #include "VulkanFence.hpp"
+#include "VulkanCommandBufferPool.hpp"
 
 namespace Yuki {
 
@@ -70,29 +71,19 @@ namespace Yuki {
 		if (InViewports.empty())
 			return;
 
+		if (m_PresentTransitionPool == nullptr)
+			m_PresentTransitionPool = m_Context->CreateCommandBufferPool({ .IsTransient = false });
+
 		// Transition images to present
 		{
-			std::vector<VkCommandBuffer> transitionCommandBuffers(InViewports.size());
+			auto* commandBuffer = m_PresentTransitionPool->NewCommandBuffer();
+			commandBuffer->Begin();
 
-			for (size_t i = 0; i < InViewports.size(); i++)
-			{
-				auto* swapchain = static_cast<VulkanSwapchain*>(InViewports[i]->GetSwapchain());
+			for (auto* viewport : InViewports)
+				commandBuffer->TransitionImage(viewport->GetSwapchain()->GetCurrentImage(), ImageLayout::Present);
 
-				transitionCommandBuffers[i] = m_Context->CreateTransientCommandBuffer();
-
-				VulkanImageTransition imageTransition =
-				{
-					.DstPipelineStage = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
-					.DstAccessFlags = 0,
-					.DstImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-				};
-
-				static_cast<VulkanImage2D*>(swapchain->GetCurrentImage())->Transition(transitionCommandBuffers[i], imageTransition);
-
-				vkEndCommandBuffer(transitionCommandBuffers[i]);
-			}
-
-			SubmitCommandBuffers(transitionCommandBuffers, InFences, {});
+			commandBuffer->End();
+			SubmitCommandBuffers({ commandBuffer }, {}, InFences);
 		}
 
 		std::vector<VkResult> presentResults(InViewports.size());
@@ -186,7 +177,7 @@ namespace Yuki {
 	{
 		if (InViewports.empty())
 			return;
-		
+
 		for (auto* const viewport : InViewports)
 			viewport->AcquireNextImage();
 
@@ -231,6 +222,9 @@ namespace Yuki {
 				.pSignalSemaphoreInfos = signalInfos.data()
 			};
 			vkQueueSubmit2(m_Queue, 1, &submitInfo, VK_NULL_HANDLE);
+
+			if (m_PresentTransitionPool)
+				m_PresentTransitionPool->Reset();
 		}
 	}
 

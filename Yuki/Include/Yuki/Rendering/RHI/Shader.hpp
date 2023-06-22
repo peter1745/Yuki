@@ -20,6 +20,7 @@ namespace Yuki {
 	{
 		Float, Float2, Float3, Float4,
 		Int, Int2, Int3, Int4,
+		UInt, UInt2, UInt3, UInt4,
 	};
 
 	static constexpr uint32_t ShaderDataTypeSize(ShaderDataType InType)
@@ -34,15 +35,21 @@ namespace Yuki {
 		case ShaderDataType::Int2: return sizeof(int32_t) * 2;
 		case ShaderDataType::Int3: return sizeof(int32_t) * 3;
 		case ShaderDataType::Int4: return sizeof(int32_t) * 4;
+		case ShaderDataType::UInt: return sizeof(uint32_t);
+		case ShaderDataType::UInt2: return sizeof(uint32_t) * 2;
+		case ShaderDataType::UInt3: return sizeof(uint32_t) * 3;
+		case ShaderDataType::UInt4: return sizeof(uint32_t) * 4;
 		}
 
 		return 0;
 	}
 
-	struct Shader
+	class Shader
 	{
-		std::string Name;
-		Map<ShaderModuleType, void*> ModuleHandles;
+	public:
+		virtual ~Shader() = default;
+
+		virtual std::string_view GetName() const = 0;
 	};
 
 }

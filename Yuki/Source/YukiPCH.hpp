@@ -12,6 +12,8 @@
 
 #include <functional>
 
+#include <cmath>
+
 #include <random>
 
 #include <ranges>
@@ -20,9 +22,11 @@
 	#define NOMINMAX
 	#define WIN32_LEAN_AND_MEAN
 	#include <Windows.h>
+	#include <hidusage.h>
 #endif
 
 #include "Core/Core.hpp"
 #include "Core/Debug.hpp"
+#include "Core/Stopwatch.hpp"
 
 #include "Memory/Unique.hpp"

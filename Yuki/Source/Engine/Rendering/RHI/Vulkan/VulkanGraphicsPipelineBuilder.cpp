@@ -31,25 +31,42 @@ namespace Yuki {
 		case ShaderDataType::Int2: return VK_FORMAT_R32G32_SINT;
 		case ShaderDataType::Int3: return VK_FORMAT_R32G32B32_SINT;
 		case ShaderDataType::Int4: return VK_FORMAT_R32G32B32A32_SINT;
+		case ShaderDataType::UInt: return VK_FORMAT_R32_UINT;
+		case ShaderDataType::UInt2: return VK_FORMAT_R32G32_UINT;
+		case ShaderDataType::UInt3: return VK_FORMAT_R32G32B32_UINT;
+		case ShaderDataType::UInt4: return VK_FORMAT_R32G32B32A32_UINT;
 		}
 
 		YUKI_VERIFY(false);
 		return VK_FORMAT_UNDEFINED;
 	}
 
-	VulkanGraphicsPipelineBuilder::VulkanGraphicsPipelineBuilder(RenderContext* InContext)
-	    : m_ShaderManager(InContext->GetShaderManager())
+	VulkanGraphicsPipelineBuilder::VulkanGraphicsPipelineBuilder(VulkanRenderContext* InContext)
+		: m_Context(InContext)
 	{
-		m_Device = ((VulkanRenderContext*)InContext)->GetDevice();
 	}
 
-	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::WithShader(ResourceHandle<Shader> InShaderHandle)
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::Start()
 	{
-		m_PipelineShader = m_ShaderManager->GetShader(InShaderHandle);
+		m_PipelineShader = nullptr;
+		m_ShaderStageInfos.clear();
+		m_VertexInputAttributes.clear();
+		m_VertexInputAttributesOffset = 0;
+		m_PushConstants.clear();
+		m_ColorAttachmentFormats.clear();
+		m_ColorAttachmentBlendStates.clear();
+		m_HasDepthAttachment = false;
 
-		m_ShaderStageInfos.reserve(m_PipelineShader->ModuleHandles.size());
+		return *this;
+	}
 
-		for (const auto& [moduleType, moduleHandle] : m_PipelineShader->ModuleHandles)
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::WithShader(Shader* InShader)
+	{
+		m_PipelineShader = static_cast<VulkanShader*>(InShader);
+
+		m_ShaderStageInfos.reserve(m_PipelineShader->m_ModuleHandles.size());
+
+		for (const auto& [moduleType, moduleHandle] : m_PipelineShader->m_ModuleHandles)
 		{
 			auto& stageCreateInfo = m_ShaderStageInfos.emplace_back();
 			stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -58,10 +75,10 @@ namespace Yuki {
 			stageCreateInfo.pName = "main";
 		}
 
-		return this;
+		return *this;
 	}
 
-	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::AddVertexInput(uint32_t InLocation, ShaderDataType InDataType)
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::AddVertexInput(uint32_t InLocation, ShaderDataType InDataType)
 	{
 		auto& vertexInputAttribute = m_VertexInputAttributes.emplace_back();
 		vertexInputAttribute.location = InLocation;
@@ -71,12 +88,31 @@ namespace Yuki {
 
 		m_VertexInputAttributesOffset += ShaderDataTypeSize(InDataType);
 
-		return this;
+		return *this;
 	}
 
-	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::ColorAttachment(ImageFormat InFormat)
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::PushConstant(uint32_t InOffset, uint32_t InSize)
 	{
-		YUKI_VERIFY(InFormat != ImageFormat::Depth24UNorm);
+		VkPushConstantRange range =
+		{
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.offset = InOffset,
+			.size = InSize,
+		};
+		m_PushConstants.emplace_back(std::move(range));
+		
+		return *this;
+	}
+
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::AddDescriptorSetLayout(DescriptorSetLayout* InLayout)
+	{
+		m_DescriptorSetLayouts.emplace_back(static_cast<VulkanDescriptorSetLayout*>(InLayout));
+		return *this;
+	}
+
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::ColorAttachment(ImageFormat InFormat)
+	{
+		YUKI_VERIFY(InFormat != ImageFormat::Depth32SFloat);
 
 		m_ColorAttachmentFormats.emplace_back(VulkanHelper::ImageFormatToVkFormat(InFormat));
 
@@ -90,13 +126,13 @@ namespace Yuki {
 		blendStateInfo.alphaBlendOp = VK_BLEND_OP_ADD;
 		blendStateInfo.colorWriteMask = 0xF;
 
-		return this;
+		return *this;
 	}
 
-	GraphicsPipelineBuilder* VulkanGraphicsPipelineBuilder::DepthAttachment()
+	GraphicsPipelineBuilder& VulkanGraphicsPipelineBuilder::DepthAttachment()
 	{
 		m_HasDepthAttachment = true;
-		return this;
+		return *this;
 	}
 
 	Unique<GraphicsPipeline> VulkanGraphicsPipelineBuilder::Build()
@@ -106,21 +142,26 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
 			.colorAttachmentCount = uint32_t(m_ColorAttachmentFormats.size()),
 			.pColorAttachmentFormats = m_ColorAttachmentFormats.data(),
-			.depthAttachmentFormat = m_HasDepthAttachment ? VK_FORMAT_D24_UNORM_S8_UINT : VK_FORMAT_UNDEFINED,
+			.depthAttachmentFormat = m_HasDepthAttachment ? VK_FORMAT_D32_SFLOAT : VK_FORMAT_UNDEFINED,
 			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 		};
+
+		List<VkDescriptorSetLayout> descriptorSetLayouts;
+		descriptorSetLayouts.reserve(m_DescriptorSetLayouts.size());
+		for (auto* descriptorSetLayout : m_DescriptorSetLayouts)
+			descriptorSetLayouts.emplace_back(descriptorSetLayout->Handle);
 
 		VkPipelineLayoutCreateInfo layoutCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-			.setLayoutCount = 0,
-			.pSetLayouts = nullptr,
-			.pushConstantRangeCount = 0,
-			.pPushConstantRanges = nullptr
+			.setLayoutCount = uint32_t(descriptorSetLayouts.size()),
+			.pSetLayouts = descriptorSetLayouts.data(),
+			.pushConstantRangeCount = uint32_t(m_PushConstants.size()),
+			.pPushConstantRanges = m_PushConstants.data(),
 		};
 
 		VkPipelineLayout pipelineLayout;
-		YUKI_VERIFY(vkCreatePipelineLayout(m_Device, &layoutCreateInfo, nullptr, &pipelineLayout) == VK_SUCCESS);
+		YUKI_VERIFY(vkCreatePipelineLayout(m_Context->GetDevice(), &layoutCreateInfo, nullptr, &pipelineLayout) == VK_SUCCESS);
 
 		VkVertexInputBindingDescription vertexInputBindingDesc =
 		{
@@ -178,7 +219,7 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 			.depthTestEnable = m_HasDepthAttachment ? VK_TRUE : VK_FALSE,
 			.depthWriteEnable = m_HasDepthAttachment ? VK_TRUE : VK_FALSE,
-			.depthCompareOp = VK_COMPARE_OP_LESS,
+			.depthCompareOp = VK_COMPARE_OP_GREATER,
 			.depthBoundsTestEnable = VK_FALSE,
 			.stencilTestEnable = VK_FALSE,
 			.front = {
@@ -236,11 +277,12 @@ namespace Yuki {
 			.layout = pipelineLayout,
 		};
 
-		Unique<VulkanGraphicsPipeline> result = Unique<VulkanGraphicsPipeline>::Create();
-		result->ShaderHandle = m_PipelineShader;
-		result->Layout = pipelineLayout;
+		auto* result = new VulkanGraphicsPipeline();
+		result->m_Context = m_Context;
+		result->m_Shader = m_PipelineShader;
+		result->m_Layout = pipelineLayout;
 
-		YUKI_VERIFY(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &result->Pipeline) == VK_SUCCESS);
+		YUKI_VERIFY(vkCreateGraphicsPipelines(m_Context->GetDevice(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &result->m_Pipeline) == VK_SUCCESS);
 
 		return result;
 	}

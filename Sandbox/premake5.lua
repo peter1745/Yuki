@@ -22,7 +22,10 @@ project "Sandbox"
 
     links {
         "Yuki",
-        "spdlog"
+        "spdlog",
+		"fastgltf",
+		"simdjson",
+        "stb_image",
     }
 
     filter { "configurations:Debug" }

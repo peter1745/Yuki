@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Yuki/IO/KeyCodes.hpp"
+
 #include "Yuki/Memory/Unique.hpp"
 
 #include "Yuki/EventSystem/Event.hpp"
@@ -7,6 +9,9 @@
 
 #include "Yuki/Rendering/RHI/RenderContext.hpp"
 #include "Yuki/Rendering/RHI/Viewport.hpp"
+
+#include <functional>
+#include <string>
 
 namespace Yuki {
 
@@ -21,6 +26,8 @@ namespace Yuki {
 
 		WindowEventFn EventCallback = nullptr;
 	};
+
+	enum class CursorState { Normal, Locked };
 
 	class GenericWindow
 	{
@@ -37,6 +44,17 @@ namespace Yuki {
 		virtual const WindowAttributes& GetAttributes() const = 0;
 
 		virtual Viewport* GetViewport() const = 0;
+
+		virtual int64_t GetRawMouseDeltaX() = 0;
+		virtual int64_t GetRawMouseDeltaY() = 0;
+
+		virtual void SetCursorState(CursorState InState) = 0;
+
+		virtual bool IsKeyReleased(KeyCode InKeyCode) const = 0;
+		virtual bool IsKeyPressed(KeyCode InKeyCode) const = 0;
+
+		virtual bool IsMouseButtonReleased(MouseButton InButton) const = 0;
+		virtual bool IsMouseButtonPressed(MouseButton InButton) const = 0;
 
 	public:
 		static Unique<GenericWindow> New(RenderContext* InRenderContext, WindowAttributes InAttributes);

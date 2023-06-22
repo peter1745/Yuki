@@ -7,8 +7,12 @@
 #include "VulkanFence.hpp"
 #include "VulkanGraphicsPipelineBuilder.hpp"
 #include "VulkanRenderInterface.hpp"
-#include "VulkanCommandBuffer.hpp"
+#include "VulkanCommandBufferPool.hpp"
 #include "VulkanBuffer.hpp"
+#include "VulkanSampler.hpp"
+#include "VulkanSetLayoutBuilder.hpp"
+
+#include "Core/EnumFlags.hpp"
 
 #define VK_VERIFY(res) if (res != VK_SUCCESS) { LogError("Vulkan Validation failed: {}", int32_t(res)); }
 
@@ -105,38 +109,20 @@ namespace Yuki {
 
 		m_Allocator.Initialize(m_Instance, m_PhysicalDevice, m_Device);
 
-		VkCommandPoolCreateInfo poolInfo =
-		{
-			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-			.queueFamilyIndex = m_GraphicsQueue->GetFamilyIndex()
-		};
-		vkCreateCommandPool(m_Device, &poolInfo, nullptr, &m_CommandPool);
-
-		// Create Transient Command Buffer Pool
-		poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-		vkCreateCommandPool(m_Device, &poolInfo, nullptr, &m_TransientCommandPool);
-
-		m_ShaderManager = Unique<ShaderManager>::Create();
-		m_ShaderCompiler = Unique<VulkanShaderCompiler>::Create(m_ShaderManager.GetPtr(), m_Device);
+		m_ShaderCompiler = Unique<VulkanShaderCompiler>::Create(this);
 	}
 
 	void VulkanRenderContext::Destroy()
 	{
 		vkDeviceWaitIdle(m_Device);
-		
-		vkDestroyCommandPool(m_Device, m_TransientCommandPool, nullptr);
-		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
 
 		m_Allocator.Destroy();
+
+		m_GraphicsQueue.Release();
 
 		vkDestroyDevice(m_Device, nullptr);
 		vkDestroyDebugUtilsMessengerEXT(m_Instance, m_DebugUtilsMessengerHandle, nullptr);
 		vkDestroyInstance(m_Instance, nullptr);
-	}
-
-	void VulkanRenderContext::ResetCommandPool()
-	{
-		vkResetCommandPool(m_Device, m_CommandPool, 0);
 	}
 
 	void VulkanRenderContext::WaitDeviceIdle() const
@@ -144,48 +130,17 @@ namespace Yuki {
 		vkDeviceWaitIdle(m_Device);
 	}
 
-	RenderInterface* VulkanRenderContext::CreateRenderInterface() { return new VulkanRenderInterface(); }
-	void VulkanRenderContext::DestroyRenderInterface(RenderInterface* InRenderInterface) { delete InRenderInterface; }
-
-	GraphicsPipelineBuilder* VulkanRenderContext::CreateGraphicsPipelineBuilder() { return new VulkanGraphicsPipelineBuilder(this); }
-	void VulkanRenderContext::DestroyGraphicsPipelineBuilder(GraphicsPipelineBuilder* InPipelineBuilder) { delete InPipelineBuilder; }
-
-	Viewport* VulkanRenderContext::CreateViewport(GenericWindow* InWindow) { return new VulkanViewport(this, InWindow); }
-	void VulkanRenderContext::DestroyViewport(Viewport* InViewport) { delete InViewport; }
-
-	Image2D* VulkanRenderContext::CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat) { return new VulkanImage2D(this, InWidth, InHeight, InFormat); }
-	void VulkanRenderContext::DestroyImage2D(Image2D* InImage) { delete InImage; }
-
-	ImageView2D* VulkanRenderContext::CreateImageView2D(Image2D* InImage) { return new VulkanImageView2D(this, (VulkanImage2D*)InImage); }
-	void VulkanRenderContext::DestroyImageView2D(ImageView2D* InImageView) { delete InImageView; }
-
-	Buffer* VulkanRenderContext::CreateBuffer(const BufferInfo& InInfo) { return new VulkanBuffer(this, InInfo); }
-	void VulkanRenderContext::DestroyBuffer(Buffer* InBuffer) { delete InBuffer; }
-
-	Fence* VulkanRenderContext::CreateFence() { return new VulkanFence(this); }
-	void VulkanRenderContext::DestroyFence(Fence* InFence) { delete InFence; }
-
-	CommandBuffer* VulkanRenderContext::CreateCommandBuffer() { return new VulkanCommandBuffer(this, m_CommandPool); }
-	void VulkanRenderContext::DestroyCommandBuffer(CommandBuffer* InCommandBuffer) { delete InCommandBuffer; }
-
-	VkCommandBuffer VulkanRenderContext::CreateTransientCommandBuffer() const
-	{
-		VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
-
-		VkCommandBufferAllocateInfo allocateInfo =
-		{
-			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-			.commandPool = m_TransientCommandPool,
-			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-			.commandBufferCount = 1,
-		};
-		vkAllocateCommandBuffers(m_Device, &allocateInfo, &commandBuffer);
-
-		VkCommandBufferBeginInfo beginInfo = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-		vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-		return commandBuffer;
-	}
+	Unique<RenderInterface> VulkanRenderContext::CreateRenderInterface() { return new VulkanRenderInterface(); }
+	Unique<GraphicsPipelineBuilder> VulkanRenderContext::CreateGraphicsPipelineBuilder() { return new VulkanGraphicsPipelineBuilder(this); }
+	Unique<SetLayoutBuilder> VulkanRenderContext::CreateSetLayoutBuilder() { return new VulkanSetLayoutBuilder(this); }
+	Unique<DescriptorPool> VulkanRenderContext::CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) { return new VulkanDescriptorPool(this, InDescriptorCounts); }
+	Unique<Viewport> VulkanRenderContext::CreateViewport(GenericWindow* InWindow) { return new VulkanViewport(this, InWindow); }
+	Unique<Image2D> VulkanRenderContext::CreateImage2D(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) { return new VulkanImage2D(this, InWidth, InHeight, InFormat, InUsage); }
+	Unique<ImageView2D> VulkanRenderContext::CreateImageView2D(Image2D* InImage) { return new VulkanImageView2D(this, (VulkanImage2D*)InImage); }
+	Unique<Sampler> VulkanRenderContext::CreateSampler() { return new VulkanSampler(this); }
+	Unique<Buffer> VulkanRenderContext::CreateBuffer(const BufferInfo& InInfo) { return new VulkanBuffer(this, InInfo); }
+	Unique<Fence> VulkanRenderContext::CreateFence() { return new VulkanFence(this); }
+	Unique<CommandBufferPool> VulkanRenderContext::CreateCommandBufferPool(CommandBufferPoolInfo InInfo) { return new VulkanCommandBufferPool(this, std::move(InInfo)); }
 
 	VkSurfaceCapabilitiesKHR VulkanRenderContext::QuerySurfaceCapabilities(VkSurfaceKHR InSurface) const
 	{
@@ -320,6 +275,12 @@ namespace Yuki {
 		{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
 			.pNext = &features13,
+			.shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+			.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+			.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE,
+			.descriptorBindingPartiallyBound = VK_TRUE,
+			.runtimeDescriptorArray = VK_TRUE,
+			.scalarBlockLayout = VK_TRUE,
 			.timelineSemaphore = VK_TRUE,
 		};
 

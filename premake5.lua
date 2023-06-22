@@ -32,8 +32,13 @@ workspace "Yuki"
 		defines { "_CRT_SECURE_NO_WARNINGS" }
 
 		disablewarnings {
-            "4100" -- Unreferenced Formal Parameter
+            "4100", -- Unreferenced Formal Parameter
+			"4201" -- Anonymous Struct
         }
+
+		buildoptions {
+			"/openmp:llvm"
+		}
 
 	filter "toolset:clang"
 		disablewarnings {
@@ -48,6 +53,9 @@ workspace "Yuki"
 
     filter "action:vs*"
         linkoptions { "/ignore:4099" }
+		buildoptions {
+			"/Zc:preprocessor"
+		}
 
 group "ThirdParty"
 include "ThirdParty/"

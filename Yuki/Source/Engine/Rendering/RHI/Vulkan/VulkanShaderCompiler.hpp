@@ -4,20 +4,21 @@
 
 #include "Rendering/RHI/ShaderCompiler.hpp"
 
-#include "Vulkan.hpp"
+#include "VulkanInclude.hpp"
 
 namespace Yuki {
+
+	class VulkanRenderContext;
 
 	class VulkanShaderCompiler : public ShaderCompiler
 	{
 	public:
-		VulkanShaderCompiler(ShaderManager* InShaderManager, VkDevice InDevice);
+		VulkanShaderCompiler(VulkanRenderContext* InContext);
 		
-		ResourceHandle<Shader> CompileFromFile(const std::filesystem::path& InFilePath) override;
+		Unique<Shader> CompileFromFile(const std::filesystem::path& InFilePath) override;
 
 	private:
-		ShaderManager* m_ShaderManager = nullptr;
-		VkDevice m_Device = VK_NULL_HANDLE;
+		VulkanRenderContext* m_Context = nullptr;
 	};
 
 }

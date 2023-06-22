@@ -1,6 +1,9 @@
 #include "VulkanShaderCompiler.hpp"
+#include "VulkanShader.hpp"
+#include "VulkanRenderContext.hpp"
 
 #include "Core/StringHelper.hpp"
+#include "Core/Stopwatch.hpp"
 #include "IO/FileIO.hpp"
 
 #include <shaderc/shaderc.hpp>
@@ -88,12 +91,12 @@ namespace Yuki {
 		return result;
 	}
 
-	VulkanShaderCompiler::VulkanShaderCompiler(ShaderManager* InShaderManager, VkDevice InDevice)
-	    : m_ShaderManager(InShaderManager), m_Device(InDevice)
+	VulkanShaderCompiler::VulkanShaderCompiler(VulkanRenderContext* InContext)
+	    : m_Context(InContext)
 	{
 	}
 
-	ResourceHandle<Shader> VulkanShaderCompiler::CompileFromFile(const std::filesystem::path& InFilePath)
+	Unique<Shader> VulkanShaderCompiler::CompileFromFile(const std::filesystem::path& InFilePath)
 	{
 		LogInfo("Compiling shader {}", InFilePath.string());
 
@@ -101,11 +104,14 @@ namespace Yuki {
 		if (!FileIO::ReadText(InFilePath, source))
 		{
 			LogError("Couldn't compile shader, file: {} doesn't exist or couldn't be read!", InFilePath.string());
-			return ResourceHandle<Shader>::Invalid;
+			return nullptr;
 		}
 
+		YUKI_STOPWATCH_START_N("Pre-Process Shader Source");
 		auto shaderModules = ParseShaderSource(source);
+		YUKI_STOPWATCH_STOP();
 
+		YUKI_STOPWATCH_START_N("Compile Shader Modules");
 		Map<ShaderModuleType, std::vector<uint32_t>> compiledByteCode;
 		for (const auto& [shaderModuleType, moduleSource] : shaderModules)
 		{
@@ -119,9 +125,11 @@ namespace Yuki {
 
 			compiledByteCode[shaderModuleType] = std::vector<uint32_t>(result.begin(), result.end());
 		}
+		YUKI_STOPWATCH_STOP();
 
-		Shader* shader = new Shader();
-		shader->Name = InFilePath.stem().string();
+		VulkanShader* shader = new VulkanShader();
+		shader->m_Context = m_Context;
+		shader->m_Name = InFilePath.stem().string();
 
 		for (const auto& [shaderModuleType, moduleByteCode] : compiledByteCode)
 		{
@@ -132,10 +140,10 @@ namespace Yuki {
 				.pCode = moduleByteCode.data()
 			};
 
-			vkCreateShaderModule(m_Device, &moduleCreateInfo, nullptr, reinterpret_cast<VkShaderModule*>(&shader->ModuleHandles[shaderModuleType]));
+			vkCreateShaderModule(m_Context->GetDevice(), &moduleCreateInfo, nullptr, &shader->m_ModuleHandles[shaderModuleType]);
 		}
 
-		return m_ShaderManager->AddShader(shader);
+		return shader;
 	}
 
 }

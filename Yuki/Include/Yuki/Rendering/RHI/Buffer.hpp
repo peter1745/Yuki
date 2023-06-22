@@ -2,7 +2,7 @@
 
 namespace Yuki {
 
-	enum class BufferType { VertexBuffer, IndexBuffer, StagingBuffer };
+	enum class BufferType { VertexBuffer, IndexBuffer, StorageBuffer, StagingBuffer };
 
 	struct BufferInfo
 	{
@@ -23,9 +23,7 @@ namespace Yuki {
 	public:
 		virtual ~Buffer() = default;
 
-		virtual void SetData(void* InData, uint32_t InDataSize, uint32_t InDstOffset = 0) = 0;
-
-		virtual void UploadData(Buffer* InStagingBuffer, const BufferUploadInfo* InUploadInfo = nullptr) = 0;
+		virtual void SetData(const void* InData, uint32_t InDataSize, uint32_t InDstOffset = 0) = 0;
 
 		virtual const BufferInfo& GetInfo() const = 0;
 

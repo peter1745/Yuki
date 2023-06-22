@@ -2,29 +2,38 @@
 
 #include "Rendering/RHI/GraphicsPipelineBuilder.hpp"
 
-#include "Vulkan.hpp"
+#include "VulkanSetLayoutBuilder.hpp"
+#include "VulkanShader.hpp"
 
 namespace Yuki {
+
+	class VulkanRenderContext;
 
 	class VulkanGraphicsPipelineBuilder : public GraphicsPipelineBuilder
 	{
 	public:
-		VulkanGraphicsPipelineBuilder(RenderContext* InContext);
+		VulkanGraphicsPipelineBuilder(VulkanRenderContext* InContext);
 
-		GraphicsPipelineBuilder* WithShader(ResourceHandle<Shader> InShaderHandle) override;
-		GraphicsPipelineBuilder* AddVertexInput(uint32_t InLocation, ShaderDataType InDataType) override;
-		GraphicsPipelineBuilder* ColorAttachment(ImageFormat InFormat) override;
-		GraphicsPipelineBuilder* DepthAttachment() override;
+		GraphicsPipelineBuilder& Start() override;
+		GraphicsPipelineBuilder& WithShader(Shader* InShader) override;
+		GraphicsPipelineBuilder& AddVertexInput(uint32_t InLocation, ShaderDataType InDataType) override;
+		GraphicsPipelineBuilder& PushConstant(uint32_t InOffset, uint32_t InSize) override;
+		GraphicsPipelineBuilder& AddDescriptorSetLayout(DescriptorSetLayout* InLayout) override;
+		GraphicsPipelineBuilder& ColorAttachment(ImageFormat InFormat) override;
+		GraphicsPipelineBuilder& DepthAttachment() override;
 		Unique<GraphicsPipeline> Build() override;
 
 	private:
-		VkDevice m_Device = VK_NULL_HANDLE;
-		ShaderManager* m_ShaderManager = nullptr;
-		Shader* m_PipelineShader = nullptr;
+		VulkanRenderContext* m_Context = nullptr;
+		VulkanShader* m_PipelineShader = nullptr;
 
 		List<VkPipelineShaderStageCreateInfo> m_ShaderStageInfos;
 		List<VkVertexInputAttributeDescription> m_VertexInputAttributes;
 		uint32_t m_VertexInputAttributesOffset = 0;
+
+		List<VkPushConstantRange> m_PushConstants;
+
+		List<VulkanDescriptorSetLayout*> m_DescriptorSetLayouts;
 
 		List<VkFormat> m_ColorAttachmentFormats;
 		List<VkPipelineColorBlendAttachmentState> m_ColorAttachmentBlendStates;
