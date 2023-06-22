@@ -50,7 +50,7 @@ namespace Yuki {
 		m_CommandBuffer->BindPipeline(m_MeshPipeline.GetPtr());
 		m_CommandBuffer->BeginRendering(m_Viewport);
 
-		m_FrameTransforms.ViewProjection = Math::Mat4::PerspectiveInfReversedZ(Math::Radians(70.0f), 1920.0f / 1080.0f, 0.05f) * Math::Mat4::InvertAffine(InViewMatrix);
+		m_FrameTransforms.ViewProjection = Math::Mat4::PerspectiveInfReversedZ(Math::Radians(70.0f), 1920.0f / 1080.0f, 0.05f) * InViewMatrix;
 	}
 
 	void SceneRenderer::DrawMesh(LoadedMesh& InMesh)

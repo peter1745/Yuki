@@ -22,6 +22,7 @@
 	#define NOMINMAX
 	#define WIN32_LEAN_AND_MEAN
 	#include <Windows.h>
+	#include <hidusage.h>
 #endif
 
 #include "Core/Core.hpp"

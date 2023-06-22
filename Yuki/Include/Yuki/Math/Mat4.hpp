@@ -25,6 +25,8 @@ namespace Yuki::Math {
 		static Mat4 Scale(const Vec3& InScale);
 		static Mat4 PerspectiveInfReversedZ(float InFovY, float InAspect, float InNearZ);
 
+		static Mat4 LookAt(const Vec3& InEye, const Vec3& InCenter, const Vec3& InUp);
+
 	};
 
 }

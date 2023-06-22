@@ -14,6 +14,12 @@ namespace Yuki::Math {
 	}
 
 	template<typename T>
+	constexpr T Cos(T InValue) { return T(std::cos(double(InValue))); }
+
+	template<typename T>
+	constexpr T Sin(T InValue) { return T(std::sin(double(InValue))); }
+
+	template<typename T>
 	constexpr T Min(T InValue, T InOtherValue) { return InValue < InOtherValue ? InValue : InOtherValue; }
 
 	template<typename T>
@@ -27,5 +33,8 @@ namespace Yuki::Math {
 
 		return InValue;
 	}
+
+	template<typename T>
+	constexpr T Sqrt(T InValue) { return T(std::sqrt(double(InValue))); }
 
 }

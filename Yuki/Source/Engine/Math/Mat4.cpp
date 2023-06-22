@@ -123,7 +123,35 @@ namespace Yuki::Math {
 		return result;
 	}
 
-	Mat4 Mat4::InvertAffine(const Mat4& InMatrix)
+	Mat4 Mat4::LookAt(const Vec3& InEye, const Vec3& InCenter, const Vec3& InUp)
+	{
+		Mat4 result;
+		result.SetIdentity();
+
+		Vec3 f = (InCenter - InEye).Normalized();
+		Vec3 s = InUp.Cross(f).Normalized();
+		Vec3 u = f.Cross(s);
+
+		result[0][0] = s.X;
+		result[1][0] = s.Y;
+		result[2][0] = s.Z;
+
+		result[0][1] = u.X;
+		result[1][1] = u.Y;
+		result[2][1] = u.Z;
+
+		result[0][2] = f.X;
+		result[1][2] = f.Y;
+		result[2][2] = f.Z;
+
+		result[3][0] = -s.Dot(InEye);
+		result[3][1] = -u.Dot(InEye);
+		result[3][2] = -f.Dot(InEye);
+
+		return result;
+	}
+
+	Mat4 Mat4::InvertAffine(const Mat4 &InMatrix)
 	{
 		float Coef00 = InMatrix[2][2] * InMatrix[3][3] - InMatrix[3][2] * InMatrix[2][3];
 		float Coef02 = InMatrix[1][2] * InMatrix[3][3] - InMatrix[3][2] * InMatrix[1][3];

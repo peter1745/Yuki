@@ -10,6 +10,9 @@
 #include "Yuki/Rendering/RHI/RenderContext.hpp"
 #include "Yuki/Rendering/RHI/Viewport.hpp"
 
+#include <functional>
+#include <string>
+
 namespace Yuki {
 
 	using WindowEventFn = std::function<void(Event*)>;
@@ -23,6 +26,8 @@ namespace Yuki {
 
 		WindowEventFn EventCallback = nullptr;
 	};
+
+	enum class CursorState { Normal, Locked };
 
 	class GenericWindow
 	{
@@ -40,7 +45,16 @@ namespace Yuki {
 
 		virtual Viewport* GetViewport() const = 0;
 
+		virtual int64_t GetRawMouseDeltaX() = 0;
+		virtual int64_t GetRawMouseDeltaY() = 0;
+
+		virtual void SetCursorState(CursorState InState) = 0;
+
+		virtual bool IsKeyReleased(KeyCode InKeyCode) const = 0;
 		virtual bool IsKeyPressed(KeyCode InKeyCode) const = 0;
+
+		virtual bool IsMouseButtonReleased(MouseButton InButton) const = 0;
+		virtual bool IsMouseButtonPressed(MouseButton InButton) const = 0;
 
 	public:
 		static Unique<GenericWindow> New(RenderContext* InRenderContext, WindowAttributes InAttributes);
