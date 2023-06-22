@@ -13,3 +13,4 @@
 [submodule "ThirdParty/simdjson"]
 	path = ThirdParty/simdjson
 	url = https://github.com/simdjson/simdjson
+	shallow = true
