@@ -7,8 +7,7 @@
 #include "Yuki/EventSystem/Event.hpp"
 #include "Yuki/EventSystem/WindowEvents.hpp"
 
-#include "Yuki/Rendering/RHI/RenderContext.hpp"
-#include "Yuki/Rendering/RHI/Viewport.hpp"
+#include "Yuki/Rendering/RenderContext.hpp"
 
 #include <functional>
 #include <string>
@@ -43,7 +42,7 @@ namespace Yuki {
 
 		virtual const WindowAttributes& GetAttributes() const = 0;
 
-		virtual Viewport* GetViewport() const = 0;
+		virtual Swapchain GetSwapchain() const = 0;
 
 		virtual int64_t GetRawMouseDeltaX() = 0;
 		virtual int64_t GetRawMouseDeltaY() = 0;

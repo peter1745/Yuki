@@ -51,7 +51,7 @@ namespace Yuki {
 		void PostEvent(Event* InEvent);
 
 	private:
-		Array<List<Unique<EventListenerFunc>>, (size_t)EventType::COUNT> m_Listeners;
+		Array<DynamicArray<Unique<EventListenerFunc>>, (size_t)EventType::COUNT> m_Listeners;
 	};
 
 }

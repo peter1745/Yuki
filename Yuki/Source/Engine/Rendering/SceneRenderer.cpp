@@ -1,14 +1,14 @@
 #include "Rendering/SceneRenderer.hpp"
-#include "Rendering/RHI/ShaderCompiler.hpp"
-#include "Rendering/RHI/Queue.hpp"
-#include "Rendering/RHI/GraphicsPipelineBuilder.hpp"
-#include "Rendering/RHI/SetLayoutBuilder.hpp"
+//#include "Rendering/RHI/ShaderCompiler.hpp"
+//#include "Rendering/RHI/Queue.hpp"
+//#include "Rendering/RHI/GraphicsPipelineBuilder.hpp"
+//#include "Rendering/RHI/SetLayoutBuilder.hpp"
 #include "Math/Math.hpp"
 #include "Core/Stopwatch.hpp"
 
 namespace Yuki {
 
-	SceneRenderer::SceneRenderer(RenderContext* InContext)
+	/*SceneRenderer::SceneRenderer(RenderContext* InContext)
 		: m_Context(InContext)
 	{
 		m_RenderInterface = InContext->CreateRenderInterface();
@@ -28,32 +28,32 @@ namespace Yuki {
 			.Size = sizeof(MeshMaterial) * 65536,
 			.PersistentlyMapped = false,
 		});
-	}
+	}*/
 
-	void SceneRenderer::SetTargetViewport(Viewport* InViewport)
+	/*void SceneRenderer::SetTargetViewport(Viewport* InViewport)
 	{
 		m_Viewport = InViewport;
-	}
+	}*/
 
 	void SceneRenderer::BeginFrame()
 	{
-		m_CommandPool->Reset();
+		/*m_CommandPool->Reset();
 		m_CommandBuffer = m_CommandPool->NewCommandBuffer();
 
-		m_CommandBuffer->Begin();		
+		m_CommandBuffer->Begin();*/
 	}
 
 	void SceneRenderer::BeginDraw(const Math::Mat4& InViewMatrix)
 	{
-		m_CommandBuffer->SetViewport(m_Viewport);
+		/*m_CommandBuffer->SetViewport(m_Viewport);
 
 		m_CommandBuffer->BindPipeline(m_MeshPipeline.GetPtr());
 		m_CommandBuffer->BeginRendering(m_Viewport);
 
-		m_FrameTransforms.ViewProjection = Math::Mat4::PerspectiveInfReversedZ(Math::Radians(70.0f), 1920.0f / 1080.0f, 0.05f) * InViewMatrix;
+		m_FrameTransforms.ViewProjection = Math::Mat4::PerspectiveInfReversedZ(Math::Radians(70.0f), 1920.0f / 1080.0f, 0.05f) * InViewMatrix;*/
 	}
 
-	void SceneRenderer::DrawMesh(LoadedMesh& InMesh)
+	/*void SceneRenderer::DrawMesh(LoadedMesh& InMesh)
 	{
 		m_CommandBuffer->BindDescriptorSets(m_MeshPipeline.GetPtr(), std::array{ m_MaterialDescriptorSet });
 
@@ -164,21 +164,21 @@ namespace Yuki {
 			m_CommandBuffer->BindIndexBuffer(meshInstance.SourceMesh->IndexBuffer);
 			m_CommandBuffer->DrawIndexed(uint32_t(meshInstance.SourceMesh->Indices.size()), 1, 0, 0, 0);
 		}
-	}
+	}*/
 
 	void SceneRenderer::EndDraw()
 	{
-		m_CommandBuffer->EndRendering();
+		//m_CommandBuffer->EndRendering();
 	}
 
 	void SceneRenderer::EndFrame()
 	{
-		m_CommandBuffer->End();
+		//m_CommandBuffer->End();
 	}
 
 	void SceneRenderer::CreateDescriptorSets()
 	{
-		DescriptorCount descriptorPoolCounts[] =
+		/*DescriptorCount descriptorPoolCounts[] =
 		{
 			{ DescriptorType::CombinedImageSampler, 65536 },
 			{ DescriptorType::StorageBuffer, 65536 },
@@ -196,12 +196,12 @@ namespace Yuki {
 			m_MaterialDescriptorSet = m_DescriptorPool->AllocateSet(materialSetLayout);
 
 			m_Sampler = m_Context->CreateSampler();
-		}
+		}*/
 	}
 
 	void SceneRenderer::BuildPipelines()
 	{
-		auto pipelineBuilder = m_Context->CreateGraphicsPipelineBuilder();
+		/*auto pipelineBuilder = m_Context->CreateGraphicsPipelineBuilder();
 
 		{
 			m_MeshShader = m_Context->GetShaderCompiler()->CompileFromFile("Resources/Shaders/Geometry.glsl");
@@ -219,7 +219,7 @@ namespace Yuki {
 				.AddDescriptorSetLayout(m_MaterialDescriptorSet->GetLayout())
 				.Build();
 			YUKI_STOPWATCH_STOP();
-		}
+		}*/
 	}
 
 }

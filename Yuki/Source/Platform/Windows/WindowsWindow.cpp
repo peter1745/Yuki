@@ -200,14 +200,14 @@ namespace Yuki {
 		m_LastMouseDeltaX = cursorPos.x;
 		m_LastMouseDeltaY = cursorPos.y;
 
-		m_Viewport = m_RenderContext->CreateViewport(this);
+		m_Swapchain = m_RenderContext->CreateSwapchain(this);
 
 		RegisterKeyCodeTranslations();
 	}
 
 	void WindowsWindow::Destroy()
 	{
-		m_Viewport.Release();
+		m_RenderContext->Destroy(m_Swapchain);
 	}
 
 	void WindowsWindow::Show()

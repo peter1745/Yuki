@@ -1,6 +1,6 @@
 #include "IO/MeshLoader.hpp"
 
-#include "Rendering/RHI/RenderContext.hpp"
+//#include "Rendering/RHI/RenderContext.hpp"
 
 #include <fastgltf/parser.hpp>
 #include <fastgltf/types.hpp>
@@ -21,7 +21,7 @@ namespace fastgltf {
 }
 
 namespace Yuki {
-
+#if 0
 	static Buffer* s_StagingBuffer = nullptr;
 
 	void ProcessNodeHierarchy(fastgltf::Asset* InAsset, LoadedMesh& InMeshStorage, fastgltf::Node& InNode, const Math::Mat4& InParentTransform)
@@ -233,5 +233,5 @@ namespace Yuki {
 
 		return result;
 	}
-
+#endif
 }

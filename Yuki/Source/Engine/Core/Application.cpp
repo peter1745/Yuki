@@ -1,8 +1,8 @@
 #include "Core/Application.hpp"
 #include "EventSystem/ApplicationEvents.hpp"
-#include "Rendering/RHI/Queue.hpp"
-#include "Rendering/RHI/Fence.hpp"
-#include "Rendering/RHI/Swapchain.hpp"
+//#include "Rendering/RHI/Queue.hpp"
+//#include "Rendering/RHI/Fence.hpp"
+//#include "Rendering/RHI/Swapchain.hpp"
 
 namespace Yuki {
 
@@ -14,7 +14,7 @@ namespace Yuki {
 	GenericWindow* Application::NewWindow(WindowAttributes InWindowAttributes)
 	{
 		InWindowAttributes.EventCallback = [this](Event* InEvent) { m_EventSystem->PostEvent(InEvent); };
-		Unique<GenericWindow> window = GenericWindow::New(m_RenderContext.GetPtr(), InWindowAttributes);
+		Unique<GenericWindow> window = GenericWindow::New(m_RenderContext, InWindowAttributes);
 		window->Create();
 		return m_Windows.emplace_back(std::move(window)).GetPtr();
 	}
@@ -22,7 +22,7 @@ namespace Yuki {
 	void Application::Initialize()
 	{
 		m_RenderContext = RenderContext::New(m_RenderingAPI);
-		m_RenderContext->Initialize();
+		//m_RenderContext->Initialize();
 
 		m_EventSystem = Unique<EventSystem>::Create();
 		m_EventSystem->AddListener(this, &Application::OnWindowClose);
@@ -47,15 +47,15 @@ namespace Yuki {
 				m_Windows.erase(it);
 		}
 
-		m_RenderContext->WaitDeviceIdle();
+		//m_RenderContext->WaitDeviceIdle();
 	}
 
 	void Application::Destroy()
 	{
 		OnDestroy();
 		m_Windows.clear();
-		m_RenderContext->WaitDeviceIdle();
-		m_RenderContext->Destroy();
+		//m_RenderContext->WaitDeviceIdle();
+		//m_RenderContext->Destroy();
 	}
 
 	void Application::OnWindowClose(const WindowCloseEvent& InEvent)

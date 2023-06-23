@@ -16,6 +16,8 @@
 
 #include <random>
 
+#include <limits>
+
 #include <ranges>
 
 #if defined(YUKI_PLATFORM_WINDOWS)

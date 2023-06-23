@@ -1,9 +1,9 @@
-#include "Engine/Rendering/RHI/Vulkan/VulkanPlatform.hpp"
+#include "Engine/Rendering/Vulkan/VulkanPlatform.hpp"
 #include "WindowsWindow.hpp"
 
 namespace Yuki {
 
-	void VulkanPlatform::GetRequiredInstanceExtensions(List<const char*>& InExtensions)
+	void VulkanPlatform::GetRequiredInstanceExtensions(DynamicArray<const char*>& InExtensions)
 	{
 		InExtensions.emplace_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 	}
@@ -12,7 +12,8 @@ namespace Yuki {
 	{
 		auto* nativeWindow = static_cast<WindowsWindow*>(InWindow);
 
-		VkWin32SurfaceCreateInfoKHR surfaceInfo = {
+		VkWin32SurfaceCreateInfoKHR surfaceInfo =
+		{
 			.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
 			.hinstance = GetModuleHandle(nullptr),
 			.hwnd = nativeWindow->GetWindowHandle(),

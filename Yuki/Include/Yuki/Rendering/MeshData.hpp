@@ -3,7 +3,7 @@
 #include "Yuki/Math/Vec2.hpp"
 #include "Yuki/Math/Mat4.hpp"
 
-#include "Yuki/Rendering/RHI/RenderContext.hpp"
+//#include "Yuki/Rendering/RHI/RenderContext.hpp"
 
 namespace Yuki {
 
@@ -20,7 +20,7 @@ namespace Yuki {
 		uint32_t AlbedoTextureIndex = 0;
 	};
 
-	struct Mesh
+	/*struct Mesh
 	{
 		List<Vertex> Vertices;
 		List<uint32_t> Indices;
@@ -49,6 +49,6 @@ namespace Yuki {
 		List<LoadedImage> LoadedImages;
 		List<Unique<Image2D>> Textures;
 		List<MeshMaterial> Materials;
-	};
+	};*/
 
 }
