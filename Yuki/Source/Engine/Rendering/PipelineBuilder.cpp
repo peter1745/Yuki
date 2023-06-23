@@ -51,6 +51,12 @@ namespace Yuki {
 		return *this;
 	}
 	
+	PipelineBuilder& PipelineBuilder::SetPolygonMode(PolygonModeType InPolygonMode)
+	{
+		m_PipelineInfo.PolygonMode = InPolygonMode;
+		return *this;
+	}
+
 	Pipeline PipelineBuilder::Build()
 	{
 		return m_Context->CreatePipeline(m_PipelineInfo);

@@ -1,225 +1,203 @@
 #include "Rendering/SceneRenderer.hpp"
-//#include "Rendering/RHI/ShaderCompiler.hpp"
-//#include "Rendering/RHI/Queue.hpp"
-//#include "Rendering/RHI/GraphicsPipelineBuilder.hpp"
-//#include "Rendering/RHI/SetLayoutBuilder.hpp"
-#include "Math/Math.hpp"
-#include "Core/Stopwatch.hpp"
+#include "Rendering/DescriptorSetBuilder.hpp"
+#include "Rendering/PipelineBuilder.hpp"
 
 namespace Yuki {
 
-	/*SceneRenderer::SceneRenderer(RenderContext* InContext)
-		: m_Context(InContext)
+	SceneRenderer::SceneRenderer(RenderContext* InContext, Swapchain InSwapchain)
+		: m_Context(InContext), m_TargetSwapchain(InSwapchain)
 	{
-		m_RenderInterface = InContext->CreateRenderInterface();
-		m_CommandPool = InContext->CreateCommandBufferPool({ .IsTransient = false });
-		m_StagingBuffer = InContext->CreateBuffer(
-		{
-			.Type = BufferType::StagingBuffer,
+		m_StagingBuffer = m_Context->CreateBuffer({
+			.Type = Yuki::BufferType::StagingBuffer,
 			.Size = 100 * 1024 * 1024,
-			.PersistentlyMapped = true,
 		});
+
+		m_MaterialsBuffer = m_Context->CreateBuffer({
+			.Type = Yuki::BufferType::StorageBuffer,
+			.Size = sizeof(Yuki::MeshMaterial) * 65536
+		});
+
+		m_Sampler = m_Context->CreateSampler();
+		m_CommandPool = m_Context->CreateCommandPool();
 
 		CreateDescriptorSets();
-		BuildPipelines();
-
-		m_MaterialStorageBuffer = InContext->CreateBuffer({
-			.Type = BufferType::StorageBuffer,
-			.Size = sizeof(MeshMaterial) * 65536,
-			.PersistentlyMapped = false,
-		});
-	}*/
-
-	/*void SceneRenderer::SetTargetViewport(Viewport* InViewport)
-	{
-		m_Viewport = InViewport;
-	}*/
-
-	void SceneRenderer::BeginFrame()
-	{
-		/*m_CommandPool->Reset();
-		m_CommandBuffer = m_CommandPool->NewCommandBuffer();
-
-		m_CommandBuffer->Begin();*/
+		CreatePipelines();
 	}
 
-	void SceneRenderer::BeginDraw(const Math::Mat4& InViewMatrix)
+	void SceneRenderer::BeginFrame(const Math::Mat4& InViewProjection)
 	{
-		/*m_CommandBuffer->SetViewport(m_Viewport);
+		m_FrameTransforms.ViewProjection = InViewProjection;
 
-		m_CommandBuffer->BindPipeline(m_MeshPipeline.GetPtr());
-		m_CommandBuffer->BeginRendering(m_Viewport);
+		m_Context->CommandPoolReset(m_CommandPool);
 
-		m_FrameTransforms.ViewProjection = Math::Mat4::PerspectiveInfReversedZ(Math::Radians(70.0f), 1920.0f / 1080.0f, 0.05f) * InViewMatrix;*/
+		m_CommandList = m_Context->CreateCommandList(m_CommandPool);
+		m_Context->CommandListBegin(m_CommandList);
+		m_Context->CommandListBindPipeline(m_CommandList, m_ActivePipeline);
+		m_Context->CommandListBindDescriptorSet(m_CommandList, m_ActivePipeline, m_MaterialSet);
+
+		// TODO(Peter): RenderTarget abstraction (Swapchain can be a render target)
+		m_Context->CommandListBeginRendering(m_CommandList, m_TargetSwapchain);
 	}
 
-	/*void SceneRenderer::DrawMesh(LoadedMesh& InMesh)
+	void SceneRenderer::EndFrame(Fence InFence)
 	{
-		m_CommandBuffer->BindDescriptorSets(m_MeshPipeline.GetPtr(), std::array{ m_MaterialDescriptorSet });
+		m_Context->CommandListEndRendering(m_CommandList);
+		m_Context->CommandListEnd(m_CommandList);
+		m_Context->QueueSubmitCommandLists({ m_CommandList }, { InFence }, {});
+	}
 
+	void SceneRenderer::Submit(LoadedMesh& InMesh)
+	{
 		if (InMesh.Textures.empty())
 		{
-			for (const auto& loadedImage : InMesh.LoadedImages)
+			InMesh.Textures.resize(InMesh.LoadedImages.size());
+			for (size_t i = 0; i < InMesh.LoadedImages.size(); i++)
 			{
-				CommandBuffer* commandBuffer = m_CommandPool->NewCommandBuffer();
-				commandBuffer->Begin();
+				auto commandList = m_Context->CreateCommandList(m_CommandPool);
+				m_Context->CommandListBegin(commandList);
 
-				Unique<Image2D> oldImage = nullptr;
-				Unique<Image2D> image = m_Context->CreateImage2D(loadedImage.Width, loadedImage.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | ImageUsage::TransferDestination);
-				commandBuffer->TransitionImage(image.GetPtr(), ImageLayout::ShaderReadOnly);
+				const auto& imageData = InMesh.LoadedImages[i];
 
-				m_StagingBuffer->SetData(loadedImage.Data.data(), uint32_t(loadedImage.Data.size()));
-				commandBuffer->CopyToImage(image, m_StagingBuffer, 0);
+				Yuki::Image blittedImage{};
+				bool blitted = false;
+				Yuki::Image image = m_Context->CreateImage(imageData.Width, imageData.Height, Yuki::ImageFormat::RGBA8UNorm, Yuki::ImageUsage::Sampled | Yuki::ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination);
+				m_Context->CommandListTransitionImage(commandList, image, Yuki::ImageLayout::ShaderReadOnly);
+				m_Context->BufferSetData(m_StagingBuffer, imageData.Data.data(), uint32_t(imageData.Data.size()));
+				m_Context->CommandListCopyToImage(commandList, image, m_StagingBuffer, 0);
 
-				if (loadedImage.Width > 2048 && loadedImage.Height > 2048)
+				if (imageData.Width > 2048 && imageData.Height > 2048)
 				{
-					oldImage = std::move(image);
-					image = m_Context->CreateImage2D(2048, 2048, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
-					commandBuffer->TransitionImage(image, ImageLayout::ShaderReadOnly);
-					commandBuffer->BlitImage(image, oldImage);
+					blittedImage = m_Context->CreateImage(2048, 2048, Yuki::ImageFormat::RGBA8UNorm, Yuki::ImageUsage::Sampled | Yuki::ImageUsage::TransferDestination);
+					m_Context->CommandListTransitionImage(commandList, blittedImage, Yuki::ImageLayout::ShaderReadOnly);
+					m_Context->CommandListBlitImage(commandList, blittedImage, image);
+					blitted = true;
 				}
 
-				commandBuffer->End();
+				m_Context->CommandListEnd(commandList);
+				m_Context->QueueSubmitCommandLists({ commandList }, {}, {});
+				m_Context->DeviceWaitIdle();
 
-				m_Context->GetGraphicsQueue()->SubmitCommandBuffers({ commandBuffer }, {}, {});
-				m_Context->GetGraphicsQueue()->WaitIdle();
+				if (blitted)
+				{
+					m_Context->Destroy(image);
+					image = blittedImage;
+				}
 
-				InMesh.Textures.emplace_back(std::move(image));
+				InMesh.Textures[i] = image;
 			}
 
-			CommandBuffer* commandBuffer = m_CommandPool->NewCommandBuffer();
-			commandBuffer->Begin();
-			m_StagingBuffer->SetData(InMesh.Materials.data(), uint32_t(InMesh.Materials.size() * sizeof(MeshMaterial)));
-			commandBuffer->CopyToBuffer(m_MaterialStorageBuffer, 0, m_StagingBuffer, 0, 0);
-			commandBuffer->End();
-			m_Context->GetGraphicsQueue()->SubmitCommandBuffers({ commandBuffer }, {}, {});
-			m_Context->GetGraphicsQueue()->WaitIdle();
-
-			m_MaterialDescriptorSet->Write(0, m_MaterialStorageBuffer);
+			m_Context->DescriptorSetWrite(m_MaterialSet, 1, InMesh.Textures, m_Sampler);
 		}
 
 		for (auto& meshSource : InMesh.Meshes)
 		{
-			if (meshSource.VertexBuffer && meshSource.IndexBuffer)
-				continue;
+			if (meshSource.VertexBuffer != Buffer{} && meshSource.IndexBuffer != Buffer{})
+				break;
 
+			meshSource.VertexBuffer = m_Context->CreateBuffer({
+				.Type = BufferType::VertexBuffer,
+				.Size = uint32_t(sizeof(Vertex) * meshSource.Vertices.size())
+			});
 
 			{
-				CommandBuffer* commandBuffer = m_CommandPool->NewCommandBuffer();
-				commandBuffer->Begin();
+				m_Context->BufferSetData(m_StagingBuffer, meshSource.Vertices.data(), uint32_t(sizeof(Vertex) * meshSource.Vertices.size()));
 
-				uint32_t vertexDataSize = sizeof(Vertex) * uint32_t(meshSource.Vertices.size());
-
-				m_StagingBuffer->SetData(meshSource.Vertices.data(), vertexDataSize);
-
-				Yuki::BufferInfo bufferInfo =
-				{
-					.Type = BufferType::VertexBuffer,
-					.Size = vertexDataSize
-				};
-				meshSource.VertexBuffer = m_Context->CreateBuffer(bufferInfo);
-				YUKI_VERIFY(bufferInfo.Size < 100 * 1024 * 1024);
-				commandBuffer->CopyToBuffer(meshSource.VertexBuffer, 0, m_StagingBuffer, 0, 0);
-
-				commandBuffer->End();
-
-				m_Context->GetGraphicsQueue()->SubmitCommandBuffers({ commandBuffer }, {}, {});
-				m_Context->GetGraphicsQueue()->WaitIdle();
+				auto commandList = m_Context->CreateCommandList(m_CommandPool);
+				m_Context->CommandListBegin(commandList);
+				m_Context->CommandListCopyToBuffer(commandList, meshSource.VertexBuffer, 0, m_StagingBuffer, 0, 0);
+				m_Context->CommandListEnd(commandList);
+				m_Context->QueueSubmitCommandLists({ commandList }, {}, {});
+				m_Context->DeviceWaitIdle();
 			}
 
+			meshSource.IndexBuffer = m_Context->CreateBuffer({
+				.Type = BufferType::IndexBuffer,
+				.Size = uint32_t(sizeof(uint32_t) * meshSource.Indices.size())
+			});
+
 			{
-				CommandBuffer* commandBuffer = m_CommandPool->NewCommandBuffer();
-				commandBuffer->Begin();
-				
-				uint32_t indexDataSize = sizeof(uint32_t) * uint32_t(meshSource.Indices.size());
+				m_Context->BufferSetData(m_StagingBuffer, meshSource.Indices.data(), uint32_t(sizeof(uint32_t) * meshSource.Indices.size()));
 
-				m_StagingBuffer->SetData(meshSource.Indices.data(), indexDataSize);
-
-				Yuki::BufferInfo bufferInfo =
-				{
-					.Type = BufferType::IndexBuffer,
-					.Size = indexDataSize
-				};
-				meshSource.IndexBuffer = m_Context->CreateBuffer(bufferInfo);
-				YUKI_VERIFY(bufferInfo.Size < 100 * 1024 * 1024);
-				commandBuffer->CopyToBuffer(meshSource.IndexBuffer, 0, m_StagingBuffer, 0, 0);
-
-				commandBuffer->End();
-
-				m_Context->GetGraphicsQueue()->SubmitCommandBuffers({ commandBuffer }, {}, {});
-				m_Context->GetGraphicsQueue()->WaitIdle();
+				auto commandList = m_Context->CreateCommandList(m_CommandPool);
+				m_Context->CommandListBegin(commandList);
+				m_Context->CommandListCopyToBuffer(commandList, meshSource.IndexBuffer, 0, m_StagingBuffer, 0, 0);
+				m_Context->CommandListEnd(commandList);
+				m_Context->QueueSubmitCommandLists({ commandList }, {}, {});
+				m_Context->DeviceWaitIdle();
 			}
 		}
 
-		// NOTE(Peter): UB as fuck, blame Darian
-		auto** begin = reinterpret_cast<Image2D**>(InMesh.Textures.data());
-		std::span<Image2D* const> data(begin, InMesh.Textures.size());
-		m_MaterialDescriptorSet->Write(1, data, m_Sampler);
+		{
+			auto commandList = m_Context->CreateCommandList(m_CommandPool);
+			m_Context->CommandListBegin(commandList);
+			m_Context->BufferSetData(m_StagingBuffer, InMesh.Materials.data(), uint32_t(InMesh.Materials.size() * sizeof(MeshMaterial)));
+			m_Context->CommandListCopyToBuffer(commandList, m_MaterialsBuffer, 0, m_StagingBuffer, 0, 0);
+			m_Context->CommandListEnd(commandList);
+			m_Context->QueueSubmitCommandLists({ commandList }, {}, {});
+			m_Context->DeviceWaitIdle();
 
-		for (auto& meshInstance : InMesh.Instances)
+			std::array<std::pair<uint32_t, Yuki::Buffer>, 1> bufferArray{std::pair{ 0, m_MaterialsBuffer }};
+			m_Context->DescriptorSetWrite(m_MaterialSet, 0, bufferArray);
+		}
+
+		for (const auto& meshInstance : InMesh.Instances)
 		{
 			m_FrameTransforms.Transform = meshInstance.Transform;
-			m_CommandBuffer->PushConstants(m_MeshPipeline.GetPtr(), &m_FrameTransforms, sizeof(FrameTransforms), 0);
-			m_CommandBuffer->BindVertexBuffer(meshInstance.SourceMesh->VertexBuffer);
-			m_CommandBuffer->BindIndexBuffer(meshInstance.SourceMesh->IndexBuffer);
-			m_CommandBuffer->DrawIndexed(uint32_t(meshInstance.SourceMesh->Indices.size()), 1, 0, 0, 0);
+			m_Context->CommandListPushConstants(m_CommandList, m_ActivePipeline, &m_FrameTransforms, sizeof(FrameTransforms));
+			m_Context->CommandListBindBuffer(m_CommandList, meshInstance.SourceMesh->VertexBuffer);
+			m_Context->CommandListBindBuffer(m_CommandList, meshInstance.SourceMesh->IndexBuffer);
+			m_Context->CommandListDrawIndexed(m_CommandList, uint32_t(meshInstance.SourceMesh->Indices.size()));
 		}
-	}*/
-
-	void SceneRenderer::EndDraw()
-	{
-		//m_CommandBuffer->EndRendering();
-	}
-
-	void SceneRenderer::EndFrame()
-	{
-		//m_CommandBuffer->End();
 	}
 
 	void SceneRenderer::CreateDescriptorSets()
 	{
-		/*DescriptorCount descriptorPoolCounts[] =
+		Yuki::DescriptorCount descriptorPoolCounts[] =
 		{
-			{ DescriptorType::CombinedImageSampler, 65536 },
-			{ DescriptorType::StorageBuffer, 65536 },
+			{ Yuki::DescriptorType::CombinedImageSampler, 65536 },
+			{ Yuki::DescriptorType::StorageBuffer, 65536 },
 		};
 		m_DescriptorPool = m_Context->CreateDescriptorPool(descriptorPoolCounts);
 
-		auto setLayoutBuilder = m_Context->CreateSetLayoutBuilder();
+		m_DescriptorSetLayout = DescriptorSetLayoutBuilder(m_Context)
+			.Stages(ShaderStage::Vertex | ShaderStage::Fragment)
+			.Binding(65536, DescriptorType::StorageBuffer)
+			.Binding(256, DescriptorType::CombinedImageSampler)
+			.Build();
 
-		{
-			auto materialSetLayout = setLayoutBuilder->Start()
-				.Stages(ShaderStage::Vertex | ShaderStage::Fragment)
-				.Binding(65536, DescriptorType::StorageBuffer)
-				.Binding(256, DescriptorType::CombinedImageSampler)
-				.Build();
-			m_MaterialDescriptorSet = m_DescriptorPool->AllocateSet(materialSetLayout);
-
-			m_Sampler = m_Context->CreateSampler();
-		}*/
+		m_MaterialSet = m_Context->DescriptorPoolAllocateDescriptorSet(m_DescriptorPool, m_DescriptorSetLayout);
 	}
 
-	void SceneRenderer::BuildPipelines()
+	void SceneRenderer::CreatePipelines()
 	{
-		/*auto pipelineBuilder = m_Context->CreateGraphicsPipelineBuilder();
+		m_MeshShader = m_Context->CreateShader("Resources/Shaders/Geometry.glsl");
+		
+		m_Pipeline = Yuki::PipelineBuilder(m_Context)
+			.WithShader(m_MeshShader)
+			.AddVertexInput(Yuki::ShaderDataType::Float3)
+			.AddVertexInput(Yuki::ShaderDataType::Float3)
+			.AddVertexInput(Yuki::ShaderDataType::Float2)
+			.AddVertexInput(Yuki::ShaderDataType::UInt)
+			.PushConstant(sizeof(FrameTransforms))
+			.AddDescriptorSetLayout(m_DescriptorSetLayout)
+			.ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
+			.DepthAttachment()
+			.Build();
 
-		{
-			m_MeshShader = m_Context->GetShaderCompiler()->CompileFromFile("Resources/Shaders/Geometry.glsl");
+		m_WireframePipeline = Yuki::PipelineBuilder(m_Context)
+			.WithShader(m_MeshShader)
+			.AddVertexInput(Yuki::ShaderDataType::Float3)
+			.AddVertexInput(Yuki::ShaderDataType::Float3)
+			.AddVertexInput(Yuki::ShaderDataType::Float2)
+			.AddVertexInput(Yuki::ShaderDataType::UInt)
+			.PushConstant(sizeof(FrameTransforms))
+			.AddDescriptorSetLayout(m_DescriptorSetLayout)
+			.ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
+			.DepthAttachment()
+			.SetPolygonMode(PolygonModeType::Line)
+			.Build();
 
-			YUKI_STOPWATCH_START_N("Create Pipeline");
-			m_MeshPipeline = pipelineBuilder->Start()
-				.WithShader(m_MeshShader)
-				.ColorAttachment(ImageFormat::BGRA8UNorm)
-				.DepthAttachment()
-				.AddVertexInput(0, ShaderDataType::Float3)
-				.AddVertexInput(1, ShaderDataType::Float3)
-				.AddVertexInput(2, ShaderDataType::Float2)
-				.AddVertexInput(3, ShaderDataType::UInt)
-				.PushConstant(0, sizeof(FrameTransforms))
-				.AddDescriptorSetLayout(m_MaterialDescriptorSet->GetLayout())
-				.Build();
-			YUKI_STOPWATCH_STOP();
-		}*/
+		m_ActivePipeline = m_Pipeline;
 	}
 
 }

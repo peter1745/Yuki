@@ -90,6 +90,7 @@ namespace Yuki {
 	}
 
 	enum class Pipeline{};
+	enum class PolygonModeType { Fill, Line };
 
 	enum class DescriptorPool{};
 	enum class DescriptorSet{};

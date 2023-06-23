@@ -1,52 +1,48 @@
 #pragma once
 
 #include "MeshData.hpp"
-//#include "RHI/RenderContext.hpp"
-//#include "RHI/RenderInterface.hpp"
-//#include "RHI/CommandBufferPool.hpp"
-//#include "RHI/GraphicsPipeline.hpp"
-//#include "RHI/DescriptorSet.hpp"
-//#include "RHI/Sampler.hpp"
-	
+#include "RenderContext.hpp"
+
+#include "Yuki/Math/Mat4.hpp"
+
 namespace Yuki {
 
 	class SceneRenderer
 	{
 	public:
-		//SceneRenderer(RenderContext* InContext);
+		SceneRenderer(RenderContext* InContext, Swapchain InSwapchain);
 
-		//void SetTargetViewport(Viewport* InViewport);
-		void BeginFrame();
-		void BeginDraw(const Math::Mat4& InViewMatrix);
-		//void DrawMesh(LoadedMesh& InMesh);
-		void EndDraw();
-		void EndFrame();
+		void BeginFrame(const Math::Mat4& InViewProjection);
+		void EndFrame(Fence InFence);
 
-		//CommandBuffer* GetCurrentCommandBuffer() const { return m_CommandBuffer; }
+		void Submit(LoadedMesh& InMesh);
+
+		void SetWireframeMode(bool InEnable) { m_ActivePipeline = InEnable ? m_WireframePipeline : m_Pipeline; }
 
 	private:
 		void CreateDescriptorSets();
-		void BuildPipelines();
+		void CreatePipelines();
 
 	private:
-		//RenderContext* m_Context = nullptr;
-		//Unique<RenderInterface> m_RenderInterface = nullptr;
-		//Unique<CommandBufferPool> m_CommandPool = nullptr;
-		//CommandBuffer* m_CommandBuffer = nullptr;
-//
-		//Unique<Buffer> m_StagingBuffer = nullptr;
-//
-		//Viewport* m_Viewport = nullptr;
-//
-		//Unique<DescriptorPool> m_DescriptorPool = nullptr;
-		//DescriptorSet* m_MaterialDescriptorSet = nullptr;
-//
-		//Unique<Sampler> m_Sampler = nullptr;
-//
-		//Unique<Buffer> m_MaterialStorageBuffer = nullptr;
-//
-		//Unique<Shader> m_MeshShader = nullptr;
-		//Unique<GraphicsPipeline> m_MeshPipeline = nullptr;
+		RenderContext* m_Context = nullptr;
+		Swapchain m_TargetSwapchain{};
+
+		Shader m_MeshShader{};
+		Pipeline m_Pipeline{};
+		Pipeline m_WireframePipeline{};
+		Pipeline m_ActivePipeline{};
+
+		CommandPool m_CommandPool{};
+		CommandList m_CommandList{};
+
+		Sampler m_Sampler{};
+
+		Buffer m_StagingBuffer{};
+		Buffer m_MaterialsBuffer{};
+
+		DescriptorPool m_DescriptorPool{};
+		DescriptorSetLayout m_DescriptorSetLayout{};
+		DescriptorSet m_MaterialSet{};
 
 		struct FrameTransforms
 		{

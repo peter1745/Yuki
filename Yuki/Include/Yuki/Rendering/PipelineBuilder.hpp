@@ -26,6 +26,8 @@ namespace Yuki {
 		DynamicArray<ColorAttachmentInfo> ColorAttachments;
 
 		bool HasDepthAttachment = false;
+
+		PolygonModeType PolygonMode = PolygonModeType::Fill; 
 	};
 
 	class PipelineBuilder
@@ -39,6 +41,7 @@ namespace Yuki {
 		PipelineBuilder& AddDescriptorSetLayout(DescriptorSetLayout InLayout);
 		PipelineBuilder& ColorAttachment(ImageFormat InFormat);
 		PipelineBuilder& DepthAttachment();
+		PipelineBuilder& SetPolygonMode(PolygonModeType InPolygonMode);
 		Pipeline Build();
 
 	private:

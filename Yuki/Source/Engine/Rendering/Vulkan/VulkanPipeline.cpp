@@ -138,7 +138,7 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 			.depthClampEnable = VK_FALSE,
 			.rasterizerDiscardEnable = VK_FALSE,
-			.polygonMode = VK_POLYGON_MODE_FILL,
+			.polygonMode = InPipelineInfo.PolygonMode == PolygonModeType::Fill ? VK_POLYGON_MODE_FILL : VK_POLYGON_MODE_LINE,
 			.cullMode = VK_CULL_MODE_NONE,
 			.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
 			.depthBiasEnable = VK_FALSE,
