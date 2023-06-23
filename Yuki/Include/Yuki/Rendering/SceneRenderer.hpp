@@ -44,11 +44,12 @@ namespace Yuki {
 		DescriptorSetLayout m_DescriptorSetLayout{};
 		DescriptorSet m_MaterialSet{};
 
-		struct FrameTransforms
+		struct PushConstants
 		{
 			Math::Mat4 ViewProjection;
 			Math::Mat4 Transform;
-		} m_FrameTransforms;
+			uint64_t VertexVA;
+		} m_PushConstants;
 	};
 
 }

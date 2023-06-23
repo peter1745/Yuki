@@ -11,8 +11,6 @@ namespace Yuki {
 	struct PipelineInfo
 	{
 		Shader PipelineShader = {};
-		DynamicArray<ShaderDataType> VertexInputs;
-		uint32_t VertexStride = 0;
 		
 		struct PushConstantInfo { uint32_t Offset; uint32_t Size; };
 		DynamicArray<PushConstantInfo> PushConstants;

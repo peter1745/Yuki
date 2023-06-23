@@ -33,7 +33,7 @@ namespace Yuki {
 		}
 		case BufferType::StorageBuffer:
 		{
-			buffer.UsageFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+			buffer.UsageFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 			break;
 		}
 		case BufferType::StagingBuffer:
@@ -59,6 +59,17 @@ namespace Yuki {
 
 		vmaCreateBuffer(m_Allocator, &bufferCreateInfo, &allocationInfo, &buffer.Handle, &buffer.Allocation, nullptr);
 
+		if (InBufferInfo.Type == BufferType::StorageBuffer)
+		{
+			VkBufferDeviceAddressInfo addressInfo =
+			{
+				.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+				.pNext = nullptr,
+				.buffer = buffer.Handle,
+			};
+			buffer.DeviceAddress = vkGetBufferDeviceAddress(m_LogicalDevice, &addressInfo);
+		}
+
 		return handle;
 	}
 
@@ -75,6 +86,12 @@ namespace Yuki {
 		VmaAllocationInfo allocationInfo;
 		vmaGetAllocationInfo(m_Allocator, buffer.Allocation, &allocationInfo);
 		memcpy(allocationInfo.pMappedData, InData, size_t(InDataSize));
+	}
+
+	uint64_t VulkanRenderContext::BufferGetDeviceAddress(Buffer InBuffer) const
+	{
+		const auto& buffer = m_Buffers.Get(InBuffer);
+		return buffer.DeviceAddress;
 	}
 
 }

@@ -119,6 +119,7 @@ namespace Yuki {
 
 			VmaAllocatorCreateInfo allocatorCreateInfo =
 			{
+				.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
 				.physicalDevice = m_PhysicalDevice,
 				.device = m_LogicalDevice,
 				.pVulkanFunctions = &vmaVulkanFunctions,
@@ -190,6 +191,7 @@ namespace Yuki {
 			.runtimeDescriptorArray = VK_TRUE,
 			.scalarBlockLayout = VK_TRUE,
 			.timelineSemaphore = VK_TRUE,
+			.bufferDeviceAddress = VK_TRUE,
 		};
 
 		VkPhysicalDeviceFeatures2 features2 =
@@ -198,6 +200,7 @@ namespace Yuki {
 			.pNext = &features12,
 			.features = {
 				.fillModeNonSolid = VK_TRUE,
+				.shaderInt64 = VK_TRUE,
 			},
 		};
 

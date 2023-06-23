@@ -78,6 +78,7 @@ namespace Yuki {
 		Buffer CreateBuffer(const BufferInfo& InBufferInfo) override;
 		void Destroy(Buffer InBuffer) override;
 		void BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize) override;
+		uint64_t BufferGetDeviceAddress(Buffer InBuffer) const override;
 
 		DescriptorSetLayout CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) override;
 		void Destroy(DescriptorSetLayout InLayout) override;

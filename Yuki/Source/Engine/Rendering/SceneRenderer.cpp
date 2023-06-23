@@ -26,7 +26,7 @@ namespace Yuki {
 
 	void SceneRenderer::BeginFrame(const Math::Mat4& InViewProjection)
 	{
-		m_FrameTransforms.ViewProjection = InViewProjection;
+		m_PushConstants.ViewProjection = InViewProjection;
 
 		m_Context->CommandPoolReset(m_CommandPool);
 
@@ -91,11 +91,11 @@ namespace Yuki {
 
 		for (auto& meshSource : InMesh.Meshes)
 		{
-			if (meshSource.VertexBuffer != Buffer{} && meshSource.IndexBuffer != Buffer{})
+			if (meshSource.VertexData != Buffer{} && meshSource.IndexBuffer != Buffer{})
 				break;
 
-			meshSource.VertexBuffer = m_Context->CreateBuffer({
-				.Type = BufferType::VertexBuffer,
+			meshSource.VertexData = m_Context->CreateBuffer({
+				.Type = BufferType::StorageBuffer,
 				.Size = uint32_t(sizeof(Vertex) * meshSource.Vertices.size())
 			});
 
@@ -104,7 +104,7 @@ namespace Yuki {
 
 				auto commandList = m_Context->CreateCommandList(m_CommandPool);
 				m_Context->CommandListBegin(commandList);
-				m_Context->CommandListCopyToBuffer(commandList, meshSource.VertexBuffer, 0, m_StagingBuffer, 0, 0);
+				m_Context->CommandListCopyToBuffer(commandList, meshSource.VertexData, 0, m_StagingBuffer, 0, 0);
 				m_Context->CommandListEnd(commandList);
 				m_Context->QueueSubmitCommandLists({ commandList }, {}, {});
 				m_Context->DeviceWaitIdle();
@@ -142,9 +142,9 @@ namespace Yuki {
 
 		for (const auto& meshInstance : InMesh.Instances)
 		{
-			m_FrameTransforms.Transform = meshInstance.Transform;
-			m_Context->CommandListPushConstants(m_CommandList, m_ActivePipeline, &m_FrameTransforms, sizeof(FrameTransforms));
-			m_Context->CommandListBindBuffer(m_CommandList, meshInstance.SourceMesh->VertexBuffer);
+			m_PushConstants.Transform = meshInstance.Transform;
+			m_PushConstants.VertexVA = m_Context->BufferGetDeviceAddress(meshInstance.SourceMesh->VertexData);
+			m_Context->CommandListPushConstants(m_CommandList, m_ActivePipeline, &m_PushConstants, sizeof(PushConstants));
 			m_Context->CommandListBindBuffer(m_CommandList, meshInstance.SourceMesh->IndexBuffer);
 			m_Context->CommandListDrawIndexed(m_CommandList, uint32_t(meshInstance.SourceMesh->Indices.size()));
 		}
@@ -174,11 +174,7 @@ namespace Yuki {
 		
 		m_Pipeline = Yuki::PipelineBuilder(m_Context)
 			.WithShader(m_MeshShader)
-			.AddVertexInput(Yuki::ShaderDataType::Float3)
-			.AddVertexInput(Yuki::ShaderDataType::Float3)
-			.AddVertexInput(Yuki::ShaderDataType::Float2)
-			.AddVertexInput(Yuki::ShaderDataType::UInt)
-			.PushConstant(sizeof(FrameTransforms))
+			.PushConstant(sizeof(PushConstants))
 			.AddDescriptorSetLayout(m_DescriptorSetLayout)
 			.ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
 			.DepthAttachment()
@@ -186,11 +182,7 @@ namespace Yuki {
 
 		m_WireframePipeline = Yuki::PipelineBuilder(m_Context)
 			.WithShader(m_MeshShader)
-			.AddVertexInput(Yuki::ShaderDataType::Float3)
-			.AddVertexInput(Yuki::ShaderDataType::Float3)
-			.AddVertexInput(Yuki::ShaderDataType::Float2)
-			.AddVertexInput(Yuki::ShaderDataType::UInt)
-			.PushConstant(sizeof(FrameTransforms))
+			.PushConstant(sizeof(PushConstants))
 			.AddDescriptorSetLayout(m_DescriptorSetLayout)
 			.ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
 			.DepthAttachment()

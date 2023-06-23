@@ -16,6 +16,7 @@ namespace Yuki {
 		VkBuffer Handle = VK_NULL_HANDLE;
 		VmaAllocation Allocation = {};
 		void* MappedMemory = nullptr;
+		VkDeviceAddress DeviceAddress = UINT64_MAX;
 	};
 
 }

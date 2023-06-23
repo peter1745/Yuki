@@ -91,35 +91,6 @@ namespace Yuki {
 		};
 		YUKI_VERIFY(vkCreatePipelineLayout(m_LogicalDevice, &layoutCreateInfo, nullptr, &pipeline.Layout) == VK_SUCCESS);
 
-		VkVertexInputBindingDescription vertexInputBindingDesc =
-		{
-			.binding = 0,
-			.stride = InPipelineInfo.VertexStride,
-			.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
-		};
-
-		DynamicArray<VkVertexInputAttributeDescription> vertexInputDescriptions;
-		uint32_t location = 0;
-		uint32_t offset = 0;
-		for (const auto& vertexInput : InPipelineInfo.VertexInputs)
-		{
-			auto& vertexInputAttribute = vertexInputDescriptions.emplace_back();
-			vertexInputAttribute.location = location++;
-			vertexInputAttribute.binding = 0;
-			vertexInputAttribute.format = ShaderDataTypeToVkFormat(vertexInput);
-			vertexInputAttribute.offset = offset;
-			offset += ShaderDataTypeSize(vertexInput);
-		}
-
-		VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo =
-		{
-			.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-			.vertexBindingDescriptionCount = 1,
-			.pVertexBindingDescriptions = &vertexInputBindingDesc,
-			.vertexAttributeDescriptionCount = uint32_t(vertexInputDescriptions.size()),
-			.pVertexAttributeDescriptions = vertexInputDescriptions.data()
-		};
-
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -212,6 +183,7 @@ namespace Yuki {
 			stageCreateInfo.pName = "main";
 		}
 
+		VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, };
 		VkGraphicsPipelineCreateInfo pipelineCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,

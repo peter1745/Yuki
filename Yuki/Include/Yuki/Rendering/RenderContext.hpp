@@ -61,6 +61,7 @@ namespace Yuki {
 		}
 
 		TElement& Get(TKey InKey) { return Elements[static_cast<std::underlying_type_t<TKey>>(InKey)]; }
+		const TElement& Get(TKey InKey) const { return Elements[static_cast<std::underlying_type_t<TKey>>(InKey)]; }
 
 		template<typename TFunction>
 		void ForEach(TFunction&& InFunction)
@@ -147,6 +148,7 @@ namespace Yuki {
 		virtual Buffer CreateBuffer(const BufferInfo& InBufferInfo) = 0;
 		virtual void Destroy(Buffer InBuffer) = 0;
 		virtual void BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize) = 0;
+		virtual uint64_t BufferGetDeviceAddress(Buffer InBuffer) const = 0;
 
 		virtual DescriptorSetLayout CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) = 0;
 		virtual void Destroy(DescriptorSetLayout InLayout) = 0;

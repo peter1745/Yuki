@@ -25,7 +25,7 @@ namespace Yuki {
 		DynamicArray<Vertex> Vertices;
 		DynamicArray<uint32_t> Indices;
 
-		Buffer VertexBuffer{};
+		Buffer VertexData{};
 		Buffer IndexBuffer{};
 	};
 
