@@ -1,5 +1,6 @@
 #include "VulkanCommandPool.hpp"
 #include "VulkanRenderContext.hpp"
+#include "VulkanHelper.hpp"
 
 #include "Math/Math.hpp"
 
@@ -84,7 +85,7 @@ namespace Yuki {
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& swapchain = m_Swapchains.Get(InSwapchain);
 
-		ImageTransition(InCommandList, swapchain.Images[swapchain.CurrentImage], ImageLayout::Attachment);
+		CommandListTransitionImage(InCommandList, swapchain.Images[swapchain.CurrentImage], ImageLayout::Attachment);
 
 		VkClearColorValue clearColor = { 1.0f, 0.0f, 0.0f, 1.0f };
 
@@ -172,7 +173,48 @@ namespace Yuki {
 		}
 	}
 
-	void VulkanRenderContext::CommandListCopyBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize)
+	void VulkanRenderContext::CommandListTransitionImage(CommandList InCommandList, Image InImage, ImageLayout InNewLayout)
+	{
+		auto& image = m_Images.Get(InImage);
+		auto& commandList = m_CommandLists.Get(InCommandList);
+		auto newLayout = VulkanHelper::ImageLayoutToVkImageLayout(InNewLayout);
+
+		// TODO(Peter): Mips / Array Levels
+
+		VkImageMemoryBarrier2 barrier =
+		{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+			.srcStageMask = image.PipelineStage,
+			.srcAccessMask = image.AccessFlags,
+			.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+			.dstAccessMask = 0,
+			.oldLayout = image.Layout,
+			.newLayout = newLayout,
+			.image = image.Image,
+			.subresourceRange = {
+				.aspectMask = image.AspectFlags,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			}
+		};
+
+		VkDependencyInfo dependencyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+			.imageMemoryBarrierCount = 1,
+			.pImageMemoryBarriers = &barrier,
+		};
+
+		vkCmdPipelineBarrier2(commandList.CommandBuffer, &dependencyInfo);
+
+		image.Layout = newLayout;
+		image.PipelineStage = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		image.AccessFlags = 0;
+	}
+
+	void VulkanRenderContext::CommandListCopyToBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& dstBuffer = m_Buffers.Get(InDstBuffer);
@@ -200,6 +242,106 @@ namespace Yuki {
 		};
 
 		vkCmdCopyBuffer2(commandList.CommandBuffer, &bufferCopyInfo);
+	}
+	
+	void VulkanRenderContext::CommandListCopyToImage(CommandList InCommandList, Image InDstImage, Buffer InSrcBuffer, uint32_t InSrcOffset)
+	{
+		auto& commandList = m_CommandLists.Get(InCommandList);
+		auto& image = m_Images.Get(InDstImage);
+		auto& srcBuffer = m_Buffers.Get(InSrcBuffer);
+
+		auto prevImageLayout = VulkanHelper::VkImageLayoutToImageLayout(image.Layout);
+
+		CommandListTransitionImage(InCommandList, InDstImage, ImageLayout::TransferDestination);
+
+		VkBufferImageCopy2 region =
+		{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+			.pNext = nullptr,
+			.bufferOffset = InSrcOffset,
+			.bufferRowLength = 0,
+			.bufferImageHeight = 0,
+			.imageSubresource = {
+				.aspectMask = image.AspectFlags,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.imageOffset = { 0, 0, 0 },
+			.imageExtent = { image.Width, image.Height, 1 },
+		};
+
+		VkCopyBufferToImageInfo2 copyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2,
+			.pNext = nullptr,
+			.srcBuffer = srcBuffer.Handle,
+			.dstImage = image.Image,
+			.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			.regionCount = 1,
+			.pRegions = &region,
+		};
+
+		vkCmdCopyBufferToImage2(commandList.CommandBuffer, &copyInfo);
+
+		CommandListTransitionImage(InCommandList, InDstImage, prevImageLayout);
+	}
+
+	void VulkanRenderContext::CommandListBlitImage(CommandList InCommandList, Image InDstImage, Image InSrcImage)
+	{
+		auto& commandList = m_CommandLists.Get(InCommandList);
+		auto& dstImage = m_Images.Get(InDstImage);
+		auto& srcImage = m_Images.Get(InSrcImage);
+		
+		auto dstImageLayout = VulkanHelper::VkImageLayoutToImageLayout(dstImage.Layout);
+		auto srcImageLayout = VulkanHelper::VkImageLayoutToImageLayout(srcImage.Layout);
+
+		CommandListTransitionImage(InCommandList, InDstImage, ImageLayout::TransferDestination);
+		CommandListTransitionImage(InCommandList, InSrcImage, ImageLayout::TransferSource);
+
+		VkImageBlit2 imageBlit =
+		{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+			.pNext = nullptr,
+			.srcSubresource = {
+				.aspectMask = srcImage.AspectFlags,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.srcOffsets = {
+				{ 0, 0, 0 },
+				{ int32_t(srcImage.Width), int32_t(srcImage.Height), 1 }
+			},
+			.dstSubresource = {
+				.aspectMask = dstImage.AspectFlags,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.dstOffsets = {
+				{ 0, 0, 0 },
+				{ int32_t(dstImage.Width), int32_t(dstImage.Height), 1 }
+			},
+		};
+
+		VkBlitImageInfo2 blitImageInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+			.pNext = nullptr,
+			.srcImage = srcImage.Image,
+			.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			.dstImage = dstImage.Image,
+			.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			.regionCount = 1,
+			.pRegions = &imageBlit,
+			.filter = VK_FILTER_LINEAR,
+		};
+
+		vkCmdBlitImage2(commandList.CommandBuffer, &blitImageInfo);
+
+		CommandListTransitionImage(InCommandList, InDstImage, dstImageLayout);
+		CommandListTransitionImage(InCommandList, InSrcImage, srcImageLayout);
 	}
 
 	void VulkanRenderContext::CommandListDraw(CommandList InCommandList, uint32_t InVertexCount)

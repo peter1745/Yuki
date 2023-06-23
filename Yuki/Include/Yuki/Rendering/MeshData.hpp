@@ -3,7 +3,7 @@
 #include "Yuki/Math/Vec2.hpp"
 #include "Yuki/Math/Mat4.hpp"
 
-//#include "Yuki/Rendering/RHI/RenderContext.hpp"
+#include "RHI.hpp"
 
 namespace Yuki {
 
@@ -20,10 +20,10 @@ namespace Yuki {
 		uint32_t AlbedoTextureIndex = 0;
 	};
 
-	/*struct Mesh
+	struct Mesh
 	{
-		List<Vertex> Vertices;
-		List<uint32_t> Indices;
+		DynamicArray<Vertex> Vertices;
+		DynamicArray<uint32_t> Indices;
 
 		Unique<Buffer> VertexBuffer = nullptr;
 		Unique<Buffer> IndexBuffer = nullptr;
@@ -39,16 +39,16 @@ namespace Yuki {
 	{
 		uint32_t Width = 0;
 		uint32_t Height = 0;
-		List<std::byte> Data;
+		DynamicArray<std::byte> Data;
 	};
 
 	struct LoadedMesh
 	{
-		List<Mesh> Meshes;
-		List<MeshInstance> Instances;
-		List<LoadedImage> LoadedImages;
-		List<Unique<Image2D>> Textures;
-		List<MeshMaterial> Materials;
-	};*/
+		DynamicArray<Mesh> Meshes;
+		DynamicArray<MeshInstance> Instances;
+		DynamicArray<LoadedImage> LoadedImages;
+		DynamicArray<Image> Textures;
+		DynamicArray<MeshMaterial> Materials;
+	};
 
 }

@@ -20,6 +20,8 @@ namespace Yuki {
 
 	public:
 		static VkFormat ImageFormatToVkFormat(ImageFormat InFormat);
+		static VkImageLayout ImageLayoutToVkImageLayout(ImageLayout InLayout);
+		static ImageLayout VkImageLayoutToImageLayout(VkImageLayout InLayout);
 	};
 
 }

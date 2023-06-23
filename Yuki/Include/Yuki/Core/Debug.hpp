@@ -14,8 +14,8 @@
 #define YUKI_VERIFY(cond, ...) \
 	if (!(cond))                                   \
 	{                                              \
-		std::source_location location = std::source_location::current(); \
-		Yuki::LogError("Verify failed: {} at {}:{}", #cond, location.file_name(), location.line()); \
+		std::source_location source_location = std::source_location::current(); \
+		Yuki::LogError("Verify failed: {} at {}:{}", #cond, source_location.file_name(), source_location.line()); \
 		YUKI_DEBUG_BREAK;                         \
 	}
 	

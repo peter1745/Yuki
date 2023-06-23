@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Yuki/Rendering/MeshData.hpp"
+#include "Yuki/Rendering/RenderContext.hpp"
 
 namespace Yuki {
 
@@ -14,7 +15,7 @@ namespace Yuki {
 	class MeshLoader
 	{
 	public:
-		//static LoadedMesh LoadGLTFMesh(RenderContext* InContext, const std::filesystem::path& InFilePath);
+		static LoadedMesh LoadGLTFMesh(RenderContext* InContext, const std::filesystem::path& InFilePath);
 	};
 
 }

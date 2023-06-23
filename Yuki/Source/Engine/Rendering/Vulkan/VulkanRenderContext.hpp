@@ -48,13 +48,16 @@ namespace Yuki {
 		void CommandListEndRendering(CommandList InCommandList) override;
 		void CommandListBindPipeline(CommandList InCommandList, Pipeline InPipeline) override;
 		void CommandListBindBuffer(CommandList InCommandList, Buffer InBuffer) override;
-		void CommandListCopyBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) override;
+		void CommandListTransitionImage(CommandList InCommandList, Image InImage, ImageLayout InNewLayout) override;
+		void CommandListCopyToBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) override;
+		void CommandListCopyToImage(CommandList InCommandList, Image InDstImage, Buffer InSrcBuffer, uint32_t InSrcOffset) override;
+		void CommandListBlitImage(CommandList InCommandList, Image InDstImage, Image InSrcImage) override;
 		void CommandListDraw(CommandList InCommandList, uint32_t InVertexCount) override;
 
+		Image CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
+		void Destroy(Image InImage) override;
 		ImageView CreateImageView(Image InImage) override;
 		void Destroy(ImageView InImageView) override;
-		
-		void ImageTransition(CommandList InCommandList, Image InImage, ImageLayout InNewLayout) override;
 
 		Shader CreateShader(const std::filesystem::path& InFilePath) override;
 		void Destroy(Shader InShader) override;

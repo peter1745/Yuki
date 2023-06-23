@@ -149,7 +149,7 @@ namespace Yuki {
 			for (auto swapchainHandle : InSwapchains)
 			{
 				auto& swapchain = m_Swapchains.Get(swapchainHandle);
-				ImageTransition(commandListHandle, swapchain.Images[swapchain.CurrentImage], ImageLayout::Present);
+				CommandListTransitionImage(commandListHandle, swapchain.Images[swapchain.CurrentImage], ImageLayout::Present);
 			}
 
 			CommandListEnd(commandListHandle);

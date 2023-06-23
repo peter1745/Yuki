@@ -3,6 +3,8 @@
 #include "VulkanInclude.hpp"
 #include "Rendering/RHI.hpp"
 
+#include <vma/vk_mem_alloc.h>
+
 namespace Yuki {
 
 	struct VulkanImage
@@ -15,6 +17,8 @@ namespace Yuki {
 		VkImageLayout Layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		VkPipelineStageFlags2 PipelineStage = VK_PIPELINE_STAGE_2_NONE;
 		VkAccessFlags2 AccessFlags = VK_ACCESS_2_NONE;
+
+		VmaAllocation Allocation = nullptr;
 	};
 
 	struct VulkanImageView

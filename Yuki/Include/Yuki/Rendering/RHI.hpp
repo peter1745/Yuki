@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Yuki/Core/Debug.hpp"
+#include "Yuki/Core/EnumFlags.hpp"
 
 namespace Yuki {
 
@@ -19,12 +20,11 @@ namespace Yuki {
 	{
 		BufferType Type;
 		uint32_t Size;
-		bool PersitentlyMapped = false;
 	};
 
 	enum class Image{};
 	enum class ImageView{};
-	enum class ImageLayout { Attachment, ShaderReadOnly, Present };
+	enum class ImageLayout { Undefined = -1, Attachment, ShaderReadOnly, Present, TransferDestination, TransferSource };
 	enum class ImageFormat
 	{
 		None = -1,
@@ -34,6 +34,15 @@ namespace Yuki {
 		Depth32SFloat
 	};
 	static constexpr bool IsDepthFormat(ImageFormat InFormat) { return InFormat == ImageFormat::Depth32SFloat; }
+	enum class ImageUsage
+	{
+		ColorAttachment = 1 << 0,
+		DepthAttachment = 1 << 1,
+		Sampled = 1 << 2,
+		TransferDestination = 1 << 3,
+		TransferSource = 1 << 4
+	};
+	YUKI_ENUM_FLAGS(ImageUsage);
 
 	enum class Shader{};
 	enum class ShaderModuleType

@@ -7,13 +7,15 @@ namespace Yuki {
 	{
 		auto[handle, buffer] = m_Buffers.Acquire();
 		buffer.Type = InBufferInfo.Type;
-		buffer.PersistentlyMapped = InBufferInfo.PersitentlyMapped;
 		buffer.Size = InBufferInfo.Size;
 
 		VmaAllocationCreateInfo allocationInfo = { .usage = VMA_MEMORY_USAGE_AUTO };
 		
 		if (InBufferInfo.Type == BufferType::StagingBuffer)
+		{
 			allocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+			allocationInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+		}
 
 		buffer.UsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
@@ -57,9 +59,6 @@ namespace Yuki {
 
 		vmaCreateBuffer(m_Allocator, &bufferCreateInfo, &allocationInfo, &buffer.Handle, &buffer.Allocation, nullptr);
 
-		if (InBufferInfo.PersitentlyMapped)
-			vmaMapMemory(m_Allocator, buffer.Allocation, &buffer.MappedMemory);
-
 		return handle;
 	}
 
@@ -73,14 +72,9 @@ namespace Yuki {
 	void VulkanRenderContext::BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize)
 	{
 		auto& buffer = m_Buffers.Get(InBuffer);
-		
-		if (!buffer.PersistentlyMapped)
-			vmaMapMemory(m_Allocator, buffer.Allocation, &buffer.MappedMemory);
-
-		memcpy(buffer.MappedMemory, InData, size_t(InDataSize));
-
-		if (!buffer.PersistentlyMapped)
-			vmaUnmapMemory(m_Allocator, buffer.Allocation);
+		VmaAllocationInfo allocationInfo;
+		vmaGetAllocationInfo(m_Allocator, buffer.Allocation, &allocationInfo);
+		memcpy(allocationInfo.pMappedData, InData, size_t(InDataSize));
 	}
 
 }

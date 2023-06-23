@@ -40,10 +40,55 @@ private:
 
 		m_Fence = GetRenderContext()->CreateFence();
 
+		m_CommandPool = GetRenderContext()->CreateCommandPool();
+
 		//m_Renderer = new Yuki::SceneRenderer(GetRenderContext());
 
 		//m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
-		//m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+
+		Yuki::Buffer stagingBuffer = GetRenderContext()->CreateBuffer({
+			.Type = Yuki::BufferType::StagingBuffer,
+			.Size = 100 * 1024 * 1024,
+		});
+
+		{
+			m_Mesh.Textures.resize(m_Mesh.LoadedImages.size());
+			for (size_t i = 0; i < m_Mesh.LoadedImages.size(); i++)
+			{
+				auto commandList = GetRenderContext()->CreateCommandList(m_CommandPool);
+				GetRenderContext()->CommandListBegin(commandList);
+
+				const auto& imageData = m_Mesh.LoadedImages[i];
+
+				Yuki::Image blittedImage{};
+				bool blitted = false;
+				Yuki::Image image = GetRenderContext()->CreateImage(imageData.Width, imageData.Height, Yuki::ImageFormat::RGBA8UNorm, Yuki::ImageUsage::Sampled | Yuki::ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination);
+				GetRenderContext()->CommandListTransitionImage(commandList, image, Yuki::ImageLayout::ShaderReadOnly);
+				GetRenderContext()->BufferSetData(stagingBuffer, imageData.Data.data(), uint32_t(imageData.Data.size()));
+				GetRenderContext()->CommandListCopyToImage(commandList, image, stagingBuffer, 0);
+
+				if (imageData.Width > 2048 && imageData.Height > 2048)
+				{
+					blittedImage = GetRenderContext()->CreateImage(2048, 2048, Yuki::ImageFormat::RGBA8UNorm, Yuki::ImageUsage::Sampled | Yuki::ImageUsage::TransferDestination);
+					GetRenderContext()->CommandListTransitionImage(commandList, blittedImage, Yuki::ImageLayout::ShaderReadOnly);
+					GetRenderContext()->CommandListBlitImage(commandList, blittedImage, image);
+					blitted = true;
+				}
+
+				GetRenderContext()->CommandListEnd(commandList);
+				GetRenderContext()->QueueSubmitCommandLists({ commandList }, {}, {});
+				GetRenderContext()->DeviceWaitIdle();
+
+				if (blitted)
+				{
+					GetRenderContext()->Destroy(image);
+					image = blittedImage;
+				}
+
+				m_Mesh.Textures[i] = image;
+			}
+		}
 
 		m_Shader = GetRenderContext()->CreateShader("Resources/Shaders/Test.glsl");
 
@@ -52,6 +97,15 @@ private:
 			Yuki::Math::Mat4 ViewProjection;
 			Yuki::Math::Mat4 Transform;
 		} m_FrameTransforms;
+
+		/*
+		TODO(Peter):
+			- Implemented DescriptorSetBuilder (Follow PipelineBuilder implementation)
+			- Ensure proper cleanup on shutdown
+			- Implement Proxy Objects over the direct RenderContext interface
+			- Multiple frames in flight
+			- Make sure multiple windows / swapchains still works
+		*/
 
 		m_Pipeline = Yuki::PipelineBuilder(GetRenderContext())
 			.WithShader(m_Shader)
@@ -65,7 +119,6 @@ private:
 			.Build();
 
 		//.AddDescriptorSetLayout(m_MaterialDescriptorSet->GetLayout())
-		m_CommandPool = GetRenderContext()->CreateCommandPool();
 
 		struct Vertex
 		{
@@ -86,15 +139,12 @@ private:
 			.Size = sizeof(Vertex) * 3
 		});
 
-		Yuki::Buffer stagingBuffer = GetRenderContext()->CreateBuffer({
-			.Type = Yuki::BufferType::StagingBuffer,
-			.Size = 100 * 1024 * 1024
-		});
+		
 		GetRenderContext()->BufferSetData(stagingBuffer, vertices, sizeof(Vertex) * 3);
 
 		auto commandList = GetRenderContext()->CreateCommandList(m_CommandPool);
 		GetRenderContext()->CommandListBegin(commandList);
-		GetRenderContext()->CommandListCopyBuffer(commandList, m_VertexBuffer, 0, stagingBuffer, 0, 0);
+		GetRenderContext()->CommandListCopyToBuffer(commandList, m_VertexBuffer, 0, stagingBuffer, 0, 0);
 		GetRenderContext()->CommandListEnd(commandList);
 		GetRenderContext()->QueueSubmitCommandLists({ commandList}, {}, {});
 		GetRenderContext()->DeviceWaitIdle();
@@ -178,7 +228,7 @@ private:
 
 	Yuki::SceneRenderer* m_Renderer = nullptr;
 
-	//Yuki::LoadedMesh m_Mesh;
+	Yuki::LoadedMesh m_Mesh;
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

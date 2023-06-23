@@ -109,13 +109,16 @@ namespace Yuki {
 		virtual void CommandListEndRendering(CommandList InCommandList) = 0;
 		virtual void CommandListBindPipeline(CommandList InCommandList, Pipeline InPipeline) = 0;
 		virtual void CommandListBindBuffer(CommandList InCommandList, Buffer InBuffer) = 0;
-		virtual void CommandListCopyBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) = 0;
+		virtual void CommandListTransitionImage(CommandList InCommandList, Image InImage, ImageLayout InNewLayout) = 0;
+		virtual void CommandListCopyToBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) = 0;
+		virtual void CommandListCopyToImage(CommandList InCommandList, Image InDstImage, Buffer InSrcBuffer, uint32_t InSrcOffset) = 0;
+		virtual void CommandListBlitImage(CommandList InCommandList, Image InDstImage, Image InSrcImage) = 0;
 		virtual void CommandListDraw(CommandList InCommandList, uint32_t InVertexCount) = 0;
 
+		virtual Image CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;
+		virtual void Destroy(Image InImage) = 0;
 		virtual ImageView CreateImageView(Image InImage) = 0;
 		virtual void Destroy(ImageView InImageView) = 0;
-
-		virtual void ImageTransition(CommandList InCommandList, Image InImage, ImageLayout InNewLayout) = 0;
 
 		virtual Shader CreateShader(const std::filesystem::path& InFilePath) = 0;
 		virtual void Destroy(Shader InShader) = 0;
