@@ -102,6 +102,16 @@ namespace Yuki {
 		vkCreateSwapchainKHR(m_LogicalDevice, &swapchainCreateInfo, nullptr, &InSwapchain.Swapchain);
 
 		{
+			if (!InSwapchain.Images.empty())
+			{
+				for (auto imageHandle : InSwapchain.Images)
+				{
+					auto& image = m_Images.Get(imageHandle);
+					image.Image = VK_NULL_HANDLE;
+					m_Images.Return(imageHandle);
+				}
+			}
+
 			DynamicArray<VkImage> images;
 			VulkanHelper::Enumerate(vkGetSwapchainImagesKHR, images, m_LogicalDevice, InSwapchain.Swapchain);
 			InSwapchain.Images.resize(images.size());

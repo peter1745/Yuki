@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/ResourceRegistry.hpp"
 #include "Rendering/RenderContext.hpp"
 
 #include "VulkanQueue.hpp"
@@ -116,20 +117,20 @@ namespace Yuki {
 		CommandPool m_PresentTransitionPool = {};
 
 	private:
-		Registry<Queue, VulkanQueue> m_Queues;
-		Registry<Swapchain, VulkanSwapchain> m_Swapchains;
-		Registry<Fence, VulkanFence> m_Fences;
-		Registry<CommandPool, VulkanCommandPool> m_CommandPools;
-		Registry<CommandList, VulkanCommandList> m_CommandLists;
-		Registry<Image, VulkanImage> m_Images;
-		Registry<ImageView, VulkanImageView> m_ImageViews;
-		Registry<Sampler, VulkanSampler> m_Samplers;
-		Registry<Shader, VulkanShader> m_Shaders;
-		Registry<Pipeline, VulkanPipeline> m_Pipelines;
-		Registry<Buffer, VulkanBuffer> m_Buffers;
-		Registry<DescriptorSetLayout, VulkanDescriptorSetLayout> m_DescriptorSetLayouts;
-		Registry<DescriptorPool, VulkanDescriptorPool> m_DescriptorPools;
-		Registry<DescriptorSet, VulkanDescriptorSet> m_DescriptorSets;
+		ResourceRegistry<Queue, VulkanQueue> m_Queues;
+		ResourceRegistry<Swapchain, VulkanSwapchain> m_Swapchains;
+		ResourceRegistry<Fence, VulkanFence> m_Fences;
+		ResourceRegistry<CommandPool, VulkanCommandPool> m_CommandPools;
+		ResourceRegistry<CommandList, VulkanCommandList> m_CommandLists;
+		ResourceRegistry<Image, VulkanImage> m_Images;
+		ResourceRegistry<ImageView, VulkanImageView> m_ImageViews;
+		ResourceRegistry<Sampler, VulkanSampler> m_Samplers;
+		ResourceRegistry<Shader, VulkanShader> m_Shaders;
+		ResourceRegistry<Pipeline, VulkanPipeline> m_Pipelines;
+		ResourceRegistry<Buffer, VulkanBuffer> m_Buffers;
+		ResourceRegistry<DescriptorSetLayout, VulkanDescriptorSetLayout> m_DescriptorSetLayouts;
+		ResourceRegistry<DescriptorPool, VulkanDescriptorPool> m_DescriptorPools;
+		ResourceRegistry<DescriptorSet, VulkanDescriptorSet> m_DescriptorSets;
 
 	private:
 		friend class RenderContext;

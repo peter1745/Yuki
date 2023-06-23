@@ -44,8 +44,8 @@ private:
 
 		m_Renderer = new Yuki::SceneRenderer(GetRenderContext(), m_Windows[0]->GetSwapchain());
 
-		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
-		m_Mesh2 = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
+		//m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
 
 		/*
 		TODO(Peter):
@@ -67,19 +67,14 @@ private:
 		if (swapchains.empty())
 			return;
 
-		static bool s_Sponza = true;
-		if (m_Windows[0]->IsKeyPressed(Yuki::KeyCode::Num1))
-			s_Sponza = true;
-		else if (m_Windows[0]->IsKeyPressed(Yuki::KeyCode::Num2))
-			s_Sponza = false;
-
 		GetRenderContext()->FenceWait(m_Fence);
 
 		// Acquire Images for all Viewports
 		GetRenderContext()->QueueAcquireImages(swapchains, { m_Fence });
 
-		m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, 1920.0f / 1080.0f, 0.05f) * m_Camera->GetViewMatrix());
-		m_Renderer->Submit(s_Sponza ? m_Mesh : m_Mesh2);
+		const auto& windowAttribs = m_Windows[0]->GetAttributes();
+		m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)windowAttribs.Width / windowAttribs.Height, 0.05f) * m_Camera->GetViewMatrix());
+		m_Renderer->Submit(m_Mesh);
 		m_Renderer->EndFrame(m_Fence);
 
 		// Present all swapchain images

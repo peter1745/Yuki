@@ -4,7 +4,7 @@
 
 namespace Yuki {
 
-	static VkFormat ShaderDataTypeToVkFormat(ShaderDataType InDataType)
+	/*static VkFormat ShaderDataTypeToVkFormat(ShaderDataType InDataType)
 	{
 		switch (InDataType)
 		{
@@ -24,7 +24,7 @@ namespace Yuki {
 
 		YUKI_VERIFY(false);
 		return VK_FORMAT_UNDEFINED;
-	}
+	}*/
 
 	static VkShaderStageFlagBits ShaderModuleTypeToVkShaderStageFlagBits(ShaderModuleType InType)
 	{

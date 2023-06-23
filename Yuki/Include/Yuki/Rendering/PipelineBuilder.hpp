@@ -34,7 +34,6 @@ namespace Yuki {
 		PipelineBuilder(RenderContext* InContext);
 
 		PipelineBuilder& WithShader(Shader InShader);
-		PipelineBuilder& AddVertexInput(ShaderDataType InDataType);
 		PipelineBuilder& PushConstant(uint32_t InSize);
 		PipelineBuilder& AddDescriptorSetLayout(DescriptorSetLayout InLayout);
 		PipelineBuilder& ColorAttachment(ImageFormat InFormat);

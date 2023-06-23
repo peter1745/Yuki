@@ -65,9 +65,9 @@ namespace Yuki {
 				m_Context->BufferSetData(m_StagingBuffer, imageData.Data.data(), uint32_t(imageData.Data.size()));
 				m_Context->CommandListCopyToImage(commandList, image, m_StagingBuffer, 0);
 
-				if (imageData.Width > 2048 && imageData.Height > 2048)
+				if (imageData.Width > 1024 && imageData.Height > 1024)
 				{
-					blittedImage = m_Context->CreateImage(2048, 2048, Yuki::ImageFormat::RGBA8UNorm, Yuki::ImageUsage::Sampled | Yuki::ImageUsage::TransferDestination);
+					blittedImage = m_Context->CreateImage(1024, 1024, Yuki::ImageFormat::RGBA8UNorm, Yuki::ImageUsage::Sampled | Yuki::ImageUsage::TransferDestination);
 					m_Context->CommandListTransitionImage(commandList, blittedImage, Yuki::ImageLayout::ShaderReadOnly);
 					m_Context->CommandListBlitImage(commandList, blittedImage, image);
 					blitted = true;

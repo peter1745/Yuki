@@ -15,13 +15,6 @@ namespace Yuki {
 		return *this;
 	}
 	
-	PipelineBuilder& PipelineBuilder::AddVertexInput(ShaderDataType InDataType)
-	{
-		m_PipelineInfo.VertexInputs.emplace_back(InDataType);
-		m_PipelineInfo.VertexStride += ShaderDataTypeSize(InDataType);
-		return *this;
-	}
-	
 	PipelineBuilder& PipelineBuilder::PushConstant(uint32_t InSize)
 	{
 		auto& pushConstantInfo = m_PipelineInfo.PushConstants.emplace_back();
