@@ -55,7 +55,7 @@ namespace Yuki {
 			FreeList.emplace_back(InKey);
 		}
 
-		bool IsValid(TKey InKey)
+		bool IsValid(TKey InKey) const
 		{
 			return Flags[static_cast<std::underlying_type_t<TKey>>(InKey)] == ElementFlag::Exists;
 		}
@@ -64,6 +64,16 @@ namespace Yuki {
 
 		template<typename TFunction>
 		void ForEach(TFunction&& InFunction)
+		{
+			for (size_t i = 0; i < Elements.size(); i++)
+			{
+				if (Flags[i] == ElementFlag::Exists)
+					InFunction(TKey(i), Elements[i]);
+			}
+		}
+
+		template<typename TFunction>
+		void ForEach(TFunction&& InFunction) const
 		{
 			for (size_t i = 0; i < Elements.size(); i++)
 			{
@@ -85,6 +95,8 @@ namespace Yuki {
 		virtual void DeviceWaitIdle() const = 0;
 
 		virtual Queue GetGraphicsQueue() const = 0;
+
+		virtual DynamicArray<Swapchain> GetSwapchains() const = 0;
 
 	public:
 		virtual void QueueSubmitCommandLists(const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals) = 0;
@@ -109,16 +121,22 @@ namespace Yuki {
 		virtual void CommandListEndRendering(CommandList InCommandList) = 0;
 		virtual void CommandListBindPipeline(CommandList InCommandList, Pipeline InPipeline) = 0;
 		virtual void CommandListBindBuffer(CommandList InCommandList, Buffer InBuffer) = 0;
+		virtual void CommandListBindDescriptorSet(CommandList InCommandList, Pipeline InPipeline, DescriptorSet InSet) = 0;
+		virtual void CommandListPushConstants(CommandList InCommandList, Pipeline InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) = 0;
 		virtual void CommandListTransitionImage(CommandList InCommandList, Image InImage, ImageLayout InNewLayout) = 0;
 		virtual void CommandListCopyToBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) = 0;
 		virtual void CommandListCopyToImage(CommandList InCommandList, Image InDstImage, Buffer InSrcBuffer, uint32_t InSrcOffset) = 0;
 		virtual void CommandListBlitImage(CommandList InCommandList, Image InDstImage, Image InSrcImage) = 0;
 		virtual void CommandListDraw(CommandList InCommandList, uint32_t InVertexCount) = 0;
+		virtual void CommandListDrawIndexed(CommandList InCommandList, uint32_t InIndexCount) = 0;
 
 		virtual Image CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;
 		virtual void Destroy(Image InImage) = 0;
 		virtual ImageView CreateImageView(Image InImage) = 0;
 		virtual void Destroy(ImageView InImageView) = 0;
+
+		virtual Sampler CreateSampler() = 0;
+		virtual void Destroy(Sampler InSampler) = 0;
 
 		virtual Shader CreateShader(const std::filesystem::path& InFilePath) = 0;
 		virtual void Destroy(Shader InShader) = 0;
@@ -129,6 +147,17 @@ namespace Yuki {
 		virtual Buffer CreateBuffer(const BufferInfo& InBufferInfo) = 0;
 		virtual void Destroy(Buffer InBuffer) = 0;
 		virtual void BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize) = 0;
+
+		virtual DescriptorSetLayout CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) = 0;
+		virtual void Destroy(DescriptorSetLayout InLayout) = 0;
+		virtual DescriptorPool CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) = 0;
+		virtual void Destroy(DescriptorPool InPool) = 0;
+		virtual DescriptorSet DescriptorPoolAllocateDescriptorSet(DescriptorPool InPool, DescriptorSetLayout InLayout) = 0;
+		virtual void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, Sampler InSampler) = 0;
+		virtual void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, std::span<Sampler> InSamplers) = 0;
+		virtual void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, Sampler InSampler) = 0;
+		virtual void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, std::span<Sampler> InSamplers) = 0;
+		virtual void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<std::pair<uint32_t, Buffer>> InBuffers) = 0;
 
 	public:
 		static Unique<RenderContext> New(RenderAPI InAPI);

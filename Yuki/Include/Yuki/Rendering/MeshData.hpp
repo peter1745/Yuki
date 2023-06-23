@@ -25,8 +25,8 @@ namespace Yuki {
 		DynamicArray<Vertex> Vertices;
 		DynamicArray<uint32_t> Indices;
 
-		Unique<Buffer> VertexBuffer = nullptr;
-		Unique<Buffer> IndexBuffer = nullptr;
+		Buffer VertexBuffer{};
+		Buffer IndexBuffer{};
 	};
 
 	struct MeshInstance

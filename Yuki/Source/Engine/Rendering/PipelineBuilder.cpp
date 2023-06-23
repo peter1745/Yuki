@@ -31,6 +31,12 @@ namespace Yuki {
 		m_PushConstantOffset += InSize;
 		return *this;
 	}
+
+	PipelineBuilder& PipelineBuilder::AddDescriptorSetLayout(DescriptorSetLayout InLayout)
+	{
+		m_PipelineInfo.DescriptorSetLayouts.emplace_back(InLayout);
+		return *this;
+	}
 	
 	PipelineBuilder& PipelineBuilder::ColorAttachment(ImageFormat InFormat)
 	{

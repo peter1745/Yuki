@@ -7,9 +7,11 @@
 #include "VulkanFence.hpp"
 #include "VulkanCommandPool.hpp"
 #include "VulkanImage.hpp"
+#include "VulkanSampler.hpp"
 #include "VulkanShader.hpp"
 #include "VulkanPipeline.hpp"
 #include "VulkanBuffer.hpp"
+#include "VulkanDescriptorPool.hpp"
 
 #include <vma/vk_mem_alloc.h>
 
@@ -18,11 +20,13 @@ namespace Yuki {
 	class VulkanRenderContext final : public RenderContext
 	{
 	public:
-		~VulkanRenderContext() = default;
+		~VulkanRenderContext();
 
 		void DeviceWaitIdle() const override;
 
 		Queue GetGraphicsQueue() const override { return m_GraphicsQueue; }
+
+		DynamicArray<Swapchain> GetSwapchains() const override;
 
 	public:
 		void QueueSubmitCommandLists(const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals) override;
@@ -48,16 +52,22 @@ namespace Yuki {
 		void CommandListEndRendering(CommandList InCommandList) override;
 		void CommandListBindPipeline(CommandList InCommandList, Pipeline InPipeline) override;
 		void CommandListBindBuffer(CommandList InCommandList, Buffer InBuffer) override;
+		void CommandListBindDescriptorSet(CommandList InCommandList, Pipeline InPipeline, DescriptorSet InSet) override;
+		void CommandListPushConstants(CommandList InCommandList, Pipeline InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) override;
 		void CommandListTransitionImage(CommandList InCommandList, Image InImage, ImageLayout InNewLayout) override;
 		void CommandListCopyToBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) override;
 		void CommandListCopyToImage(CommandList InCommandList, Image InDstImage, Buffer InSrcBuffer, uint32_t InSrcOffset) override;
 		void CommandListBlitImage(CommandList InCommandList, Image InDstImage, Image InSrcImage) override;
 		void CommandListDraw(CommandList InCommandList, uint32_t InVertexCount) override;
+		void CommandListDrawIndexed(CommandList InCommandList, uint32_t InIndexCount) override;
 
 		Image CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
 		void Destroy(Image InImage) override;
 		ImageView CreateImageView(Image InImage) override;
 		void Destroy(ImageView InImageView) override;
+
+		Sampler CreateSampler() override;
+		void Destroy(Sampler InSampler) override;
 
 		Shader CreateShader(const std::filesystem::path& InFilePath) override;
 		void Destroy(Shader InShader) override;
@@ -68,6 +78,17 @@ namespace Yuki {
 		Buffer CreateBuffer(const BufferInfo& InBufferInfo) override;
 		void Destroy(Buffer InBuffer) override;
 		void BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize) override;
+
+		DescriptorSetLayout CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) override;
+		void Destroy(DescriptorSetLayout InLayout) override;
+		DescriptorPool CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) override;
+		void Destroy(DescriptorPool InPool) override;
+		DescriptorSet DescriptorPoolAllocateDescriptorSet(DescriptorPool InPool, DescriptorSetLayout InLayout) override;
+		void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, Sampler InSampler) override;
+		void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, std::span<Sampler> InSamplers) override;
+		void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, Sampler InSampler) override;
+		void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, std::span<Sampler> InSamplers) override;
+		void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<std::pair<uint32_t, Buffer>> InBuffers) override;
 
 	private:
 		void RecreateSwapchain(VulkanSwapchain& InSwapchain);
@@ -101,9 +122,13 @@ namespace Yuki {
 		Registry<CommandList, VulkanCommandList> m_CommandLists;
 		Registry<Image, VulkanImage> m_Images;
 		Registry<ImageView, VulkanImageView> m_ImageViews;
+		Registry<Sampler, VulkanSampler> m_Samplers;
 		Registry<Shader, VulkanShader> m_Shaders;
 		Registry<Pipeline, VulkanPipeline> m_Pipelines;
 		Registry<Buffer, VulkanBuffer> m_Buffers;
+		Registry<DescriptorSetLayout, VulkanDescriptorSetLayout> m_DescriptorSetLayouts;
+		Registry<DescriptorPool, VulkanDescriptorPool> m_DescriptorPools;
+		Registry<DescriptorSet, VulkanDescriptorSet> m_DescriptorSets;
 
 	private:
 		friend class RenderContext;

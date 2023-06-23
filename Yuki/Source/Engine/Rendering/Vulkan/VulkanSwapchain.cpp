@@ -9,18 +9,20 @@ namespace Yuki {
 
 	Swapchain VulkanRenderContext::CreateSwapchain(GenericWindow* InWindow)
 	{
+		LogInfo("Creating Swapchain");
 		auto[handle, swapchain] = m_Swapchains.Acquire();
 
 		swapchain.Window = InWindow;
 
 		RecreateSwapchain(swapchain);
-
+		LogInfo("Done");
 		return handle;
 	}
 
 	void VulkanRenderContext::RecreateSwapchain(VulkanSwapchain& InSwapchain)
 	{
 		VkSwapchainKHR oldSwapchain = InSwapchain.Swapchain;
+		Image oldDepthImage = InSwapchain.DepthImage;
 
 		if (oldSwapchain != VK_NULL_HANDLE)
 		{
@@ -125,6 +127,8 @@ namespace Yuki {
 				InSwapchain.ImageViews[i] = CreateImageView(InSwapchain.Images[i]);
 		}
 
+		InSwapchain.DepthImage = CreateImage(InSwapchain.Width, InSwapchain.Height, ImageFormat::Depth32SFloat, ImageUsage::DepthAttachment);
+
 		while (InSwapchain.Semaphores.size() < InSwapchain.Images.size() * 2)
 		{
 			VkSemaphoreCreateInfo semaphoreInfo = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
@@ -134,7 +138,10 @@ namespace Yuki {
 		}
 
 		if (oldSwapchain != VK_NULL_HANDLE)
+		{
+			Destroy(oldDepthImage);
 			vkDestroySwapchainKHR(m_LogicalDevice, oldSwapchain, nullptr);
+		}
 	}
 
 	void VulkanRenderContext::Destroy(Swapchain InSwapchain)
@@ -143,6 +150,8 @@ namespace Yuki {
 
 		for (auto imageView : swapchain.ImageViews)
 			Destroy(imageView);
+
+		Destroy(swapchain.DepthImage);
 
 		vkDestroySwapchainKHR(m_LogicalDevice, swapchain.Swapchain, nullptr);
 		m_Swapchains.Return(InSwapchain);

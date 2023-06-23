@@ -87,7 +87,7 @@ namespace Yuki {
 
 		CommandListTransitionImage(InCommandList, swapchain.Images[swapchain.CurrentImage], ImageLayout::Attachment);
 
-		VkClearColorValue clearColor = { 1.0f, 0.0f, 0.0f, 1.0f };
+		VkClearColorValue clearColor = { 0.05f, 0.05f, 0.05f, 1.0f };
 
 		VkViewport viewport =
 		{
@@ -96,7 +96,7 @@ namespace Yuki {
 			.width = float(swapchain.Width),
 			.height = float(swapchain.Height),
 			.minDepth = 0.0f,
-			.maxDepth = 0.0f,
+			.maxDepth = 1.0f,
 		};
 		vkCmdSetViewport(commandList.CommandBuffer, 0, 1, &viewport);
 
@@ -121,6 +121,21 @@ namespace Yuki {
 			},
 		};
 
+		auto& depthAttachmentImageView = m_ImageViews.Get(m_Images.Get(swapchain.DepthImage).DefaultImageView);
+		VkClearDepthStencilValue depthClearValue = { .depth = 0.0f };
+		VkRenderingAttachmentInfo depthAttachmentInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+			.pNext = nullptr,
+			.imageView = depthAttachmentImageView.ImageView,
+			.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.clearValue = {
+				.depthStencil = depthClearValue
+			},
+		};
+
 		VkRenderingInfo renderingInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
@@ -134,7 +149,7 @@ namespace Yuki {
 			.viewMask = 0,
 			.colorAttachmentCount = 1,
 			.pColorAttachments = &colorAttachmentInfo,
-			.pDepthAttachment = nullptr,
+			.pDepthAttachment = &depthAttachmentInfo,
 			.pStencilAttachment = nullptr,
 		};
 		vkCmdBeginRendering(commandList.CommandBuffer, &renderingInfo);
@@ -171,6 +186,21 @@ namespace Yuki {
 			vkCmdBindIndexBuffer(commandList.CommandBuffer, buffer.Handle, offset, VK_INDEX_TYPE_UINT32);
 		}
 		}
+	}
+
+	void VulkanRenderContext::CommandListBindDescriptorSet(CommandList InCommandList, Pipeline InPipeline, DescriptorSet InSet)
+	{
+		auto& commandList = m_CommandLists.Get(InCommandList);
+		auto& pipeline = m_Pipelines.Get(InPipeline);
+		auto& set = m_DescriptorSets.Get(InSet);
+		vkCmdBindDescriptorSets(commandList.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Layout, 0, 1, &set.Handle, 0, nullptr);
+	}
+
+	void VulkanRenderContext::CommandListPushConstants(CommandList InCommandList, Pipeline InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset)
+	{
+		auto& commandList = m_CommandLists.Get(InCommandList);
+		auto& pipeline = m_Pipelines.Get(InPipeline);
+		vkCmdPushConstants(commandList.CommandBuffer, pipeline.Layout, VK_SHADER_STAGE_ALL, InOffset, InDataSize, InData);
 	}
 
 	void VulkanRenderContext::CommandListTransitionImage(CommandList InCommandList, Image InImage, ImageLayout InNewLayout)
@@ -348,6 +378,12 @@ namespace Yuki {
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		vkCmdDraw(commandList.CommandBuffer, InVertexCount, 1, 0, 0);
+	}
+
+	void VulkanRenderContext::CommandListDrawIndexed(CommandList InCommandList, uint32_t InIndexCount)
+	{
+		auto& commandList = m_CommandLists.Get(InCommandList);
+		vkCmdDrawIndexed(commandList.CommandBuffer, InIndexCount, 1, 0, 0, 0);
 	}
 
 }

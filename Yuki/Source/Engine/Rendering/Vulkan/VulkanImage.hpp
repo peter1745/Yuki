@@ -19,6 +19,8 @@ namespace Yuki {
 		VkAccessFlags2 AccessFlags = VK_ACCESS_2_NONE;
 
 		VmaAllocation Allocation = nullptr;
+
+		ImageView DefaultImageView{};
 	};
 
 	struct VulkanImageView

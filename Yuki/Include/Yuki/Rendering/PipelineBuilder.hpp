@@ -17,6 +17,8 @@ namespace Yuki {
 		struct PushConstantInfo { uint32_t Offset; uint32_t Size; };
 		DynamicArray<PushConstantInfo> PushConstants;
 
+		DynamicArray<DescriptorSetLayout> DescriptorSetLayouts;
+
 		struct ColorAttachmentInfo
 		{
 			ImageFormat Format;
@@ -34,7 +36,7 @@ namespace Yuki {
 		PipelineBuilder& WithShader(Shader InShader);
 		PipelineBuilder& AddVertexInput(ShaderDataType InDataType);
 		PipelineBuilder& PushConstant(uint32_t InSize);
-		//PipelineBuilder& AddDescriptorSetLayout(DescriptorSetLayout* InLayout);
+		PipelineBuilder& AddDescriptorSetLayout(DescriptorSetLayout InLayout);
 		PipelineBuilder& ColorAttachment(ImageFormat InFormat);
 		PipelineBuilder& DepthAttachment();
 		Pipeline Build();

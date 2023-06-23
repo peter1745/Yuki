@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Yuki/Core/Core.hpp"
 #include "Yuki/Core/Debug.hpp"
 #include "Yuki/Core/EnumFlags.hpp"
 
@@ -44,6 +45,8 @@ namespace Yuki {
 	};
 	YUKI_ENUM_FLAGS(ImageUsage);
 
+	enum class Sampler{};
+
 	enum class Shader{};
 	enum class ShaderModuleType
 	{
@@ -51,6 +54,13 @@ namespace Yuki {
 		Vertex,
 		Fragment
 	};
+	enum class ShaderStage
+	{
+		None = -1,
+		Vertex = 1 << 0,
+		Fragment = 1 << 1,
+	};
+	YUKI_ENUM_FLAGS(ShaderStage);
 	enum class ShaderDataType
 	{
 		Float, Float2, Float3, Float4,
@@ -80,5 +90,22 @@ namespace Yuki {
 	}
 
 	enum class Pipeline{};
+
+	enum class DescriptorPool{};
+	enum class DescriptorSet{};
+	enum class DescriptorSetLayout{};
+	enum class DescriptorType { CombinedImageSampler, StorageBuffer };
+	struct DescriptorSetLayoutInfo
+	{
+		ShaderStage Stages = ShaderStage::None;
+		struct DescriptorInfo { uint32_t Count; DescriptorType Type; };
+		DynamicArray<DescriptorInfo> Descriptors;
+	};
+	struct DescriptorCount
+	{
+		DescriptorType Type;
+		uint32_t Count;
+	};
+
 
 }

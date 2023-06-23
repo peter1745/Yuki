@@ -67,10 +67,10 @@ namespace Yuki {
 			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 		};
 
-		//List<VkDescriptorSetLayout> descriptorSetLayouts;
-		//descriptorSetLayouts.reserve(m_DescriptorSetLayouts.size());
-		//for (auto* descriptorSetLayout : m_DescriptorSetLayouts)
-		//	descriptorSetLayouts.emplace_back(descriptorSetLayout->Handle);
+		DynamicArray<VkDescriptorSetLayout> descriptorSetLayouts;
+		descriptorSetLayouts.reserve(InPipelineInfo.DescriptorSetLayouts.size());
+		for (auto layoutHandle : InPipelineInfo.DescriptorSetLayouts)
+			descriptorSetLayouts.emplace_back(m_DescriptorSetLayouts.Get(layoutHandle).Handle);
 
 		DynamicArray<VkPushConstantRange> pushConstants;
 		for (const auto& pushConstantInfo : InPipelineInfo.PushConstants)
@@ -84,8 +84,8 @@ namespace Yuki {
 		VkPipelineLayoutCreateInfo layoutCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-			//.setLayoutCount = uint32_t(descriptorSetLayouts.size()),
-			//.pSetLayouts = descriptorSetLayouts.data(),
+			.setLayoutCount = uint32_t(descriptorSetLayouts.size()),
+			.pSetLayouts = descriptorSetLayouts.data(),
 			.pushConstantRangeCount = uint32_t(pushConstants.size()),
 			.pPushConstantRanges = pushConstants.data(),
 		};

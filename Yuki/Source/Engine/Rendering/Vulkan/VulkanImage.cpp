@@ -54,12 +54,15 @@ namespace Yuki {
 		image.PipelineStage = VK_PIPELINE_STAGE_2_NONE;
 		image.AccessFlags = VK_ACCESS_2_NONE;
 
+		image.DefaultImageView = CreateImageView(handle);
+
 		return handle;
 	}
 
 	void VulkanRenderContext::Destroy(Image InImage)
 	{
 		auto& image = m_Images.Get(InImage);
+		Destroy(image.DefaultImageView);
 		if (image.Allocation != nullptr)
 			vmaDestroyImage(m_Allocator, image.Image, image.Allocation);
 		m_Images.Return(InImage);
@@ -96,7 +99,12 @@ namespace Yuki {
 	void VulkanRenderContext::Destroy(ImageView InImageView)
 	{
 		auto& imageView = m_ImageViews.Get(InImageView);
+
+		if (imageView.ImageView == VK_NULL_HANDLE)
+			return;
+
 		vkDestroyImageView(m_LogicalDevice, imageView.ImageView, nullptr);
+		imageView.ImageView = VK_NULL_HANDLE;
 		m_ImageViews.Return(InImageView);
 	}
 

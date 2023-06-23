@@ -7,8 +7,10 @@
 #include <Yuki/Core/Application.hpp>
 #include <Yuki/Core/Logging.hpp>
 #include <Yuki/Math/Math.hpp>
+#include <Yuki/Math/Mat4.hpp>
 #include <Yuki/EventSystem/ApplicationEvents.hpp>
 #include <Yuki/Rendering/PipelineBuilder.hpp>
+#include <Yuki/Rendering/DescriptorSetBuilder.hpp>
 #include <Yuki/Rendering/SceneRenderer.hpp>
 #include <Yuki/IO/MeshLoader.hpp>
 
@@ -44,8 +46,24 @@ private:
 
 		//m_Renderer = new Yuki::SceneRenderer(GetRenderContext());
 
-		//m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
-		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+		m_Sampler = GetRenderContext()->CreateSampler();
+
+		Yuki::DescriptorCount descriptorPoolCounts[] =
+		{
+			{ Yuki::DescriptorType::CombinedImageSampler, 65536 },
+			{ Yuki::DescriptorType::StorageBuffer, 65536 },
+		};
+		m_DescriptorPool = GetRenderContext()->CreateDescriptorPool(descriptorPoolCounts);
+		
+		auto materialSetLayout = Yuki::DescriptorSetLayoutBuilder(GetRenderContext())
+				.Stages(Yuki::ShaderStage::Vertex | Yuki::ShaderStage::Fragment)
+				.Binding(65536, Yuki::DescriptorType::StorageBuffer)
+				.Binding(256, Yuki::DescriptorType::CombinedImageSampler)
+				.Build();
+		m_MaterialDescriptorSet = GetRenderContext()->DescriptorPoolAllocateDescriptorSet(m_DescriptorPool, materialSetLayout);
+
+		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
+		//m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
 
 		Yuki::Buffer stagingBuffer = GetRenderContext()->CreateBuffer({
 			.Type = Yuki::BufferType::StagingBuffer,
@@ -88,20 +106,34 @@ private:
 
 				m_Mesh.Textures[i] = image;
 			}
+
+			GetRenderContext()->DescriptorSetWrite(m_MaterialDescriptorSet, 1, m_Mesh.Textures, m_Sampler);
 		}
 
-		m_Shader = GetRenderContext()->CreateShader("Resources/Shaders/Test.glsl");
+		m_Shader = GetRenderContext()->CreateShader("Resources/Shaders/Geometry.glsl");
 
-		struct FrameTransforms
+		
+		m_MaterialsBuffer = GetRenderContext()->CreateBuffer({
+			.Type = Yuki::BufferType::StorageBuffer,
+			.Size = sizeof(Yuki::MeshMaterial) * 65536
+		});
+
 		{
-			Yuki::Math::Mat4 ViewProjection;
-			Yuki::Math::Mat4 Transform;
-		} m_FrameTransforms;
+			GetRenderContext()->BufferSetData(stagingBuffer, m_Mesh.Materials.data(), uint32_t(m_Mesh.Materials.size() * sizeof(Yuki::MeshMaterial)));
+
+			auto commandList = GetRenderContext()->CreateCommandList(m_CommandPool);
+			GetRenderContext()->CommandListBegin(commandList);
+			GetRenderContext()->CommandListCopyToBuffer(commandList, m_MaterialsBuffer, 0, stagingBuffer, 0, 0);
+			GetRenderContext()->CommandListEnd(commandList);
+			GetRenderContext()->QueueSubmitCommandLists({ commandList }, {}, {});
+			GetRenderContext()->DeviceWaitIdle();
+
+			std::array<std::pair<uint32_t, Yuki::Buffer>, 1> bufferArray{std::pair{ 0, m_MaterialsBuffer }};
+			GetRenderContext()->DescriptorSetWrite(m_MaterialDescriptorSet, 0, bufferArray);
+		}
 
 		/*
 		TODO(Peter):
-			- Implemented DescriptorSetBuilder (Follow PipelineBuilder implementation)
-			- Ensure proper cleanup on shutdown
 			- Implement Proxy Objects over the direct RenderContext interface
 			- Multiple frames in flight
 			- Make sure multiple windows / swapchains still works
@@ -109,45 +141,50 @@ private:
 
 		m_Pipeline = Yuki::PipelineBuilder(GetRenderContext())
 			.WithShader(m_Shader)
-			.ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
-			.DepthAttachment()
 			.AddVertexInput(Yuki::ShaderDataType::Float3)
 			.AddVertexInput(Yuki::ShaderDataType::Float3)
 			.AddVertexInput(Yuki::ShaderDataType::Float2)
 			.AddVertexInput(Yuki::ShaderDataType::UInt)
-			//.PushConstant(sizeof(FrameTransforms))
+			.PushConstant(sizeof(FrameTransforms))
+			.AddDescriptorSetLayout(materialSetLayout)
+			.ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
+			.DepthAttachment()
 			.Build();
 
-		//.AddDescriptorSetLayout(m_MaterialDescriptorSet->GetLayout())
-
-		struct Vertex
+		for (auto& meshSource : m_Mesh.Meshes)
 		{
-			Yuki::Math::Vec3 Position;
-			Yuki::Math::Vec3 Normal{};
-			Yuki::Math::Vec2 UV{};
-			uint32_t Material{};
-		};
+			meshSource.VertexBuffer = GetRenderContext()->CreateBuffer({
+				.Type = Yuki::BufferType::VertexBuffer,
+				.Size = uint32_t(sizeof(Yuki::Vertex) * meshSource.Vertices.size())
+			});
 
-		Vertex vertices[] = {
-			{ { -0.5f,  0.5f, 0.0f } },
-			{ {  0.5f,  0.5f, 0.0f } },
-			{ {  0.0f, -0.5f, 0.0f } }
-		};
+			{
+				GetRenderContext()->BufferSetData(stagingBuffer, meshSource.Vertices.data(), uint32_t(sizeof(Yuki::Vertex) * meshSource.Vertices.size()));
 
-		m_VertexBuffer = GetRenderContext()->CreateBuffer({
-			.Type = Yuki::BufferType::VertexBuffer,
-			.Size = sizeof(Vertex) * 3
-		});
+				auto commandList = GetRenderContext()->CreateCommandList(m_CommandPool);
+				GetRenderContext()->CommandListBegin(commandList);
+				GetRenderContext()->CommandListCopyToBuffer(commandList, meshSource.VertexBuffer, 0, stagingBuffer, 0, 0);
+				GetRenderContext()->CommandListEnd(commandList);
+				GetRenderContext()->QueueSubmitCommandLists({ commandList }, {}, {});
+				GetRenderContext()->DeviceWaitIdle();
+			}
 
-		
-		GetRenderContext()->BufferSetData(stagingBuffer, vertices, sizeof(Vertex) * 3);
+			meshSource.IndexBuffer = GetRenderContext()->CreateBuffer({
+				.Type = Yuki::BufferType::IndexBuffer,
+				.Size = uint32_t(sizeof(uint32_t) * meshSource.Indices.size())
+			});
 
-		auto commandList = GetRenderContext()->CreateCommandList(m_CommandPool);
-		GetRenderContext()->CommandListBegin(commandList);
-		GetRenderContext()->CommandListCopyToBuffer(commandList, m_VertexBuffer, 0, stagingBuffer, 0, 0);
-		GetRenderContext()->CommandListEnd(commandList);
-		GetRenderContext()->QueueSubmitCommandLists({ commandList}, {}, {});
-		GetRenderContext()->DeviceWaitIdle();
+			{
+				GetRenderContext()->BufferSetData(stagingBuffer, meshSource.Indices.data(), uint32_t(sizeof(uint32_t) * meshSource.Indices.size()));
+
+				auto commandList = GetRenderContext()->CreateCommandList(m_CommandPool);
+				GetRenderContext()->CommandListBegin(commandList);
+				GetRenderContext()->CommandListCopyToBuffer(commandList, meshSource.IndexBuffer, 0, stagingBuffer, 0, 0);
+				GetRenderContext()->CommandListEnd(commandList);
+				GetRenderContext()->QueueSubmitCommandLists({ commandList }, {}, {});
+				GetRenderContext()->DeviceWaitIdle();
+			}
+		}
 
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
 	}
@@ -157,15 +194,10 @@ private:
 		m_Camera->Update(0.0f);
 
 		// Collect Swapchains
-		std::vector<Yuki::Swapchain> swapchains;
-		swapchains.reserve(m_Windows.size());
-		for (auto* window : m_Windows)
-		{
-			if (window == nullptr)
-				continue;
+		auto swapchains = GetRenderContext()->GetSwapchains();
 
-			swapchains.emplace_back(window->GetSwapchain());
-		}
+		if (swapchains.empty())
+			return;
 
 		GetRenderContext()->FenceWait(m_Fence);
 
@@ -175,42 +207,30 @@ private:
 		auto commandList = GetRenderContext()->CreateCommandList(m_CommandPool);
 		GetRenderContext()->CommandListBegin(commandList);
 		GetRenderContext()->CommandListBindPipeline(commandList, m_Pipeline);
-		GetRenderContext()->CommandListBindBuffer(commandList, m_VertexBuffer);
+		GetRenderContext()->CommandListBindDescriptorSet(commandList, m_Pipeline, m_MaterialDescriptorSet);
 		GetRenderContext()->CommandListBeginRendering(commandList, swapchains[0]);
-		GetRenderContext()->CommandListDraw(commandList, 3);
+
+		m_FrameTransforms.ViewProjection = Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, 1920.0f / 1080.0f, 0.05f) * m_Camera->GetViewMatrix();
+
+		for (const auto& meshInstance : m_Mesh.Instances)
+		{
+			m_FrameTransforms.Transform = meshInstance.Transform;
+			GetRenderContext()->CommandListPushConstants(commandList, m_Pipeline, &m_FrameTransforms, sizeof(FrameTransforms));
+			GetRenderContext()->CommandListBindBuffer(commandList, meshInstance.SourceMesh->VertexBuffer);
+			GetRenderContext()->CommandListBindBuffer(commandList, meshInstance.SourceMesh->IndexBuffer);
+			GetRenderContext()->CommandListDrawIndexed(commandList, meshInstance.SourceMesh->Indices.size());
+		}
+
 		GetRenderContext()->CommandListEndRendering(commandList);
 		GetRenderContext()->CommandListEnd(commandList);
 		GetRenderContext()->QueueSubmitCommandLists({ commandList}, { m_Fence }, {});
 
 		// Present all swapchain images
 		GetRenderContext()->QueuePresent(swapchains, { m_Fence });
-
-#if 0
-		m_Renderer->BeginFrame();
-
-		if (!viewports.empty() && viewports[0])
-		{
-			m_Renderer->SetTargetViewport(viewports[0]);
-			m_Renderer->BeginDraw(m_Camera->GetViewMatrix());
-			m_Renderer->DrawMesh(m_Mesh);
-			m_Renderer->EndDraw();
-		}
-
-		m_Renderer->EndFrame();
-		GetRenderContext()->GetGraphicsQueue()->SubmitCommandBuffers({ m_Renderer->GetCurrentCommandBuffer() }, { m_Fence }, {});
-#endif
 	}
 
 	void OnDestroy() override
 	{
-		//m_Mesh.Meshes.clear();
-		//m_Mesh.Instances.clear();
-		//m_Mesh.LoadedImages.clear();
-		//m_Mesh.Textures.clear();
-		//m_Mesh.Materials.clear();
-
-		//m_Fence.Release();
-
 		delete m_Renderer;
 	}
 
@@ -223,12 +243,27 @@ private:
 
 	Yuki::CommandPool m_CommandPool{};
 	Yuki::Buffer m_VertexBuffer{};
+	Yuki::Buffer m_IndexBuffer{};
+
+	Yuki::Buffer m_MaterialsBuffer{};
+
+	Yuki::Sampler m_Sampler{};
+
+	Yuki::DescriptorPool m_DescriptorPool{};
+	Yuki::DescriptorSetLayout m_DescriptorSetLayout{};
+	Yuki::DescriptorSet m_MaterialDescriptorSet{};
 
 	Yuki::Unique<FreeCamera> m_Camera = nullptr;
 
 	Yuki::SceneRenderer* m_Renderer = nullptr;
 
 	Yuki::LoadedMesh m_Mesh;
+
+	struct FrameTransforms
+	{
+		Yuki::Math::Mat4 ViewProjection;
+		Yuki::Math::Mat4 Transform;
+	} m_FrameTransforms;
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

@@ -26,6 +26,8 @@ namespace Yuki {
 		DynamicArray<ImageView> ImageViews;
 		uint32_t CurrentImage = 0;
 
+		Image DepthImage{};
+
 		DynamicArray<VkSemaphore> Semaphores;
 		uint32_t SemaphoreIndex = 0;
 	};

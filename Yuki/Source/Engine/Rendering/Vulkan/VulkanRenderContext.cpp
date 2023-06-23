@@ -130,6 +130,23 @@ namespace Yuki {
 		}
 	}
 
+	VulkanRenderContext::~VulkanRenderContext()
+	{
+		DeviceWaitIdle();
+
+#define YUKI_DESTROY_REGISTRY(registry) registry.ForEach([&](auto key, auto& value) { Destroy(key); })
+		YUKI_DESTROY_REGISTRY(m_DescriptorSetLayouts);
+		YUKI_DESTROY_REGISTRY(m_Pipelines);
+		YUKI_DESTROY_REGISTRY(m_Shaders);
+		YUKI_DESTROY_REGISTRY(m_Samplers);
+		YUKI_DESTROY_REGISTRY(m_ImageViews);
+		YUKI_DESTROY_REGISTRY(m_Images);
+		YUKI_DESTROY_REGISTRY(m_CommandPools);
+		YUKI_DESTROY_REGISTRY(m_Buffers);
+		YUKI_DESTROY_REGISTRY(m_Swapchains);
+#undef YUKI_DESTROY_REGISTRY
+	}
+
 	void VulkanRenderContext::CreateLogicalDevice(const DynamicArray<const char*>& InDeviceLayers)
 	{
 		uint32_t graphicsQueueFamily = 0;
@@ -209,6 +226,20 @@ namespace Yuki {
 	void VulkanRenderContext::DeviceWaitIdle() const
 	{
 		vkDeviceWaitIdle(m_LogicalDevice);
+	}
+
+	DynamicArray<Swapchain> VulkanRenderContext::GetSwapchains() const
+	{
+		DynamicArray<Swapchain> result;
+		result.reserve(m_Swapchains.GetCount());
+		m_Swapchains.ForEach([&](auto key, const auto& element)
+		{
+			if (!m_Swapchains.IsValid(key))
+				return;
+			
+			result.emplace_back(key);
+		});
+		return result;
 	}
 
 	static uint32_t CalculatePhysicalDeviceScore(VkPhysicalDevice InPhysicalDevice)

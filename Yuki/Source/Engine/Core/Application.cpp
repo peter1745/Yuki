@@ -22,7 +22,6 @@ namespace Yuki {
 	void Application::Initialize()
 	{
 		m_RenderContext = RenderContext::New(m_RenderingAPI);
-		//m_RenderContext->Initialize();
 
 		m_EventSystem = Unique<EventSystem>::Create();
 		m_EventSystem->AddListener(this, &Application::OnWindowClose);
