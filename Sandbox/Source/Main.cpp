@@ -51,6 +51,9 @@ private:
 		});
 
 		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
+		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/Small_City_LVL/Small_City_LVL.gltf");
+		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/powerplant/powerplant.gltf");
 
 		/*
 		TODO(Peter):
@@ -79,9 +82,11 @@ private:
 
 		const auto& windowAttribs = m_Windows[0]->GetAttributes();
 		m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)windowAttribs.Width / windowAttribs.Height, 0.05f) * m_Camera->GetViewMatrix());
+
 		std::scoped_lock lock(m_MeshesMutex);
-		for (const auto& mesh : m_Meshes)
+		for (auto& mesh : m_Meshes)
 			m_Renderer->Submit(mesh);
+		
 		m_Renderer->EndFrame(m_Fence);
 
 		// Present all swapchain images

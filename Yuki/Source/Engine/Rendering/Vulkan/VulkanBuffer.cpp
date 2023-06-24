@@ -5,6 +5,9 @@ namespace Yuki {
 
 	Buffer VulkanRenderContext::CreateBuffer(const BufferInfo& InBufferInfo)
 	{
+		if (InBufferInfo.Size == 0)
+			return Buffer{};
+
 		auto[handle, buffer] = m_Buffers.Acquire();
 		buffer.Type = InBufferInfo.Type;
 		buffer.Size = InBufferInfo.Size;
@@ -45,6 +48,8 @@ namespace Yuki {
 
 		//const auto& queue = m_Queues.Get(m_GraphicsQueue);
 
+		LogInfo("Allocating buffer of size {}", buffer.Size);
+
 		VkBufferCreateInfo bufferCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -57,7 +62,10 @@ namespace Yuki {
 			//.pQueueFamilyIndices = &queue.FamilyIndex,
 		};
 
-		vmaCreateBuffer(m_Allocator, &bufferCreateInfo, &allocationInfo, &buffer.Handle, &buffer.Allocation, nullptr);
+#define TEST(x) if ((x) != VK_SUCCESS) { LogError("Error: {}", x); YUKI_VERIFY(false); }
+
+		VkResult result = vmaCreateBuffer(m_Allocator, &bufferCreateInfo, &allocationInfo, &buffer.Handle, &buffer.Allocation, nullptr);
+		TEST(result);
 
 		if (InBufferInfo.Type == BufferType::StorageBuffer)
 		{

@@ -15,7 +15,7 @@ namespace Yuki {
 		void BeginFrame(const Math::Mat4& InViewProjection);
 		void EndFrame(Fence InFence);
 
-		void Submit(const Mesh& InMesh);
+		void Submit(Mesh& InMesh);
 
 		void SetWireframeMode(bool InEnable) { m_ActivePipeline = InEnable ? m_WireframePipeline : m_Pipeline; }
 

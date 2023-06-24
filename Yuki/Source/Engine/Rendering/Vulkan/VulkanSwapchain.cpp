@@ -90,7 +90,7 @@ namespace Yuki {
 			.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 			.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 1,
-			.pQueueFamilyIndices = &m_Queues.Get(m_GraphicsQueue).FamilyIndex,
+			.pQueueFamilyIndices = &m_Queues.Get(m_GraphicsQueues[0]).FamilyIndex,
 			.preTransform = surfaceCapabilities.currentTransform,
 			.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
 			.presentMode = InSwapchain.PresentMode,

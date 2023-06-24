@@ -21,7 +21,7 @@ namespace Yuki {
 
 		virtual void DeviceWaitIdle() const = 0;
 
-		virtual Queue GetGraphicsQueue() const = 0;
+		virtual Queue GetGraphicsQueue(size_t InQueueIndex = 0) const = 0;
 		virtual Queue GetTransferQueue() const = 0;
 
 		virtual DynamicArray<Swapchain> GetSwapchains() const = 0;

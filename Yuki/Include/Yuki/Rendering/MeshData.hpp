@@ -37,6 +37,8 @@ namespace Yuki {
 	{
 		DynamicArray<MeshSource> Sources;
 		DynamicArray<MeshInstance> Instances;
+		DynamicArray<Image> Textures;
+		Buffer MaterialsBuffer;
 	};
 
 #if 0

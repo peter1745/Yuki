@@ -21,7 +21,7 @@ namespace Yuki {
 	{
 		auto[handle, image] = m_Images.Acquire();
 
-		auto& queue = m_Queues.Get(m_GraphicsQueue);
+		auto& queue = m_Queues.Get(m_GraphicsQueues[0]);
 
 		VmaAllocationCreateInfo allocationInfo = { .usage = VMA_MEMORY_USAGE_AUTO };
 

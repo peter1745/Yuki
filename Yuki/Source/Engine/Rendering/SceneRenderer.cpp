@@ -35,7 +35,7 @@ namespace Yuki {
 		m_CommandList = m_Context->CreateCommandList(m_CommandPool);
 		m_Context->CommandListBegin(m_CommandList);
 		m_Context->CommandListBindPipeline(m_CommandList, m_ActivePipeline);
-		//m_Context->CommandListBindDescriptorSet(m_CommandList, m_ActivePipeline, m_MaterialSet);
+		m_Context->CommandListBindDescriptorSet(m_CommandList, m_ActivePipeline, m_MaterialSet);
 
 		// TODO(Peter): RenderTarget abstraction (Swapchain can be a render target)
 		m_Context->CommandListBeginRendering(m_CommandList, m_TargetSwapchain);
@@ -153,11 +153,22 @@ namespace Yuki {
 		}
 	}
 #else
-void SceneRenderer::Submit(const Mesh& InMesh)
+	void SceneRenderer::Submit(Mesh& InMesh)
 	{
+		std::array<std::pair<uint32_t, Yuki::Buffer>, 1> bufferArray{std::pair{ 0, InMesh.MaterialsBuffer }};
+		m_Context->DescriptorSetWrite(m_MaterialSet, 0, bufferArray);
+		m_Context->DescriptorSetWrite(m_MaterialSet, 1, InMesh.Textures, m_Sampler);
+
 		for (const auto& meshInstance : InMesh.Instances)
 		{
+			if (meshInstance.SourceIndex >= InMesh.Sources.size())
+				continue;
+
 			const auto& meshData = InMesh.Sources[meshInstance.SourceIndex];
+
+			if (meshData.VertexData == Buffer{} || meshData.IndexBuffer == Buffer{})
+				continue;
+
 			m_PushConstants.Transform = meshInstance.Transform;
 			m_PushConstants.VertexVA = m_Context->BufferGetDeviceAddress(meshData.VertexData);
 			m_Context->CommandListPushConstants(m_CommandList, m_ActivePipeline, &m_PushConstants, sizeof(PushConstants));
@@ -192,7 +203,7 @@ void SceneRenderer::Submit(const Mesh& InMesh)
 		m_Pipeline = Yuki::PipelineBuilder(m_Context)
 			.WithShader(m_MeshShader)
 			.PushConstant(sizeof(PushConstants))
-			//.AddDescriptorSetLayout(m_DescriptorSetLayout)
+			.AddDescriptorSetLayout(m_DescriptorSetLayout)
 			.ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
 			.DepthAttachment()
 			.Build();

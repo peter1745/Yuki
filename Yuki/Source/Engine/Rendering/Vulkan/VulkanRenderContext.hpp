@@ -25,7 +25,7 @@ namespace Yuki {
 
 		void DeviceWaitIdle() const override;
 
-		Queue GetGraphicsQueue() const override { return m_GraphicsQueue; }
+		Queue GetGraphicsQueue(size_t InQueueIndex) const override { return m_GraphicsQueues[InQueueIndex]; }
 		Queue GetTransferQueue() const override { return m_TransferQueue; }
 
 		DynamicArray<Swapchain> GetSwapchains() const override;
@@ -113,13 +113,10 @@ namespace Yuki {
 
 		VkDebugUtilsMessengerEXT m_DebugUtilsMessengerHandle = VK_NULL_HANDLE;
 
-		Queue m_GraphicsQueue;
+		DynamicArray<Queue> m_GraphicsQueues;
 		Queue m_TransferQueue;
 
 		VmaAllocator m_Allocator{};
-
-		// NOTE(Peter): Temporary. User should be responsible for this?
-		CommandPool m_PresentTransitionPool = {};
 
 	private:
 		ResourceRegistry<Queue, VulkanQueue> m_Queues;

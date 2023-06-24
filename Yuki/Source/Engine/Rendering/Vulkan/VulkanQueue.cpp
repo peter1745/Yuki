@@ -138,11 +138,6 @@ namespace Yuki {
 				.pSignalSemaphoreInfos = signalInfos.data()
 			};
 			vkQueueSubmit2(queue.Queue, 1, &submitInfo, VK_NULL_HANDLE);
-
-			if (m_CommandPools.IsValid(m_PresentTransitionPool))
-				CommandPoolReset(m_PresentTransitionPool);
-			else
-				m_PresentTransitionPool = CreateCommandPool(InQueue);
 		}
 	}
 
@@ -155,12 +150,14 @@ namespace Yuki {
 		
 		// Transition images to present
 		{
-			auto commandListHandle = CreateCommandList(m_PresentTransitionPool);
+			auto pool = CreateCommandPool(InQueue);
+			auto commandListHandle = CreateCommandList(pool);
 			CommandListBegin(commandListHandle);
 
 			for (auto swapchainHandle : InSwapchains)
 			{
 				auto& swapchain = m_Swapchains.Get(swapchainHandle);
+				YUKI_VERIFY(m_Images.Get(swapchain.Images[swapchain.CurrentImage]).Layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 				CommandListTransitionImage(commandListHandle, swapchain.Images[swapchain.CurrentImage], ImageLayout::Present);
 			}
 

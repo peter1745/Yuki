@@ -133,6 +133,9 @@ namespace Yuki {
 
 	VulkanRenderContext::~VulkanRenderContext()
 	{
+		for (auto graphicsQueue : m_GraphicsQueues)
+			QueueWaitIdle(graphicsQueue);
+		QueueWaitIdle(m_TransferQueue);
 		DeviceWaitIdle();
 
 #define YUKI_DESTROY_REGISTRY(registry) registry.ForEach([&](auto key, auto& value) { Destroy(key); })
@@ -183,21 +186,22 @@ namespace Yuki {
 
 		Array<VkDeviceQueueCreateInfo, 2> queueCreateInfos;
 
-		float queuePriority = 1.0f;
+		auto graphicsQueuePriorities = std::array{ 1.0f, 0.8f, 0.8f, 0.8f };
 		queueCreateInfos[0] =
 		{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			.queueFamilyIndex = graphicsQueue,
-			.queueCount = 1,
-			.pQueuePriorities = &queuePriority,
+			.queueCount = 4,
+			.pQueuePriorities = graphicsQueuePriorities.data(),
 		};
 
+		float transferQueuePriority = 1.0f;
 		queueCreateInfos[1] =
 		{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			.queueFamilyIndex = transferQueue,
 			.queueCount = 1,
-			.pQueuePriorities = &queuePriority,
+			.pQueuePriorities = &transferQueuePriority,
 		};
 
 		DynamicArray<const char*> deviceExtensions;
@@ -250,11 +254,13 @@ namespace Yuki {
 		YUKI_VERIFY(vkCreateDevice(m_PhysicalDevice, &deviceInfo, nullptr, &m_LogicalDevice) == VK_SUCCESS);
 		volkLoadDevice(m_LogicalDevice);
 
+		m_GraphicsQueues.resize(4);
+		for (size_t i = 0; i < 4; i++)
 		{
 			auto[queueHandle, queue] = m_Queues.Acquire();
 			queue.FamilyIndex = graphicsQueue;
-			vkGetDeviceQueue(m_LogicalDevice, graphicsQueue, 0, &queue.Queue);
-			m_GraphicsQueue = queueHandle;
+			vkGetDeviceQueue(m_LogicalDevice, graphicsQueue, uint32_t(i), &queue.Queue);
+			m_GraphicsQueues[i] = queueHandle;
 		}
 
 		{
