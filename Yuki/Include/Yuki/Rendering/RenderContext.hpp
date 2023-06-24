@@ -22,13 +22,15 @@ namespace Yuki {
 		virtual void DeviceWaitIdle() const = 0;
 
 		virtual Queue GetGraphicsQueue() const = 0;
+		virtual Queue GetTransferQueue() const = 0;
 
 		virtual DynamicArray<Swapchain> GetSwapchains() const = 0;
 
 	public:
-		virtual void QueueSubmitCommandLists(const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals) = 0;
-		virtual void QueueAcquireImages(std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) = 0;
-		virtual void QueuePresent(std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) = 0;
+		virtual void QueueWaitIdle(Queue InQueue) = 0;
+		virtual void QueueSubmitCommandLists(Queue InQueue, const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals) = 0;
+		virtual void QueueAcquireImages(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) = 0;
+		virtual void QueuePresent(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) = 0;
 
 		virtual Swapchain CreateSwapchain(GenericWindow* InWindow) = 0;
 		virtual void Destroy(Swapchain InSwapchain) = 0;
@@ -37,7 +39,7 @@ namespace Yuki {
 		virtual void DestroyFence(Fence InFence) = 0;
 		virtual void FenceWait(Fence InFence, uint64_t InValue = 0) = 0;
 
-		virtual CommandPool CreateCommandPool() = 0;
+		virtual CommandPool CreateCommandPool(Queue InQueue) = 0;
 		virtual void CommandPoolReset(CommandPool InCommandPool) = 0;
 		virtual void Destroy(CommandPool InCommandPool) = 0;
 
@@ -73,7 +75,7 @@ namespace Yuki {
 
 		virtual Buffer CreateBuffer(const BufferInfo& InBufferInfo) = 0;
 		virtual void Destroy(Buffer InBuffer) = 0;
-		virtual void BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize) = 0;
+		virtual void BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset = 0) = 0;
 		virtual uint64_t BufferGetDeviceAddress(Buffer InBuffer) const = 0;
 
 		virtual DescriptorSetLayout CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) = 0;

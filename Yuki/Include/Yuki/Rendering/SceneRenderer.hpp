@@ -15,7 +15,7 @@ namespace Yuki {
 		void BeginFrame(const Math::Mat4& InViewProjection);
 		void EndFrame(Fence InFence);
 
-		void Submit(LoadedMesh& InMesh);
+		void Submit(const Mesh& InMesh);
 
 		void SetWireframeMode(bool InEnable) { m_ActivePipeline = InEnable ? m_WireframePipeline : m_Pipeline; }
 
@@ -26,6 +26,7 @@ namespace Yuki {
 	private:
 		RenderContext* m_Context = nullptr;
 		Swapchain m_TargetSwapchain{};
+		Queue m_GraphicsQueue{};
 
 		Shader m_MeshShader{};
 		Pipeline m_Pipeline{};

@@ -3,8 +3,16 @@
 
 namespace Yuki {
 
-	void VulkanRenderContext::QueueSubmitCommandLists(const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals)
+	void VulkanRenderContext::QueueWaitIdle(Queue InQueue)
 	{
+		auto& queue = m_Queues.Get(InQueue);
+		vkQueueWaitIdle(queue.Queue);
+	}
+
+	void VulkanRenderContext::QueueSubmitCommandLists(Queue InQueue, const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals)
+	{
+		auto& queue = m_Queues.Get(InQueue);
+
 		DynamicArray<VkCommandBufferSubmitInfo> commandBufferSubmitInfos;
 		commandBufferSubmitInfos.resize(InCommandLists.Size());
 		for (size_t i = 0; i < InCommandLists.Size(); i++)
@@ -53,7 +61,7 @@ namespace Yuki {
 			.pSignalSemaphoreInfos = signalSemaphores.data(),
 		};
 
-		vkQueueSubmit2(m_Queues.Get(m_GraphicsQueue).Queue, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueSubmit2(queue.Queue, 1, &submitInfo, VK_NULL_HANDLE);
 	}
 
 	static VkResult AcquireNextImage(VkDevice InLogicalDevice, VulkanSwapchain& InSwapchain)
@@ -71,10 +79,12 @@ namespace Yuki {
 		return vkAcquireNextImage2KHR(InLogicalDevice, &acquireImageInfo, &InSwapchain.CurrentImage);
 	}
 
-	void VulkanRenderContext::QueueAcquireImages(std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences)
+	void VulkanRenderContext::QueueAcquireImages(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences)
 	{
 		if (InSwapchains.empty())
 			return;
+
+		auto& queue = m_Queues.Get(InQueue);
 
 		for (auto swapchainHandle : InSwapchains)
 		{
@@ -127,20 +137,22 @@ namespace Yuki {
 				.signalSemaphoreInfoCount = uint32_t(signalInfos.size()),
 				.pSignalSemaphoreInfos = signalInfos.data()
 			};
-			vkQueueSubmit2(m_Queues.Get(m_GraphicsQueue).Queue, 1, &submitInfo, VK_NULL_HANDLE);
+			vkQueueSubmit2(queue.Queue, 1, &submitInfo, VK_NULL_HANDLE);
 
 			if (m_CommandPools.IsValid(m_PresentTransitionPool))
 				CommandPoolReset(m_PresentTransitionPool);
 			else
-				m_PresentTransitionPool = CreateCommandPool();
+				m_PresentTransitionPool = CreateCommandPool(InQueue);
 		}
 	}
 
-	void VulkanRenderContext::QueuePresent(std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences)
+	void VulkanRenderContext::QueuePresent(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences)
 	{
 		if (InSwapchains.empty())
 			return;
 
+		auto& queue = m_Queues.Get(InQueue);
+		
 		// Transition images to present
 		{
 			auto commandListHandle = CreateCommandList(m_PresentTransitionPool);
@@ -153,7 +165,7 @@ namespace Yuki {
 			}
 
 			CommandListEnd(commandListHandle);
-			QueueSubmitCommandLists({ commandListHandle }, {}, InFences);
+			QueueSubmitCommandLists(InQueue, { commandListHandle }, {}, InFences);
 		}
 
 		std::vector<VkResult> presentResults(InSwapchains.size());
@@ -197,7 +209,7 @@ namespace Yuki {
 				.signalSemaphoreInfoCount = uint32_t(signalInfos.size()),
 				.pSignalSemaphoreInfos = signalInfos.data()
 			};
-			vkQueueSubmit2(m_Queues.Get(m_GraphicsQueue).Queue, 1, &submitInfo, VK_NULL_HANDLE);
+			vkQueueSubmit2(queue.Queue, 1, &submitInfo, VK_NULL_HANDLE);
 
 			binaryWaits.resize(InSwapchains.size());
 			for (size_t i = 0; i < InSwapchains.size(); i++)
@@ -229,7 +241,7 @@ namespace Yuki {
 			.pImageIndices = imageIndices.data(),
 			.pResults = presentResults.data(),
 		};
-		vkQueuePresentKHR(m_Queues.Get(m_GraphicsQueue).Queue, &presentInfo);
+		vkQueuePresentKHR(queue.Queue, &presentInfo);
 
 		for (size_t i = 0; i < presentResults.size(); i++)
 		{

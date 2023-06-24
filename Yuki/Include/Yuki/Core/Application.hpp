@@ -26,7 +26,7 @@ namespace Yuki {
 
 	private:
 		virtual void OnInitialize() {}
-		virtual void OnRunLoop() {}
+		virtual void OnRunLoop(float InDeltaTime) {}
 		virtual void OnDestroy() {}
 
 	private:
@@ -49,6 +49,9 @@ namespace Yuki {
 		int32_t m_ExitCode = 0;
 
 		DynamicArray<GenericWindow*> m_ClosedWindows;
+
+		float m_LastFrameTime = 0.0f;
+		float m_DeltaTime = 0.0f;
 
 	private:
 		template<typename TAppClass>

@@ -43,7 +43,7 @@ namespace Yuki {
 		}
 		}
 
-		const auto& queue = m_Queues.Get(m_GraphicsQueue);
+		//const auto& queue = m_Queues.Get(m_GraphicsQueue);
 
 		VkBufferCreateInfo bufferCreateInfo =
 		{
@@ -53,8 +53,8 @@ namespace Yuki {
 			.size = buffer.Size,
 			.usage = buffer.UsageFlags,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-			.queueFamilyIndexCount = 1,
-			.pQueueFamilyIndices = &queue.FamilyIndex,
+			//.queueFamilyIndexCount = 1,
+			//.pQueueFamilyIndices = &queue.FamilyIndex,
 		};
 
 		vmaCreateBuffer(m_Allocator, &bufferCreateInfo, &allocationInfo, &buffer.Handle, &buffer.Allocation, nullptr);
@@ -80,12 +80,12 @@ namespace Yuki {
 		m_Buffers.Return(InBuffer);
 	}
 
-	void VulkanRenderContext::BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize)
+	void VulkanRenderContext::BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset)
 	{
 		auto& buffer = m_Buffers.Get(InBuffer);
 		VmaAllocationInfo allocationInfo;
 		vmaGetAllocationInfo(m_Allocator, buffer.Allocation, &allocationInfo);
-		memcpy(allocationInfo.pMappedData, InData, size_t(InDataSize));
+		memcpy(static_cast<std::byte*>(allocationInfo.pMappedData) + InBufferOffset, InData, size_t(InDataSize));
 	}
 
 	uint64_t VulkanRenderContext::BufferGetDeviceAddress(Buffer InBuffer) const

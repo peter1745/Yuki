@@ -9,13 +9,11 @@ namespace Yuki {
 
 	Swapchain VulkanRenderContext::CreateSwapchain(GenericWindow* InWindow)
 	{
-		LogInfo("Creating Swapchain");
 		auto[handle, swapchain] = m_Swapchains.Acquire();
 
 		swapchain.Window = InWindow;
 
 		RecreateSwapchain(swapchain);
-		LogInfo("Done");
 		return handle;
 	}
 

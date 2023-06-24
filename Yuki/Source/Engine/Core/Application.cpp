@@ -1,8 +1,7 @@
 #include "Core/Application.hpp"
+#include "Core/Timer.hpp"
+
 #include "EventSystem/ApplicationEvents.hpp"
-//#include "Rendering/RHI/Queue.hpp"
-//#include "Rendering/RHI/Fence.hpp"
-//#include "Rendering/RHI/Swapchain.hpp"
 
 namespace Yuki {
 
@@ -35,26 +34,26 @@ namespace Yuki {
 	{
 		while (m_RunEngineLoop)
 		{
+			Timer timer("RunLoop");
+
 			for (const auto& window : m_Windows)
 				window->ProcessEvents();
 
-			OnRunLoop();
+			OnRunLoop(m_DeltaTime);
 
 			// Clean up closed windows
 			auto it = std::remove_if(m_Windows.begin(), m_Windows.end(), [this](const auto& InWindow) { return std::find(m_ClosedWindows.begin(), m_ClosedWindows.end(), InWindow.GetPtr()) != m_ClosedWindows.end(); });
 			if (it != m_Windows.end())
 				m_Windows.erase(it);
-		}
 
-		//m_RenderContext->WaitDeviceIdle();
+			m_DeltaTime = timer.ElapsedSeconds();
+		}
 	}
 
 	void Application::Destroy()
 	{
 		OnDestroy();
 		m_Windows.clear();
-		//m_RenderContext->WaitDeviceIdle();
-		//m_RenderContext->Destroy();
 	}
 
 	void Application::OnWindowClose(const WindowCloseEvent& InEvent)

@@ -20,6 +20,26 @@ namespace Yuki {
 		uint32_t AlbedoTextureIndex = 0;
 	};
 
+	struct MeshSource
+	{
+		Buffer VertexData{};
+		Buffer IndexBuffer{};
+		uint32_t IndexCount;
+	};
+
+	struct MeshInstance
+	{
+		size_t SourceIndex;
+		Math::Mat4 Transform;
+	};
+
+	struct Mesh
+	{
+		DynamicArray<MeshSource> Sources;
+		DynamicArray<MeshInstance> Instances;
+	};
+
+#if 0
 	struct Mesh
 	{
 		DynamicArray<Vertex> Vertices;
@@ -50,5 +70,6 @@ namespace Yuki {
 		DynamicArray<Image> Textures;
 		DynamicArray<MeshMaterial> Materials;
 	};
+#endif
 
 }

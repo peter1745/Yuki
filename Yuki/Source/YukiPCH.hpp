@@ -29,6 +29,5 @@
 
 #include "Core/Core.hpp"
 #include "Core/Debug.hpp"
-#include "Core/Stopwatch.hpp"
 
 #include "Memory/Unique.hpp"

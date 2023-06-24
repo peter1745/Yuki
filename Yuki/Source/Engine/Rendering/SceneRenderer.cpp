@@ -7,6 +7,8 @@ namespace Yuki {
 	SceneRenderer::SceneRenderer(RenderContext* InContext, Swapchain InSwapchain)
 		: m_Context(InContext), m_TargetSwapchain(InSwapchain)
 	{
+		m_GraphicsQueue = m_Context->GetGraphicsQueue();
+
 		m_StagingBuffer = m_Context->CreateBuffer({
 			.Type = Yuki::BufferType::StagingBuffer,
 			.Size = 100 * 1024 * 1024,
@@ -18,7 +20,7 @@ namespace Yuki {
 		});
 
 		m_Sampler = m_Context->CreateSampler();
-		m_CommandPool = m_Context->CreateCommandPool();
+		m_CommandPool = m_Context->CreateCommandPool(m_GraphicsQueue);
 
 		CreateDescriptorSets();
 		CreatePipelines();
@@ -33,7 +35,7 @@ namespace Yuki {
 		m_CommandList = m_Context->CreateCommandList(m_CommandPool);
 		m_Context->CommandListBegin(m_CommandList);
 		m_Context->CommandListBindPipeline(m_CommandList, m_ActivePipeline);
-		m_Context->CommandListBindDescriptorSet(m_CommandList, m_ActivePipeline, m_MaterialSet);
+		//m_Context->CommandListBindDescriptorSet(m_CommandList, m_ActivePipeline, m_MaterialSet);
 
 		// TODO(Peter): RenderTarget abstraction (Swapchain can be a render target)
 		m_Context->CommandListBeginRendering(m_CommandList, m_TargetSwapchain);
@@ -43,9 +45,10 @@ namespace Yuki {
 	{
 		m_Context->CommandListEndRendering(m_CommandList);
 		m_Context->CommandListEnd(m_CommandList);
-		m_Context->QueueSubmitCommandLists({ m_CommandList }, { InFence }, {});
+		m_Context->QueueSubmitCommandLists(m_GraphicsQueue, { m_CommandList }, { InFence }, {});
 	}
 
+#if 0
 	void SceneRenderer::Submit(LoadedMesh& InMesh)
 	{
 		if (InMesh.Textures.empty())
@@ -74,7 +77,7 @@ namespace Yuki {
 				}
 
 				m_Context->CommandListEnd(commandList);
-				m_Context->QueueSubmitCommandLists({ commandList }, {}, {});
+				m_Context->QueueSubmitCommandLists(m_GraphicsQueue, { commandList }, {}, {});
 				m_Context->DeviceWaitIdle();
 
 				if (blitted)
@@ -106,7 +109,7 @@ namespace Yuki {
 				m_Context->CommandListBegin(commandList);
 				m_Context->CommandListCopyToBuffer(commandList, meshSource.VertexData, 0, m_StagingBuffer, 0, 0);
 				m_Context->CommandListEnd(commandList);
-				m_Context->QueueSubmitCommandLists({ commandList }, {}, {});
+				m_Context->QueueSubmitCommandLists(m_GraphicsQueue, { commandList }, {}, {});
 				m_Context->DeviceWaitIdle();
 			}
 
@@ -122,7 +125,7 @@ namespace Yuki {
 				m_Context->CommandListBegin(commandList);
 				m_Context->CommandListCopyToBuffer(commandList, meshSource.IndexBuffer, 0, m_StagingBuffer, 0, 0);
 				m_Context->CommandListEnd(commandList);
-				m_Context->QueueSubmitCommandLists({ commandList }, {}, {});
+				m_Context->QueueSubmitCommandLists(m_GraphicsQueue, { commandList }, {}, {});
 				m_Context->DeviceWaitIdle();
 			}
 		}
@@ -133,7 +136,7 @@ namespace Yuki {
 			m_Context->BufferSetData(m_StagingBuffer, InMesh.Materials.data(), uint32_t(InMesh.Materials.size() * sizeof(MeshMaterial)));
 			m_Context->CommandListCopyToBuffer(commandList, m_MaterialsBuffer, 0, m_StagingBuffer, 0, 0);
 			m_Context->CommandListEnd(commandList);
-			m_Context->QueueSubmitCommandLists({ commandList }, {}, {});
+			m_Context->QueueSubmitCommandLists(m_GraphicsQueue, { commandList }, {}, {});
 			m_Context->DeviceWaitIdle();
 
 			std::array<std::pair<uint32_t, Yuki::Buffer>, 1> bufferArray{std::pair{ 0, m_MaterialsBuffer }};
@@ -149,6 +152,20 @@ namespace Yuki {
 			m_Context->CommandListDrawIndexed(m_CommandList, uint32_t(meshInstance.SourceMesh->Indices.size()));
 		}
 	}
+#else
+void SceneRenderer::Submit(const Mesh& InMesh)
+	{
+		for (const auto& meshInstance : InMesh.Instances)
+		{
+			const auto& meshData = InMesh.Sources[meshInstance.SourceIndex];
+			m_PushConstants.Transform = meshInstance.Transform;
+			m_PushConstants.VertexVA = m_Context->BufferGetDeviceAddress(meshData.VertexData);
+			m_Context->CommandListPushConstants(m_CommandList, m_ActivePipeline, &m_PushConstants, sizeof(PushConstants));
+			m_Context->CommandListBindBuffer(m_CommandList, meshData.IndexBuffer);
+			m_Context->CommandListDrawIndexed(m_CommandList, meshData.IndexCount);
+		}
+	}
+#endif
 
 	void SceneRenderer::CreateDescriptorSets()
 	{
@@ -175,7 +192,7 @@ namespace Yuki {
 		m_Pipeline = Yuki::PipelineBuilder(m_Context)
 			.WithShader(m_MeshShader)
 			.PushConstant(sizeof(PushConstants))
-			.AddDescriptorSetLayout(m_DescriptorSetLayout)
+			//.AddDescriptorSetLayout(m_DescriptorSetLayout)
 			.ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
 			.DepthAttachment()
 			.Build();

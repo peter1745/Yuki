@@ -148,24 +148,54 @@ namespace Yuki {
 #undef YUKI_DESTROY_REGISTRY
 	}
 
-	void VulkanRenderContext::CreateLogicalDevice(const DynamicArray<const char*>& InDeviceLayers)
+	uint32_t VulkanRenderContext::SelectQueue(VkQueueFlags InQueueFlags) const
 	{
-		uint32_t graphicsQueueFamily = 0;
-		DynamicArray<VkQueueFamilyProperties> queueFamilyProperties;
-		VulkanHelper::Enumerate(vkGetPhysicalDeviceQueueFamilyProperties, queueFamilyProperties, m_PhysicalDevice);
-		for (const auto& queueFamily : queueFamilyProperties)
-		{
-			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-				break;
+		DynamicArray<VkQueueFamilyProperties> queueFamilies;
+		VulkanHelper::Enumerate(vkGetPhysicalDeviceQueueFamilyProperties, queueFamilies, m_PhysicalDevice);
 
-			graphicsQueueFamily++;
+		uint32_t bestQueueScore = std::numeric_limits<uint32_t>::max(); // Lower is better
+		uint32_t bestQueue = uint32_t(queueFamilies.size());
+
+		for (uint32_t familyIndex = 0; familyIndex < queueFamilies.size(); familyIndex++)
+		{
+			const auto& queueFamily = queueFamilies[familyIndex];
+
+			if ((queueFamily.queueFlags & InQueueFlags) != InQueueFlags)
+				continue;
+
+			uint32_t score = std::popcount(queueFamily.queueFlags & ~uint32_t(InQueueFlags));
+
+			if (score < bestQueueScore)
+			{
+				bestQueueScore = score;
+				bestQueue = familyIndex;
+			}
 		}
 
+		YUKI_VERIFY(bestQueue != queueFamilies.size());
+		return bestQueue;
+	}
+
+	void VulkanRenderContext::CreateLogicalDevice(const DynamicArray<const char*>& InDeviceLayers)
+	{
+		uint32_t graphicsQueue = SelectQueue(VK_QUEUE_GRAPHICS_BIT);
+		uint32_t transferQueue = SelectQueue(VK_QUEUE_TRANSFER_BIT);
+
+		Array<VkDeviceQueueCreateInfo, 2> queueCreateInfos;
+
 		float queuePriority = 1.0f;
-		VkDeviceQueueCreateInfo queueCreateInfo =
+		queueCreateInfos[0] =
 		{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-			.queueFamilyIndex = graphicsQueueFamily,
+			.queueFamilyIndex = graphicsQueue,
+			.queueCount = 1,
+			.pQueuePriorities = &queuePriority,
+		};
+
+		queueCreateInfos[1] =
+		{
+			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+			.queueFamilyIndex = transferQueue,
 			.queueCount = 1,
 			.pQueuePriorities = &queuePriority,
 		};
@@ -208,8 +238,8 @@ namespace Yuki {
 		{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 			.pNext = &features2,
-			.queueCreateInfoCount = 1,
-			.pQueueCreateInfos = &queueCreateInfo,
+			.queueCreateInfoCount = uint32_t(queueCreateInfos.size()),
+			.pQueueCreateInfos = queueCreateInfos.data(),
 			.enabledLayerCount = uint32_t(InDeviceLayers.size()),
 			.ppEnabledLayerNames = InDeviceLayers.data(),
 			.enabledExtensionCount = uint32_t(deviceExtensions.size()),
@@ -220,10 +250,19 @@ namespace Yuki {
 		YUKI_VERIFY(vkCreateDevice(m_PhysicalDevice, &deviceInfo, nullptr, &m_LogicalDevice) == VK_SUCCESS);
 		volkLoadDevice(m_LogicalDevice);
 
-		auto[queueHandle, queue] = m_Queues.Acquire();
-		queue.FamilyIndex = graphicsQueueFamily;
-		vkGetDeviceQueue(m_LogicalDevice, graphicsQueueFamily, 0, &queue.Queue);
-		m_GraphicsQueue = queueHandle;
+		{
+			auto[queueHandle, queue] = m_Queues.Acquire();
+			queue.FamilyIndex = graphicsQueue;
+			vkGetDeviceQueue(m_LogicalDevice, graphicsQueue, 0, &queue.Queue);
+			m_GraphicsQueue = queueHandle;
+		}
+
+		{
+			auto[queueHandle, queue] = m_Queues.Acquire();
+			queue.FamilyIndex = transferQueue;
+			vkGetDeviceQueue(m_LogicalDevice, transferQueue, 0, &queue.Queue);
+			m_TransferQueue = queueHandle;
+		}
 	}
 
 	void VulkanRenderContext::DeviceWaitIdle() const

@@ -26,13 +26,15 @@ namespace Yuki {
 		void DeviceWaitIdle() const override;
 
 		Queue GetGraphicsQueue() const override { return m_GraphicsQueue; }
+		Queue GetTransferQueue() const override { return m_TransferQueue; }
 
 		DynamicArray<Swapchain> GetSwapchains() const override;
 
 	public:
-		void QueueSubmitCommandLists(const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals) override;
-		void QueueAcquireImages(std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) override;
-		void QueuePresent(std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) override;
+		void QueueWaitIdle(Queue InQueue) override;
+		void QueueSubmitCommandLists(Queue InQueue, const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals) override;
+		void QueueAcquireImages(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) override;
+		void QueuePresent(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) override;
 
 	public:
 		Swapchain CreateSwapchain(GenericWindow* InWindow) override;
@@ -42,7 +44,7 @@ namespace Yuki {
 		void DestroyFence(Fence InFence) override;
 		void FenceWait(Fence InFence, uint64_t InValue = 0) override;
 
-		CommandPool CreateCommandPool() override;
+		CommandPool CreateCommandPool(Queue InQueue) override;
 		void CommandPoolReset(CommandPool InCommandPool) override;
 		void Destroy(CommandPool InCommandPool) override;
 
@@ -78,7 +80,7 @@ namespace Yuki {
 
 		Buffer CreateBuffer(const BufferInfo& InBufferInfo) override;
 		void Destroy(Buffer InBuffer) override;
-		void BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize) override;
+		void BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset = 0) override;
 		uint64_t BufferGetDeviceAddress(Buffer InBuffer) const override;
 
 		DescriptorSetLayout CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) override;
@@ -102,6 +104,8 @@ namespace Yuki {
 		void CreateLogicalDevice(const DynamicArray<const char*>& InDeviceLayers);
 		void SetupDebugUtilsMessenger();
 
+		uint32_t SelectQueue(VkQueueFlags InQueueFlags) const;
+
 	private:
 		VkInstance m_Instance = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
@@ -110,6 +114,7 @@ namespace Yuki {
 		VkDebugUtilsMessengerEXT m_DebugUtilsMessengerHandle = VK_NULL_HANDLE;
 
 		Queue m_GraphicsQueue;
+		Queue m_TransferQueue;
 
 		VmaAllocator m_Allocator{};
 

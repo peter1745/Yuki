@@ -6,16 +6,18 @@
 
 namespace Yuki {
 
-	CommandPool VulkanRenderContext::CreateCommandPool()
+	CommandPool VulkanRenderContext::CreateCommandPool(Queue InQueue)
 	{
 		auto[handle, pool] = m_CommandPools.Acquire();	
+
+		auto& queue = m_Queues.Get(InQueue);
 		
 		VkCommandPoolCreateInfo poolInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = VkCommandPoolCreateFlags(0),
-			.queueFamilyIndex = m_Queues.Get(m_GraphicsQueue).FamilyIndex, // TODO(Peter): Pass queue as parameter (compute, transfer, etc...)
+			.queueFamilyIndex = queue.FamilyIndex,
 		};
 		vkCreateCommandPool(m_LogicalDevice, &poolInfo, nullptr, &pool.Pool);
 

@@ -21,7 +21,7 @@ FreeCamera::FreeCamera(Yuki::GenericWindow* InInputWindow)
 
 void FreeCamera::Update(float InDeltaTime)
 {
-	const float movementSpeed = 0.01f;
+	const float movementSpeed = 8.0f;
 
 	if (m_InputWindow->IsMouseButtonPressed(Yuki::MouseButton::Right))
 	{
@@ -36,22 +36,22 @@ void FreeCamera::Update(float InDeltaTime)
 	}
 
 	if (m_InputWindow->IsKeyPressed(Yuki::KeyCode::W))
-		m_Position -= m_Forward * movementSpeed;
+		m_Position -= m_Forward * movementSpeed * InDeltaTime;
 
 	if (m_InputWindow->IsKeyPressed(Yuki::KeyCode::S))
-		m_Position += m_Forward * movementSpeed;
+		m_Position += m_Forward * movementSpeed * InDeltaTime;
 
 	if (m_InputWindow->IsKeyPressed(Yuki::KeyCode::D))
-		m_Position -= m_Right * movementSpeed;
+		m_Position -= m_Right * movementSpeed * InDeltaTime;
 
 	if (m_InputWindow->IsKeyPressed(Yuki::KeyCode::A))
-		m_Position += m_Right * movementSpeed;
+		m_Position += m_Right * movementSpeed * InDeltaTime;
 
 	if (m_InputWindow->IsKeyPressed(Yuki::KeyCode::LeftShift))
-		m_Position -= m_Up * movementSpeed;
+		m_Position -= m_Up * movementSpeed * InDeltaTime;
 
 	if (m_InputWindow->IsKeyPressed(Yuki::KeyCode::Space))
-		m_Position += m_Up * movementSpeed;
+		m_Position += m_Up * movementSpeed * InDeltaTime;
 
 	m_Yaw += m_InputWindow->GetRawMouseDeltaX() * 0.001f;
 	m_Pitch += m_InputWindow->GetRawMouseDeltaY() * 0.001f;
