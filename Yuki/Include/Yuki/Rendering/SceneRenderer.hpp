@@ -19,6 +19,8 @@ namespace Yuki {
 
 		void SetWireframeMode(bool InEnable) { m_ActivePipeline = InEnable ? m_WireframePipeline : m_Pipeline; }
 
+		void RegisterMeshData(Mesh& InMesh);
+
 	private:
 		void CreateDescriptorSets();
 		void CreatePipelines();
@@ -41,15 +43,22 @@ namespace Yuki {
 		Buffer m_StagingBuffer{};
 		Buffer m_MaterialsBuffer{};
 
+		uint32_t m_MaterialCount = 0;
+		uint32_t m_TextureCount = 0;
+
 		DescriptorPool m_DescriptorPool{};
 		DescriptorSetLayout m_DescriptorSetLayout{};
 		DescriptorSet m_MaterialSet{};
+		uint32_t m_MaterialSetOffset = 0;
+		uint32_t m_MaterialSetTextureOffset = 0;
 
 		struct PushConstants
 		{
 			Math::Mat4 ViewProjection;
 			Math::Mat4 Transform;
 			uint64_t VertexVA;
+			uint64_t MaterialVA;
+			uint32_t MaterialOffset;
 		} m_PushConstants;
 	};
 

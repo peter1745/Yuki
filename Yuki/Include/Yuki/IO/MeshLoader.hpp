@@ -44,7 +44,6 @@ namespace Yuki {
 				DynamicArray<std::byte> Data;
 			};
 			DynamicArray<ImageData> Images;
-			DynamicArray<MeshMaterial> Materials;
 		};
 
 		void ProcessMaterials(fastgltf::Asset* InAsset, const std::filesystem::path& InBasePath, MeshData& InMeshData);

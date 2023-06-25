@@ -38,40 +38,8 @@ namespace Yuki {
 		DynamicArray<MeshSource> Sources;
 		DynamicArray<MeshInstance> Instances;
 		DynamicArray<Image> Textures;
-		Buffer MaterialsBuffer;
-	};
-
-#if 0
-	struct Mesh
-	{
-		DynamicArray<Vertex> Vertices;
-		DynamicArray<uint32_t> Indices;
-
-		Buffer VertexData{};
-		Buffer IndexBuffer{};
-	};
-
-	struct MeshInstance
-	{
-		Mesh* SourceMesh = nullptr;
-		Math::Mat4 Transform;
-	};
-
-	struct LoadedImage
-	{
-		uint32_t Width = 0;
-		uint32_t Height = 0;
-		DynamicArray<std::byte> Data;
-	};
-
-	struct LoadedMesh
-	{
-		DynamicArray<Mesh> Meshes;
-		DynamicArray<MeshInstance> Instances;
-		DynamicArray<LoadedImage> LoadedImages;
-		DynamicArray<Image> Textures;
 		DynamicArray<MeshMaterial> Materials;
+		uint32_t MaterialOffset = 0;
 	};
-#endif
 
 }

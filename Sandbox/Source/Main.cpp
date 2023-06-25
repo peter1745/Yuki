@@ -42,25 +42,19 @@ private:
 
 		m_Fence = GetRenderContext()->CreateFence();
 
-		m_Renderer = Yuki::Unique<Yuki::SceneRenderer>::Create(GetRenderContext(), m_Windows[0]->GetSwapchain());
+		m_Renderer = new Yuki::SceneRenderer(GetRenderContext(), m_Windows[0]->GetSwapchain());
 
 		m_MeshLoader = Yuki::Unique<Yuki::MeshLoader>::Create(GetRenderContext(), [this](Yuki::Mesh InMesh)
 		{
 			std::scoped_lock lock(m_MeshesMutex);
 			m_Meshes.emplace_back(std::move(InMesh));
+			m_MeshDataUploadQueue.emplace_back(m_Meshes.size() - 1);
 		});
 
-		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
 		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
+		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
 		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/Small_City_LVL/Small_City_LVL.gltf");
 		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/powerplant/powerplant.gltf");
-
-		/*
-		TODO(Peter):
-			- Implement Proxy Objects over the direct RenderContext interface
-			- Multiple frames in flight
-			- Make sure multiple windows / swapchains still works
-		*/
 
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
 	}
@@ -80,14 +74,23 @@ private:
 		// Acquire Images for all Viewports
 		GetRenderContext()->QueueAcquireImages(GetRenderContext()->GetGraphicsQueue(), swapchains, { m_Fence });
 
-		const auto& windowAttribs = m_Windows[0]->GetAttributes();
-		m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)windowAttribs.Width / windowAttribs.Height, 0.05f) * m_Camera->GetViewMatrix());
+		{
+			std::scoped_lock lock(m_MeshesMutex);
 
-		std::scoped_lock lock(m_MeshesMutex);
-		for (auto& mesh : m_Meshes)
-			m_Renderer->Submit(mesh);
-		
-		m_Renderer->EndFrame(m_Fence);
+			const auto& windowAttribs = m_Windows[0]->GetAttributes();
+			m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)windowAttribs.Width / windowAttribs.Height, 0.05f) * m_Camera->GetViewMatrix());
+
+			while (!m_MeshDataUploadQueue.empty())
+			{
+				m_Renderer->RegisterMeshData(m_Meshes[m_MeshDataUploadQueue.back()]);
+				m_MeshDataUploadQueue.pop_back();
+			}
+
+			for (auto& mesh : m_Meshes)
+				m_Renderer->Submit(mesh);
+
+			m_Renderer->EndFrame(m_Fence);
+		}
 
 		// Present all swapchain images
 		GetRenderContext()->QueuePresent(GetRenderContext()->GetGraphicsQueue(), swapchains, { m_Fence });
@@ -104,10 +107,11 @@ private:
 	Yuki::Unique<FreeCamera> m_Camera = nullptr;
 	Yuki::Unique<Yuki::MeshLoader> m_MeshLoader = nullptr;
 
-	Yuki::Unique<Yuki::SceneRenderer> m_Renderer = nullptr;
+	Yuki::SceneRenderer* m_Renderer = nullptr;
 
 	std::shared_mutex m_MeshesMutex;
 	Yuki::DynamicArray<Yuki::Mesh> m_Meshes;
+	Yuki::DynamicArray<size_t> m_MeshDataUploadQueue;
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

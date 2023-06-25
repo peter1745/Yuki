@@ -133,26 +133,29 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, Sampler InSampler)
+	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, Sampler InSampler, uint32_t InArrayOffset)
 	{
 		DynamicArray<ImageView> imageViews;
 		imageViews.reserve(InImages.size());
 		for (auto imageHandle : InImages)
 			imageViews.emplace_back(m_Images.Get(imageHandle).DefaultImageView);
-		DescriptorSetWrite(InSet, InBinding, imageViews, InSampler);
+		DescriptorSetWrite(InSet, InBinding, imageViews, InSampler, InArrayOffset);
 	}
 
-	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, std::span<Sampler> InSamplers)
+	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, std::span<Sampler> InSamplers, uint32_t InArrayOffset)
 	{
 		DynamicArray<ImageView> imageViews;
 		imageViews.reserve(InImages.size());
 		for (auto imageHandle : InImages)
 			imageViews.emplace_back(m_Images.Get(imageHandle).DefaultImageView);
-		DescriptorSetWrite(InSet, InBinding, imageViews, InSamplers);
+		DescriptorSetWrite(InSet, InBinding, imageViews, InSamplers, InArrayOffset);
 	}
 
-	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, Sampler InSampler)
+	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, Sampler InSampler, uint32_t InArrayOffset)
 	{
+		if (InImageViews.empty())
+			return;
+
 		auto& set = m_DescriptorSets.Get(InSet);
 
 		DynamicArray<VkDescriptorImageInfo> descriptorImageInfos;
@@ -175,7 +178,7 @@ namespace Yuki {
 			.pNext = nullptr,
 			.dstSet = set.Handle,
 			.dstBinding = InBinding,
-			.dstArrayElement = 0,
+			.dstArrayElement = InArrayOffset,
 			.descriptorCount = uint32_t(descriptorImageInfos.size()),
 			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 			.pImageInfo = descriptorImageInfos.data(),
@@ -184,8 +187,11 @@ namespace Yuki {
 		vkUpdateDescriptorSets(m_LogicalDevice, 1, &writeDescriptor, 0, nullptr);
 	}
 
-	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, std::span<Sampler> InSamplers)
+	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, std::span<Sampler> InSamplers, uint32_t InArrayOffset)
 	{
+		if (InImageViews.empty())
+			return;
+
 		auto& set = m_DescriptorSets.Get(InSet);
 
 		DynamicArray<VkDescriptorImageInfo> descriptorImageInfos;
@@ -207,7 +213,7 @@ namespace Yuki {
 			.pNext = nullptr,
 			.dstSet = set.Handle,
 			.dstBinding = InBinding,
-			.dstArrayElement = 0,
+			.dstArrayElement = InArrayOffset,
 			.descriptorCount = uint32_t(descriptorImageInfos.size()),
 			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 			.pImageInfo = descriptorImageInfos.data(),
@@ -216,7 +222,7 @@ namespace Yuki {
 		vkUpdateDescriptorSets(m_LogicalDevice, 1, &writeDescriptor, 0, nullptr);
 	}
 
-	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<std::pair<uint32_t, Buffer>> InBuffers)
+	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<std::pair<uint32_t, Buffer>> InBuffers, uint32_t InArrayOffset)
 	{
 		auto& set = m_DescriptorSets.Get(InSet);
 
@@ -240,7 +246,7 @@ namespace Yuki {
 				.pNext = nullptr,
 				.dstSet = set.Handle,
 				.dstBinding = InBuffers[i].first,
-				.dstArrayElement = 0,
+				.dstArrayElement = InArrayOffset,
 				.descriptorCount = 1,
 				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 				.pBufferInfo = &bufferDescriptorInfos[i],

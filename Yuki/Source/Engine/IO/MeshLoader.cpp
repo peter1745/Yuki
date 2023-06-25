@@ -89,26 +89,6 @@ namespace Yuki {
 
 			stbi_image_free(imageData);
 		}
-
-		LogInfo("Done! Loading {} materials...", InAsset->materials.size());
-
-		for (auto& material : InAsset->materials)
-		{
-			auto& meshMaterial = InMeshData.Materials.emplace_back();
-
-			if (!material.pbrData.has_value())
-				continue;
-
-			auto& pbrData = material.pbrData.value();
-
-			if (!pbrData.baseColorTexture.has_value())
-				continue;
-
-			auto& colorTexture = pbrData.baseColorTexture.value();
-			meshMaterial.AlbedoTextureIndex = uint32_t(colorTexture.textureIndex);
-		}
-
-		LogInfo("Done!");
 	}
 
 	void FlushStagingBuffer(RenderContext* InContext, CommandPool InCommandPool, CommandList InCommandList)
@@ -221,22 +201,22 @@ namespace Yuki {
 					{
 						const auto& imageData = meshData.Images[i];
 						bool shouldBlit = imageData.Width > 1024 && imageData.Height > 1024;
-						Queue queue = shouldBlit ? m_Context->GetGraphicsQueue(3) : m_Context->GetTransferQueue();
+						Queue queue = shouldBlit ? m_Context->GetGraphicsQueue(1) : m_Context->GetTransferQueue();
 
 						auto commandPool = m_Context->CreateCommandPool(queue);
 						auto imageCommandList = m_Context->CreateCommandList(commandPool);
 						m_Context->CommandListBegin(imageCommandList);
 
-						Yuki::Image blittedImage{};
-						Yuki::Image image = m_Context->CreateImage(imageData.Width, imageData.Height, Yuki::ImageFormat::RGBA8UNorm, Yuki::ImageUsage::Sampled | Yuki::ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination);
-						m_Context->CommandListTransitionImage(imageCommandList, image, Yuki::ImageLayout::ShaderReadOnly);
+						Image blittedImage{};
+						Image image = m_Context->CreateImage(imageData.Width, imageData.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination);
+						m_Context->CommandListTransitionImage(imageCommandList, image, ImageLayout::ShaderReadOnly);
 						m_Context->BufferSetData(m_StagingBuffer, imageData.Data.data(), uint32_t(imageData.Data.size()));
 						m_Context->CommandListCopyToImage(imageCommandList, image, m_StagingBuffer, 0);
 
 						if (shouldBlit)
 						{
-							blittedImage = m_Context->CreateImage(1024, 1024, Yuki::ImageFormat::RGBA8UNorm, Yuki::ImageUsage::Sampled | Yuki::ImageUsage::TransferDestination);
-							m_Context->CommandListTransitionImage(imageCommandList, blittedImage, Yuki::ImageLayout::ShaderReadOnly);
+							blittedImage = m_Context->CreateImage(1024, 1024, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
+							m_Context->CommandListTransitionImage(imageCommandList, blittedImage, ImageLayout::ShaderReadOnly);
 							m_Context->CommandListBlitImage(imageCommandList, blittedImage, image);
 						}
 
@@ -254,9 +234,9 @@ namespace Yuki {
 					}
 				}
 
-				m_Context->CommandPoolReset(m_CommandPool);
+				//m_Context->CommandPoolReset(m_CommandPool);
 
-				{
+				/*{
 					mesh.MaterialsBuffer = m_Context->CreateBuffer({
 						.Type = BufferType::StorageBuffer,
 						.Size = uint32_t(sizeof(Yuki::MeshMaterial) * meshData.Materials.size())
@@ -269,7 +249,7 @@ namespace Yuki {
 					m_Context->CommandListEnd(materialsCommandList);
 					m_Context->QueueSubmitCommandLists(m_Context->GetTransferQueue(), { materialsCommandList }, {}, {});
 					m_Context->QueueWaitIdle(m_Context->GetTransferQueue());
-				}
+				}*/
 
 				m_Callback(mesh);
 			}
@@ -320,6 +300,26 @@ namespace Yuki {
 			meshData.InstanceData.reserve(asset->meshes.size());
 
 			ProcessMaterials(asset.get(), filePath.parent_path(), meshData);
+
+			LogInfo("Done! Loading {} materials...", asset->materials.size());
+
+			for (auto& material : asset->materials)
+			{
+				auto& meshMaterial = mesh.Materials.emplace_back();
+
+				if (!material.pbrData.has_value())
+					continue;
+
+				auto& pbrData = material.pbrData.value();
+
+				if (!pbrData.baseColorTexture.has_value())
+					continue;
+
+				auto& colorTexture = pbrData.baseColorTexture.value();
+				meshMaterial.AlbedoTextureIndex = uint32_t(colorTexture.textureIndex);
+			}
+
+			LogInfo("Done!");
 
 			for (auto& gltfMesh : asset->meshes)
 			{

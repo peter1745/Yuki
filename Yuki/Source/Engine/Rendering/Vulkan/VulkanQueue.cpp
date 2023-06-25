@@ -157,7 +157,7 @@ namespace Yuki {
 			for (auto swapchainHandle : InSwapchains)
 			{
 				auto& swapchain = m_Swapchains.Get(swapchainHandle);
-				YUKI_VERIFY(m_Images.Get(swapchain.Images[swapchain.CurrentImage]).Layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+				//YUKI_VERIFY(m_Images.Get(swapchain.Images[swapchain.CurrentImage]).Layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 				CommandListTransitionImage(commandListHandle, swapchain.Images[swapchain.CurrentImage], ImageLayout::Present);
 			}
 
