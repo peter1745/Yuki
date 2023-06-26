@@ -21,74 +21,74 @@ namespace Yuki {
 
 		virtual void DeviceWaitIdle() const = 0;
 
-		virtual Queue GetGraphicsQueue(size_t InIndex = 0) const = 0;
-		virtual Queue GetTransferQueue(size_t InIndex = 0) const = 0;
+		virtual QueueHandle GetGraphicsQueue(size_t InIndex = 0) const = 0;
+		virtual QueueHandle GetTransferQueue(size_t InIndex = 0) const = 0;
 
-		virtual DynamicArray<Swapchain> GetSwapchains() const = 0;
+		virtual DynamicArray<SwapchainHandle> GetSwapchains() const = 0;
 
 	public:
-		virtual void QueueWaitIdle(Queue InQueue) = 0;
-		virtual void QueueSubmitCommandLists(Queue InQueue, const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals) = 0;
-		virtual void QueueAcquireImages(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) = 0;
-		virtual void QueuePresent(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) = 0;
+		virtual void QueueWaitIdle(QueueHandle InQueue) = 0;
+		virtual void QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const InitializerList<FenceHandle> InWaits, const InitializerList<FenceHandle> InSignals) = 0;
+		virtual void QueueAcquireImages(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) = 0;
+		virtual void QueuePresent(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) = 0;
 
-		virtual Swapchain CreateSwapchain(GenericWindow* InWindow) = 0;
-		virtual void Destroy(Swapchain InSwapchain) = 0;
+		virtual SwapchainHandle CreateSwapchain(GenericWindow* InWindow) = 0;
+		virtual void Destroy(SwapchainHandle InSwapchain) = 0;
 
-		virtual Fence CreateFence() = 0;
-		virtual void Destroy(Fence InFence) = 0;
-		virtual void FenceWait(Fence InFence, uint64_t InValue = 0) = 0;
+		virtual FenceHandle CreateFence() = 0;
+		virtual void Destroy(FenceHandle InFence) = 0;
+		virtual void FenceWait(FenceHandle InFence, uint64_t InValue = 0) = 0;
 
-		virtual CommandPool CreateCommandPool(Queue InQueue) = 0;
-		virtual void CommandPoolReset(CommandPool InCommandPool) = 0;
-		virtual void Destroy(CommandPool InCommandPool) = 0;
+		virtual CommandPoolHandle CreateCommandPool(QueueHandle InQueue) = 0;
+		virtual void CommandPoolReset(CommandPoolHandle InCommandPool) = 0;
+		virtual void Destroy(CommandPoolHandle InCommandPool) = 0;
 
-		virtual CommandList CreateCommandList(CommandPool InCommandPool) = 0;
-		virtual void CommandListBegin(CommandList InCommandList) = 0;
-		virtual void CommandListEnd(CommandList InCommandList) = 0;
-		virtual void CommandListBeginRendering(CommandList InCommandList, Swapchain InSwapchain) = 0;
-		virtual void CommandListEndRendering(CommandList InCommandList) = 0;
-		virtual void CommandListBindPipeline(CommandList InCommandList, Pipeline InPipeline) = 0;
-		virtual void CommandListBindBuffer(CommandList InCommandList, Buffer InBuffer) = 0;
-		virtual void CommandListBindDescriptorSet(CommandList InCommandList, Pipeline InPipeline, DescriptorSet InSet) = 0;
-		virtual void CommandListPushConstants(CommandList InCommandList, Pipeline InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) = 0;
-		virtual void CommandListTransitionImage(CommandList InCommandList, Image InImage, ImageLayout InNewLayout) = 0;
-		virtual void CommandListCopyToBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) = 0;
-		virtual void CommandListCopyToImage(CommandList InCommandList, Image InDstImage, Buffer InSrcBuffer, uint32_t InSrcOffset) = 0;
-		virtual void CommandListBlitImage(CommandList InCommandList, Image InDstImage, Image InSrcImage) = 0;
-		virtual void CommandListDraw(CommandList InCommandList, uint32_t InVertexCount) = 0;
-		virtual void CommandListDrawIndexed(CommandList InCommandList, uint32_t InIndexCount) = 0;
-		virtual void CommandListPrepareSwapchainPresent(CommandList InCommandList, Swapchain InSwapchain) = 0;
+		virtual CommandListHandle CreateCommandList(CommandPoolHandle InCommandPool) = 0;
+		virtual void CommandListBegin(CommandListHandle InCommandList) = 0;
+		virtual void CommandListEnd(CommandListHandle InCommandList) = 0;
+		virtual void CommandListBeginRendering(CommandListHandle InCommandList, SwapchainHandle InSwapchain) = 0;
+		virtual void CommandListEndRendering(CommandListHandle InCommandList) = 0;
+		virtual void CommandListBindPipeline(CommandListHandle InCommandList, PipelineHandle InPipeline) = 0;
+		virtual void CommandListBindBuffer(CommandListHandle InCommandList, BufferHandle InBuffer) = 0;
+		virtual void CommandListBindDescriptorSet(CommandListHandle InCommandList, PipelineHandle InPipeline, DescriptorSetHandle InSet) = 0;
+		virtual void CommandListPushConstants(CommandListHandle InCommandList, PipelineHandle InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) = 0;
+		virtual void CommandListTransitionImage(CommandListHandle InCommandList, ImageHandle InImage, ImageLayout InNewLayout) = 0;
+		virtual void CommandListCopyToBuffer(CommandListHandle InCommandList, BufferHandle InDstBuffer, uint32_t InDstOffset, BufferHandle InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) = 0;
+		virtual void CommandListCopyToImage(CommandListHandle InCommandList, ImageHandle InDstImage, BufferHandle InSrcBuffer, uint32_t InSrcOffset) = 0;
+		virtual void CommandListBlitImage(CommandListHandle InCommandList, ImageHandle InDstImage, ImageHandle InSrcImage) = 0;
+		virtual void CommandListDraw(CommandListHandle InCommandList, uint32_t InVertexCount) = 0;
+		virtual void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount) = 0;
+		virtual void CommandListPrepareSwapchainPresent(CommandListHandle InCommandList, SwapchainHandle InSwapchain) = 0;
 
-		virtual Image CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;
-		virtual void Destroy(Image InImage) = 0;
-		virtual ImageView CreateImageView(Image InImage) = 0;
-		virtual void Destroy(ImageView InImageView) = 0;
+		virtual ImageHandle CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;
+		virtual void Destroy(ImageHandle InImage) = 0;
+		virtual ImageViewHandle CreateImageView(ImageHandle InImage) = 0;
+		virtual void Destroy(ImageViewHandle InImageView) = 0;
 
-		virtual Sampler CreateSampler() = 0;
-		virtual void Destroy(Sampler InSampler) = 0;
+		virtual SamplerHandle CreateSampler() = 0;
+		virtual void Destroy(SamplerHandle InSampler) = 0;
 
-		virtual Shader CreateShader(const std::filesystem::path& InFilePath) = 0;
-		virtual void Destroy(Shader InShader) = 0;
+		virtual ShaderHandle CreateShader(const std::filesystem::path& InFilePath) = 0;
+		virtual void Destroy(ShaderHandle InShader) = 0;
 
-		virtual Pipeline CreatePipeline(const PipelineInfo& InPipelineInfo) = 0;
-		virtual void Destroy(Pipeline InPipeline) = 0;
+		virtual PipelineHandle CreatePipeline(const PipelineInfo& InPipelineInfo) = 0;
+		virtual void Destroy(PipelineHandle InPipeline) = 0;
 
-		virtual Buffer CreateBuffer(const BufferInfo& InBufferInfo) = 0;
-		virtual void Destroy(Buffer InBuffer) = 0;
-		virtual void BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset = 0) = 0;
-		virtual uint64_t BufferGetDeviceAddress(Buffer InBuffer) const = 0;
+		virtual BufferHandle CreateBuffer(const BufferInfo& InBufferInfo) = 0;
+		virtual void Destroy(BufferHandle InBuffer) = 0;
+		virtual void BufferSetData(BufferHandle InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset = 0) = 0;
+		virtual uint64_t BufferGetDeviceAddress(BufferHandle InBuffer) const = 0;
 
-		virtual DescriptorSetLayout CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) = 0;
-		virtual void Destroy(DescriptorSetLayout InLayout) = 0;
-		virtual DescriptorPool CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) = 0;
-		virtual void Destroy(DescriptorPool InPool) = 0;
-		virtual DescriptorSet DescriptorPoolAllocateDescriptorSet(DescriptorPool InPool, DescriptorSetLayout InLayout) = 0;
-		virtual void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, Sampler InSampler, uint32_t InArrayOffset = 0) = 0;
-		virtual void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, std::span<Sampler> InSamplers, uint32_t InArrayOffset = 0) = 0;
-		virtual void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, Sampler InSampler, uint32_t InArrayOffset = 0) = 0;
-		virtual void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, std::span<Sampler> InSamplers, uint32_t InArrayOffset = 0) = 0;
-		virtual void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<std::pair<uint32_t, Buffer>> InBuffers, uint32_t InArrayOffset = 0) = 0;
+		virtual DescriptorSetLayoutHandle CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) = 0;
+		virtual void Destroy(DescriptorSetLayoutHandle InLayout) = 0;
+		virtual DescriptorPoolHandle CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) = 0;
+		virtual void Destroy(DescriptorPoolHandle InPool) = 0;
+		virtual DescriptorSetHandle DescriptorPoolAllocateDescriptorSet(DescriptorPoolHandle InPool, DescriptorSetLayoutHandle InLayout) = 0;
+		virtual void DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageHandle> InImages, SamplerHandle InSampler, uint32_t InArrayOffset = 0) = 0;
+		virtual void DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageHandle> InImages, std::span<SamplerHandle> InSamplers, uint32_t InArrayOffset = 0) = 0;
+		virtual void DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageViewHandle> InImageViews, SamplerHandle InSampler, uint32_t InArrayOffset = 0) = 0;
+		virtual void DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageViewHandle> InImageViews, std::span<SamplerHandle> InSamplers, uint32_t InArrayOffset = 0) = 0;
+		virtual void DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<std::pair<uint32_t, BufferHandle>> InBuffers, uint32_t InArrayOffset = 0) = 0;
 
 	public:
 		static Unique<RenderContext> New(RenderAPI InAPI);

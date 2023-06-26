@@ -20,12 +20,12 @@ namespace Yuki {
 
 		VmaAllocation Allocation = nullptr;
 
-		ImageView DefaultImageView{};
+		ImageViewHandle DefaultImageView{};
 	};
 
 	struct VulkanImageView
 	{
-		Image SourceImage = {};
+		ImageHandle SourceImage = {};
 		VkImageView ImageView = VK_NULL_HANDLE;
 	};
 

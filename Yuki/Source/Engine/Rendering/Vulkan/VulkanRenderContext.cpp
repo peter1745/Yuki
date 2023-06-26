@@ -285,9 +285,9 @@ namespace Yuki {
 		vkDeviceWaitIdle(m_LogicalDevice);
 	}
 
-	DynamicArray<Swapchain> VulkanRenderContext::GetSwapchains() const
+	DynamicArray<SwapchainHandle> VulkanRenderContext::GetSwapchains() const
 	{
-		DynamicArray<Swapchain> result;
+		DynamicArray<SwapchainHandle> result;
 		result.reserve(m_Swapchains.GetCount());
 		m_Swapchains.ForEach([&](auto key, const auto& element)
 		{

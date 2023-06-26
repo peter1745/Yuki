@@ -42,7 +42,7 @@ namespace Yuki {
 
 		virtual const WindowAttributes& GetAttributes() const = 0;
 
-		virtual Swapchain GetSwapchain() const = 0;
+		virtual SwapchainHandle GetSwapchain() const = 0;
 
 		virtual int64_t GetRawMouseDeltaX() = 0;
 		virtual int64_t GetRawMouseDeltaY() = 0;

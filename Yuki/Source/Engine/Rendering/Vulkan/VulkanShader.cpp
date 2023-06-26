@@ -87,7 +87,7 @@ namespace Yuki {
 		return result;
 	}
 
-	Shader VulkanRenderContext::CreateShader(const std::filesystem::path& InFilePath)
+	ShaderHandle VulkanRenderContext::CreateShader(const std::filesystem::path& InFilePath)
 	{
 		auto[handle, shader] = m_Shaders.Acquire();
 
@@ -133,7 +133,7 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::Destroy(Shader InShader)
+	void VulkanRenderContext::Destroy(ShaderHandle InShader)
 	{
 		auto& shader = m_Shaders.Get(InShader);
 		for (auto[moduleType, moduleHandle] : shader.Modules)

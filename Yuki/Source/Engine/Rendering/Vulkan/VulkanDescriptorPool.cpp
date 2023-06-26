@@ -25,7 +25,7 @@ namespace Yuki {
 		return result;
 	}
 
-	DescriptorSetLayout VulkanRenderContext::CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo)
+	DescriptorSetLayoutHandle VulkanRenderContext::CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo)
 	{
 		auto[handle, layout] = m_DescriptorSetLayouts.Acquire();
 
@@ -65,14 +65,14 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::Destroy(DescriptorSetLayout InLayout)
+	void VulkanRenderContext::Destroy(DescriptorSetLayoutHandle InLayout)
 	{
 		auto& layout = m_DescriptorSetLayouts.Get(InLayout);
 		vkDestroyDescriptorSetLayout(m_LogicalDevice, layout.Handle, nullptr);
 		m_DescriptorSetLayouts.Return(InLayout);
 	}
 
-	DescriptorPool VulkanRenderContext::CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts)
+	DescriptorPoolHandle VulkanRenderContext::CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts)
 	{
 		auto[handle, pool] = m_DescriptorPools.Acquire();
 
@@ -103,14 +103,14 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::Destroy(DescriptorPool InPool)
+	void VulkanRenderContext::Destroy(DescriptorPoolHandle InPool)
 	{
 		auto& pool = m_DescriptorPools.Get(InPool);
 		vkDestroyDescriptorPool(m_LogicalDevice, pool.Handle, nullptr);
 		m_DescriptorPools.Return(InPool);
 	}
 
-	DescriptorSet VulkanRenderContext::DescriptorPoolAllocateDescriptorSet(DescriptorPool InPool, DescriptorSetLayout InLayout)
+	DescriptorSetHandle VulkanRenderContext::DescriptorPoolAllocateDescriptorSet(DescriptorPoolHandle InPool, DescriptorSetLayoutHandle InLayout)
 	{
 		auto& pool = m_DescriptorPools.Get(InPool);
 		auto& layout = m_DescriptorSetLayouts.Get(InLayout);
@@ -133,25 +133,25 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, Sampler InSampler, uint32_t InArrayOffset)
+	void VulkanRenderContext::DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageHandle> InImages, SamplerHandle InSampler, uint32_t InArrayOffset)
 	{
-		DynamicArray<ImageView> imageViews;
+		DynamicArray<ImageViewHandle> imageViews;
 		imageViews.reserve(InImages.size());
 		for (auto imageHandle : InImages)
 			imageViews.emplace_back(m_Images.Get(imageHandle).DefaultImageView);
 		DescriptorSetWrite(InSet, InBinding, imageViews, InSampler, InArrayOffset);
 	}
 
-	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, std::span<Sampler> InSamplers, uint32_t InArrayOffset)
+	void VulkanRenderContext::DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageHandle> InImages, std::span<SamplerHandle> InSamplers, uint32_t InArrayOffset)
 	{
-		DynamicArray<ImageView> imageViews;
+		DynamicArray<ImageViewHandle> imageViews;
 		imageViews.reserve(InImages.size());
 		for (auto imageHandle : InImages)
 			imageViews.emplace_back(m_Images.Get(imageHandle).DefaultImageView);
 		DescriptorSetWrite(InSet, InBinding, imageViews, InSamplers, InArrayOffset);
 	}
 
-	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, Sampler InSampler, uint32_t InArrayOffset)
+	void VulkanRenderContext::DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageViewHandle> InImageViews, SamplerHandle InSampler, uint32_t InArrayOffset)
 	{
 		if (InImageViews.empty())
 			return;
@@ -187,7 +187,7 @@ namespace Yuki {
 		vkUpdateDescriptorSets(m_LogicalDevice, 1, &writeDescriptor, 0, nullptr);
 	}
 
-	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, std::span<Sampler> InSamplers, uint32_t InArrayOffset)
+	void VulkanRenderContext::DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageViewHandle> InImageViews, std::span<SamplerHandle> InSamplers, uint32_t InArrayOffset)
 	{
 		if (InImageViews.empty())
 			return;
@@ -222,7 +222,7 @@ namespace Yuki {
 		vkUpdateDescriptorSets(m_LogicalDevice, 1, &writeDescriptor, 0, nullptr);
 	}
 
-	void VulkanRenderContext::DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<std::pair<uint32_t, Buffer>> InBuffers, uint32_t InArrayOffset)
+	void VulkanRenderContext::DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<std::pair<uint32_t, BufferHandle>> InBuffers, uint32_t InArrayOffset)
 	{
 		auto& set = m_DescriptorSets.Get(InSet);
 

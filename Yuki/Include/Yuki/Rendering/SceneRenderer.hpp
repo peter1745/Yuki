@@ -1,7 +1,7 @@
 #pragma once
 
 #include "MeshData.hpp"
-#include "RenderContext.hpp"
+#include "RenderResources.hpp"
 
 #include "Yuki/Math/Mat4.hpp"
 
@@ -10,10 +10,10 @@ namespace Yuki {
 	class SceneRenderer
 	{
 	public:
-		SceneRenderer(RenderContext* InContext, Swapchain InSwapchain);
+		SceneRenderer(RenderContext* InContext, SwapchainHandle InSwapchain);
 
 		void BeginFrame(const Math::Mat4& InViewProjection);
-		void EndFrame(Fence InFence);
+		void EndFrame(FenceHandle InFence);
 
 		void Submit(Mesh& InMesh);
 

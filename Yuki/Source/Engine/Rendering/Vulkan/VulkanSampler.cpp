@@ -3,7 +3,7 @@
 
 namespace Yuki {
 
-	Sampler VulkanRenderContext::CreateSampler()
+	SamplerHandle VulkanRenderContext::CreateSampler()
 	{
 		auto[handle, sampler] = m_Samplers.Acquire();
 
@@ -24,7 +24,7 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::Destroy(Sampler InSampler)
+	void VulkanRenderContext::Destroy(SamplerHandle InSampler)
 	{
 		auto& sampler = m_Samplers.Get(InSampler);
 		vkDestroySampler(m_LogicalDevice, sampler.Handle, nullptr);

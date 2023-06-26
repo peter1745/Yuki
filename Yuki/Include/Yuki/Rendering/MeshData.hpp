@@ -3,7 +3,7 @@
 #include "Yuki/Math/Vec2.hpp"
 #include "Yuki/Math/Mat4.hpp"
 
-#include "RHI.hpp"
+#include "RenderResources.hpp"
 
 namespace Yuki {
 
@@ -37,7 +37,7 @@ namespace Yuki {
 	{
 		DynamicArray<MeshSource> Sources;
 		DynamicArray<MeshInstance> Instances;
-		DynamicArray<Image> Textures;
+		DynamicArray<ImageHandle> Textures;
 		DynamicArray<MeshMaterial> Materials;
 		uint32_t MaterialOffset = 0;
 	};

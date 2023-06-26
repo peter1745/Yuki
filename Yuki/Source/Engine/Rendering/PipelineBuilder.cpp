@@ -1,5 +1,6 @@
 #include "Rendering/PipelineBuilder.hpp"
 #include "Rendering/RenderContext.hpp"
+#include "Rendering/RenderResources.hpp"
 
 namespace Yuki {
 
@@ -9,7 +10,7 @@ namespace Yuki {
 		
 	}
 
-	PipelineBuilder& PipelineBuilder::WithShader(Shader InShader)
+	PipelineBuilder& PipelineBuilder::WithShader(ShaderHandle InShader)
 	{
 		m_PipelineInfo.PipelineShader = InShader;
 		return *this;
@@ -25,7 +26,7 @@ namespace Yuki {
 		return *this;
 	}
 
-	PipelineBuilder& PipelineBuilder::AddDescriptorSetLayout(DescriptorSetLayout InLayout)
+	PipelineBuilder& PipelineBuilder::AddDescriptorSetLayout(DescriptorSetLayoutHandle InLayout)
 	{
 		m_PipelineInfo.DescriptorSetLayouts.emplace_back(InLayout);
 		return *this;
@@ -52,7 +53,7 @@ namespace Yuki {
 
 	Pipeline PipelineBuilder::Build()
 	{
-		return m_Context->CreatePipeline(m_PipelineInfo);
+		return { m_Context->CreatePipeline(m_PipelineInfo), m_Context };
 	}
 
 }

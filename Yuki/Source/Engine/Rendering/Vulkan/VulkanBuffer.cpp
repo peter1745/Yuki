@@ -3,10 +3,10 @@
 
 namespace Yuki {
 
-	Buffer VulkanRenderContext::CreateBuffer(const BufferInfo& InBufferInfo)
+	BufferHandle VulkanRenderContext::CreateBuffer(const BufferInfo& InBufferInfo)
 	{
 		if (InBufferInfo.Size == 0)
-			return Buffer{};
+			return BufferHandle{};
 
 		auto[handle, buffer] = m_Buffers.Acquire();
 		buffer.Type = InBufferInfo.Type;
@@ -76,14 +76,14 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::Destroy(Buffer InBuffer)
+	void VulkanRenderContext::Destroy(BufferHandle InBuffer)
 	{
 		auto& buffer = m_Buffers.Get(InBuffer);
 		vmaDestroyBuffer(m_Allocator, buffer.Handle, buffer.Allocation);
 		m_Buffers.Return(InBuffer);
 	}
 
-	void VulkanRenderContext::BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset)
+	void VulkanRenderContext::BufferSetData(BufferHandle InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset)
 	{
 		auto& buffer = m_Buffers.Get(InBuffer);
 		VmaAllocationInfo allocationInfo;
@@ -91,7 +91,7 @@ namespace Yuki {
 		memcpy(static_cast<std::byte*>(allocationInfo.pMappedData) + InBufferOffset, InData, size_t(InDataSize));
 	}
 
-	uint64_t VulkanRenderContext::BufferGetDeviceAddress(Buffer InBuffer) const
+	uint64_t VulkanRenderContext::BufferGetDeviceAddress(BufferHandle InBuffer) const
 	{
 		const auto& buffer = m_Buffers.Get(InBuffer);
 		return buffer.DeviceAddress;

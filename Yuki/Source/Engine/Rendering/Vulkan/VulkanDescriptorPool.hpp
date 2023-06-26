@@ -14,12 +14,12 @@ namespace Yuki {
 	struct VulkanDescriptorPool
 	{
 		VkDescriptorPool Handle;
-		DynamicArray<DescriptorSet> Sets;
+		DynamicArray<DescriptorSetHandle> Sets;
 	};
 
 	struct VulkanDescriptorSet
 	{
-		DescriptorSetLayout Layout;
+		DescriptorSetLayoutHandle Layout;
 		VkDescriptorSet Handle;
 	};
 

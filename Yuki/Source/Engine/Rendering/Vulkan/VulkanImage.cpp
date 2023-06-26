@@ -17,7 +17,7 @@ namespace Yuki {
 		return result;
 	}
 
-	Image VulkanRenderContext::CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage)
+	ImageHandle VulkanRenderContext::CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage)
 	{
 		auto[handle, image] = m_Images.Acquire();
 
@@ -59,7 +59,7 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::Destroy(Image InImage)
+	void VulkanRenderContext::Destroy(ImageHandle InImage)
 	{
 		auto& image = m_Images.Get(InImage);
 		Destroy(image.DefaultImageView);
@@ -68,7 +68,7 @@ namespace Yuki {
 		m_Images.Return(InImage);
 	}
 
-	ImageView VulkanRenderContext::CreateImageView(Image InImage)
+	ImageViewHandle VulkanRenderContext::CreateImageView(ImageHandle InImage)
 	{
 		auto[handle, imageView] = m_ImageViews.Acquire();
 		
@@ -96,7 +96,7 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::Destroy(ImageView InImageView)
+	void VulkanRenderContext::Destroy(ImageViewHandle InImageView)
 	{
 		auto& imageView = m_ImageViews.Get(InImageView);
 

@@ -3,7 +3,7 @@
 
 namespace Yuki {
 
-	Fence VulkanRenderContext::CreateFence()
+	FenceHandle VulkanRenderContext::CreateFence()
 	{
 		auto[handle, fence] = m_Fences.Acquire();
 
@@ -24,14 +24,14 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::Destroy(Fence InFence)
+	void VulkanRenderContext::Destroy(FenceHandle InFence)
 	{
 		auto& fence = m_Fences.Get(InFence);
 		vkDestroySemaphore(m_LogicalDevice, fence.Semaphore, nullptr);
 		m_Fences.Return(InFence);
 	}
 
-	void VulkanRenderContext::FenceWait(Fence InFence, uint64_t InValue)
+	void VulkanRenderContext::FenceWait(FenceHandle InFence, uint64_t InValue)
 	{
 		auto& fence = m_Fences.Get(InFence);
 

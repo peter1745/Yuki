@@ -41,7 +41,9 @@ private:
 			.Height = 1080
 		});
 
-		m_Fence = GetRenderContext()->CreateFence();
+		m_GraphicsQueue = { GetRenderContext()->GetGraphicsQueue(), GetRenderContext() };
+
+		m_Fence = Yuki::Fence(GetRenderContext());
 
 		m_Renderer = new Yuki::SceneRenderer(GetRenderContext(), m_Windows[0]->GetSwapchain());
 
@@ -70,10 +72,10 @@ private:
 		if (swapchains.empty())
 			return;
 
-		GetRenderContext()->FenceWait(m_Fence);
+		m_Fence.Wait();
 
 		// Acquire Images for all Viewports
-		GetRenderContext()->QueueAcquireImages(GetRenderContext()->GetGraphicsQueue(), swapchains, { m_Fence });
+		m_GraphicsQueue.AcquireImages(swapchains, { m_Fence });
 
 		{
 			std::scoped_lock lock(m_MeshesMutex);
@@ -94,7 +96,7 @@ private:
 		}
 
 		// Present all swapchain images
-		GetRenderContext()->QueuePresent(GetRenderContext()->GetGraphicsQueue(), swapchains, { m_Fence });
+		m_GraphicsQueue.Present(swapchains, { m_Fence });
 	}
 
 	void OnDestroy() override
@@ -103,6 +105,7 @@ private:
 
 private:
 	std::vector<Yuki::GenericWindow*> m_Windows;
+	Yuki::Queue m_GraphicsQueue{};
 	Yuki::Fence m_Fence{};
 
 	Yuki::Unique<FreeCamera> m_Camera = nullptr;

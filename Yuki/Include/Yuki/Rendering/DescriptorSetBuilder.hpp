@@ -5,6 +5,7 @@
 namespace Yuki {
 
 	class RenderContext;
+	struct DescriptorSetLayout;
 
 	class DescriptorSetLayoutBuilder
 	{

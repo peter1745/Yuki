@@ -3,13 +3,13 @@
 
 namespace Yuki {
 
-	void VulkanRenderContext::QueueWaitIdle(Queue InQueue)
+	void VulkanRenderContext::QueueWaitIdle(QueueHandle InQueue)
 	{
 		auto& queue = m_Queues.Get(InQueue);
 		vkQueueWaitIdle(queue.Queue);
 	}
 
-	void VulkanRenderContext::QueueSubmitCommandLists(Queue InQueue, const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals)
+	void VulkanRenderContext::QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const InitializerList<FenceHandle> InWaits, const InitializerList<FenceHandle> InSignals)
 	{
 		auto& queue = m_Queues.Get(InQueue);
 
@@ -79,7 +79,7 @@ namespace Yuki {
 		return vkAcquireNextImage2KHR(InLogicalDevice, &acquireImageInfo, &InSwapchain.CurrentImage);
 	}
 
-	void VulkanRenderContext::QueueAcquireImages(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences)
+	void VulkanRenderContext::QueueAcquireImages(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences)
 	{
 		if (InSwapchains.empty())
 			return;
@@ -141,7 +141,7 @@ namespace Yuki {
 		}
 	}
 
-	void VulkanRenderContext::QueuePresent(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences)
+	void VulkanRenderContext::QueuePresent(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences)
 	{
 		if (InSwapchains.empty())
 			return;

@@ -21,7 +21,7 @@ FreeCamera::FreeCamera(Yuki::GenericWindow* InInputWindow)
 
 void FreeCamera::Update(float InDeltaTime)
 {
-	const float movementSpeed = 10.0f;
+	const float movementSpeed = 100000.0f;
 
 	if (m_InputWindow->IsMouseButtonPressed(Yuki::MouseButton::Right))
 	{

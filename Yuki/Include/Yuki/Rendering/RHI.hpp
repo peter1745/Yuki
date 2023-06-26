@@ -6,16 +6,16 @@
 
 namespace Yuki {
 
-	enum class Fence{};
+	enum class FenceHandle{};
 
-	enum class Queue{};
+	enum class QueueHandle{};
 
-	enum class Swapchain{};
+	enum class SwapchainHandle{};
 
-	enum class CommandPool{};
-	enum class CommandList{};
+	enum class CommandPoolHandle{};
+	enum class CommandListHandle{};
 
-	enum class Buffer{};
+	enum class BufferHandle{};
 	enum class BufferType { VertexBuffer, IndexBuffer, StorageBuffer, StagingBuffer };
 	struct BufferInfo
 	{
@@ -23,8 +23,8 @@ namespace Yuki {
 		uint32_t Size;
 	};
 
-	enum class Image{};
-	enum class ImageView{};
+	enum class ImageHandle{};
+	enum class ImageViewHandle{};
 	enum class ImageLayout { Undefined = -1, Attachment, ShaderReadOnly, Present, TransferDestination, TransferSource };
 	enum class ImageFormat
 	{
@@ -45,9 +45,9 @@ namespace Yuki {
 	};
 	YUKI_ENUM_FLAGS(ImageUsage);
 
-	enum class Sampler{};
+	enum class SamplerHandle{};
 
-	enum class Shader{};
+	enum class ShaderHandle{};
 	enum class ShaderModuleType
 	{
 		None = -1,
@@ -89,12 +89,12 @@ namespace Yuki {
 		return 0;
 	}
 
-	enum class Pipeline{};
+	enum class PipelineHandle{};
 	enum class PolygonModeType { Fill, Line };
 
-	enum class DescriptorPool{};
-	enum class DescriptorSet{};
-	enum class DescriptorSetLayout{};
+	enum class DescriptorPoolHandle{};
+	enum class DescriptorSetHandle{};
+	enum class DescriptorSetLayoutHandle{};
 	enum class DescriptorType { CombinedImageSampler, StorageBuffer };
 	struct DescriptorSetLayoutInfo
 	{

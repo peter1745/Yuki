@@ -7,7 +7,7 @@
 
 namespace Yuki {
 
-	Swapchain VulkanRenderContext::CreateSwapchain(GenericWindow* InWindow)
+	SwapchainHandle VulkanRenderContext::CreateSwapchain(GenericWindow* InWindow)
 	{
 		auto[handle, swapchain] = m_Swapchains.Acquire();
 
@@ -20,7 +20,7 @@ namespace Yuki {
 	void VulkanRenderContext::RecreateSwapchain(VulkanSwapchain& InSwapchain)
 	{
 		VkSwapchainKHR oldSwapchain = InSwapchain.Swapchain;
-		Image oldDepthImage = InSwapchain.DepthImage;
+		ImageHandle oldDepthImage = InSwapchain.DepthImage;
 
 		if (oldSwapchain != VK_NULL_HANDLE)
 		{
@@ -152,7 +152,7 @@ namespace Yuki {
 		}
 	}
 
-	void VulkanRenderContext::Destroy(Swapchain InSwapchain)
+	void VulkanRenderContext::Destroy(SwapchainHandle InSwapchain)
 	{
 		auto& swapchain = m_Swapchains.Get(InSwapchain);
 

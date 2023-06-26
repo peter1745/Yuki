@@ -34,7 +34,7 @@ namespace Yuki {
 		{
 			size_t sourceIndex = node.meshIndex.value();
 			const auto& sourceMesh = InMesh.Sources[sourceIndex];
-			if (sourceMesh.VertexData != Buffer{} && sourceMesh.IndexBuffer != Buffer{} && sourceMesh.IndexCount > 0)
+			if (sourceMesh.VertexData.Handle != BufferHandle{} && sourceMesh.IndexBuffer.Handle != BufferHandle{} && sourceMesh.IndexCount > 0)
 			{
 				auto& meshInstance = InMesh.Instances[InNodeIndex];
 				meshInstance.SourceIndex = sourceIndex;
@@ -48,7 +48,7 @@ namespace Yuki {
 
 	void FlushStagingBuffer(RenderContext* InContext, CommandPool InCommandPool, CommandList InCommandList)
 	{
-		InContext->CommandListEnd(InCommandList);
+		InCommandList.End();
 		InContext->QueueSubmitCommandLists(InContext->GetTransferQueue(), { InCommandList }, {}, {});
 		InContext->QueueWaitIdle(InContext->GetTransferQueue());
 
@@ -61,12 +61,12 @@ namespace Yuki {
 	{
 		m_JobSystem.Init(8);
 
-		m_MeshStagingBuffer = m_Context->CreateBuffer({
+		m_MeshStagingBuffer = Buffer(m_Context, {
 			.Type = BufferType::StagingBuffer,
 			.Size = s_StagingBufferSize
 		});
 
-		m_ImageStagingBuffer = m_Context->CreateBuffer({
+		m_ImageStagingBuffer = Buffer(m_Context, {
 			.Type = BufferType::StagingBuffer,
 			.Size = s_StagingBufferSize
 		});
@@ -234,32 +234,34 @@ namespace Yuki {
 			LogInfo("Uploading textures");
 			for (size_t i = 0; i < meshData.Images.size(); i++)
 			{
-				Fence fence = context->CreateFence();
+				Fence fence{context};
 
 				const auto& imageData = meshData.Images[i];
 				bool shouldBlit = imageData.Width > 1024 && imageData.Height > 1024;
-				Queue queue = shouldBlit ? context->GetGraphicsQueue(1) : context->GetTransferQueue();
+				Queue queue = { shouldBlit ? context->GetGraphicsQueue(1) : context->GetTransferQueue(), context };
 
-				auto commandPool = context->CreateCommandPool(queue);
-				auto imageCommandList = context->CreateCommandList(commandPool);
-				context->CommandListBegin(imageCommandList);
+				auto commandPool = CommandPool(context, queue);
+				auto imageCommandList = commandPool.CreateCommandList();
+				imageCommandList.Begin();
 
 				Image blittedImage{};
-				Image image = context->CreateImage(imageData.Width, imageData.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination);
-				context->CommandListTransitionImage(imageCommandList, image, ImageLayout::ShaderReadOnly);
-				context->BufferSetData(stagingBuffer, imageData.Data, imageData.Width * imageData.Height * 4);
-				context->CommandListCopyToImage(imageCommandList, image, stagingBuffer, 0);
+				Image image{context, imageData.Width, imageData.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination};
+				imageCommandList.TransitionImage(image, ImageLayout::ShaderReadOnly);
+				stagingBuffer.SetData(imageData.Data, imageData.Width * imageData.Height * 4);
+				imageCommandList.CopyToImage(image, stagingBuffer, 0);
 
 				if (shouldBlit)
 				{
-					blittedImage = context->CreateImage(1024, 1024, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
-					context->CommandListTransitionImage(imageCommandList, blittedImage, ImageLayout::ShaderReadOnly);
-					context->CommandListBlitImage(imageCommandList, blittedImage, image);
+					blittedImage = Image(context, 1024, 1024, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
+					imageCommandList.TransitionImage(blittedImage, ImageLayout::ShaderReadOnly);
+					imageCommandList.BlitImage(blittedImage, image);
 				}
 
-				context->CommandListEnd(imageCommandList);
-				context->QueueSubmitCommandLists(queue, { imageCommandList }, {}, { fence });
-				context->FenceWait(fence);
+				imageCommandList.End();
+				queue.SubmitCommandLists({ imageCommandList }, {}, { fence });
+				
+				fence.Wait();
+
 				context->Destroy(fence);
 				context->Destroy(commandPool);
 
@@ -273,7 +275,8 @@ namespace Yuki {
 
 				mesh.Textures[i] = image;
 			}
-				LogInfo("Done uploading textures!");
+
+			LogInfo("Done uploading textures!");
 		};
 		imageUploadJob.AddSignal(&instanceCreateBarrier);
 		imageUploadBarrier.Pending.push_back(&imageUploadJob);
@@ -283,6 +286,7 @@ namespace Yuki {
 			auto[index, imageLoadJob] = m_LoadJobs.EmplaceBack();
 			imageLoadJob.Task = [asset = assetPtr, textureIndex = i, &mesh, &meshData, basePath = InFilePath.parent_path()](size_t InThreadID)
 			{
+				LogInfo("Reading Texture");
 				auto& textureInfo = asset->textures[textureIndex];
 
 				YUKI_VERIFY(textureInfo.imageIndex.has_value());
@@ -324,6 +328,7 @@ namespace Yuki {
 				image.Width = uint32_t(width);
 				image.Height = uint32_t(height);
 				image.Data = reinterpret_cast<std::byte*>(imageData);
+				LogInfo("Done reading texture");
 			};
 
 			imageLoadJob.AddSignal(&imageUploadBarrier);
@@ -428,8 +433,9 @@ namespace Yuki {
 		{
 			LogInfo("Uploading vertex data");
 
-			auto commandPool = context->CreateCommandPool(context->GetTransferQueue(1));
-			Fence fence = context->CreateFence();
+			Queue transferQueue{ context->GetTransferQueue(1), context };
+			CommandPool commandPool{context,  transferQueue};
+			Fence fence{context};
 
 			for (size_t i = 0; i < meshData.SourceData.size(); i++)
 			{
@@ -439,26 +445,27 @@ namespace Yuki {
 				{
 					uint32_t vertexDataSize = uint32_t(sourceData.Vertices.size()) * sizeof(Vertex);
 
-					meshSource.VertexData = context->CreateBuffer({
+					meshSource.VertexData = Buffer(context, {
 						.Type = BufferType::StorageBuffer,
 						.Size = vertexDataSize
 					});
 
-					if (meshSource.VertexData != Buffer{})
+					if (meshSource.VertexData != BufferHandle{})
 					{
 						for (uint32_t bufferOffset = 0; bufferOffset < vertexDataSize; bufferOffset += s_StagingBufferSize)
 						{
-							auto commandList = context->CreateCommandList(commandPool);
-							context->CommandListBegin(commandList);
+							auto commandList = commandPool.CreateCommandList();
+							commandList.Begin();
 
 							const std::byte* ptr = (const std::byte*)sourceData.Vertices.data();
 							uint32_t blockSize = std::min(bufferOffset + s_StagingBufferSize, vertexDataSize) - bufferOffset;
-							context->BufferSetData(stagingBuffer, ptr + bufferOffset, blockSize, 0);
-							context->CommandListCopyToBuffer(commandList, meshSource.VertexData, bufferOffset, stagingBuffer, 0, blockSize);
+							stagingBuffer.SetData(ptr + bufferOffset, blockSize, 0);
+							commandList.CopyToBuffer(meshSource.VertexData, bufferOffset, stagingBuffer, 0, blockSize);
 
-							context->CommandListEnd(commandList);
-							context->QueueSubmitCommandLists(context->GetTransferQueue(1), { commandList }, {}, { fence });
-							context->FenceWait(fence);
+							commandList.End();
+							transferQueue.SubmitCommandLists({ commandList }, {}, { fence });
+
+							fence.Wait();
 						}
 					}
 				}
@@ -466,26 +473,27 @@ namespace Yuki {
 				{
 					uint32_t indexDataSize = uint32_t(sourceData.Indices.size()) * sizeof(uint32_t);
 
-					meshSource.IndexBuffer = context->CreateBuffer({
+					meshSource.IndexBuffer = Buffer(context, {
 						.Type = BufferType::IndexBuffer,
 						.Size = indexDataSize
 					});
 
-					if (meshSource.IndexBuffer != Buffer{})
+					if (meshSource.IndexBuffer.Handle != BufferHandle{})
 					{
 						for (uint32_t bufferOffset = 0; bufferOffset < indexDataSize; bufferOffset += s_StagingBufferSize)
 						{
-							auto commandList = context->CreateCommandList(commandPool);
-							context->CommandListBegin(commandList);
+							auto commandList = commandPool.CreateCommandList();
+							commandList.Begin();
 
 							const std::byte* ptr = (const std::byte*)sourceData.Indices.data();
 							uint32_t blockSize = std::min(bufferOffset + s_StagingBufferSize, indexDataSize) - bufferOffset;
-							context->BufferSetData(stagingBuffer, ptr + bufferOffset, blockSize, 0);
-							context->CommandListCopyToBuffer(commandList, meshSource.IndexBuffer, bufferOffset, stagingBuffer, 0, blockSize);
+							stagingBuffer.SetData(ptr + bufferOffset, blockSize, 0);
+							commandList.CopyToBuffer(meshSource.IndexBuffer, bufferOffset, stagingBuffer, 0, blockSize);
 
-							context->CommandListEnd(commandList);
-							context->QueueSubmitCommandLists(context->GetTransferQueue(1), { commandList }, {}, { fence });
-							context->FenceWait(fence);
+							commandList.End();
+							transferQueue.SubmitCommandLists({ commandList }, {}, { fence });
+
+							fence.Wait();
 						}
 
 						meshSource.IndexCount = uint32_t(sourceData.Indices.size());
@@ -505,6 +513,7 @@ namespace Yuki {
 		auto[instanceCreateJobIndex, instanceCreateJob] = m_LoadJobs.EmplaceBack();
 		instanceCreateJob.Task = [asset = assetPtr, scene, &mesh, &meshData, this](size_t InThreadID) mutable
 		{
+			LogInfo("Creating Instances");
 			Math::Mat4 transform;
 			transform.SetIdentity();
 
@@ -513,6 +522,7 @@ namespace Yuki {
 
 			mesh.Instances.shrink_to_fit();
 			m_Callback(std::move(mesh));
+			LogInfo("Done creating instances");
 		};
 		instanceCreateBarrier.Pending.push_back(&instanceCreateJob);
 	}

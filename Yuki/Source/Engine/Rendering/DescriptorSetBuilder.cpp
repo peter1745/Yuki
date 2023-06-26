@@ -1,5 +1,6 @@
 #include "Rendering/DescriptorSetBuilder.hpp"
 #include "Rendering/RenderContext.hpp"
+#include "Rendering/RenderResources.hpp"
 
 namespace Yuki {
 
@@ -22,6 +23,6 @@ namespace Yuki {
 
 	DescriptorSetLayout DescriptorSetLayoutBuilder::Build()
 	{
-		return m_Context->CreateDescriptorSetLayout(m_Info);
+		return { m_Context->CreateDescriptorSetLayout(m_Info), m_Context };
 	}
 }

@@ -37,7 +37,7 @@ namespace Yuki {
 		return (VkShaderStageFlagBits)-1;
 	}
 
-	Pipeline VulkanRenderContext::CreatePipeline(const PipelineInfo& InPipelineInfo)
+	PipelineHandle VulkanRenderContext::CreatePipeline(const PipelineInfo& InPipelineInfo)
 	{
 		auto[handle, pipeline] = m_Pipelines.Acquire();
 
@@ -205,7 +205,7 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::Destroy(Pipeline InPipeline)
+	void VulkanRenderContext::Destroy(PipelineHandle InPipeline)
 	{
 		auto& pipeline = m_Pipelines.Get(InPipeline);
 		vkDestroyPipeline(m_LogicalDevice, pipeline.Pipeline, nullptr);

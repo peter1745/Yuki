@@ -9,7 +9,7 @@ namespace Yuki {
 	struct VulkanCommandPool
 	{
 		VkCommandPool Pool = VK_NULL_HANDLE;
-		DynamicArray<CommandList> AllocatedLists;
+		DynamicArray<CommandListHandle> AllocatedLists;
 		size_t NextList = 0;
 	};
 

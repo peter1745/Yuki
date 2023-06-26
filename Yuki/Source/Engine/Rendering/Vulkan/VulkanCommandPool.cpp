@@ -6,7 +6,7 @@
 
 namespace Yuki {
 
-	CommandPool VulkanRenderContext::CreateCommandPool(Queue InQueue)
+	CommandPoolHandle VulkanRenderContext::CreateCommandPool(QueueHandle InQueue)
 	{
 		auto[handle, pool] = m_CommandPools.Acquire();	
 
@@ -24,21 +24,21 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::CommandPoolReset(CommandPool InCommandPool)
+	void VulkanRenderContext::CommandPoolReset(CommandPoolHandle InCommandPool)
 	{
 		auto& pool = m_CommandPools.Get(InCommandPool);
 		YUKI_VERIFY(vkResetCommandPool(m_LogicalDevice, pool.Pool, 0) == VK_SUCCESS);
 		pool.NextList = 0;
 	}
 
-	void VulkanRenderContext::Destroy(CommandPool InCommandPool)
+	void VulkanRenderContext::Destroy(CommandPoolHandle InCommandPool)
 	{
 		auto& pool = m_CommandPools.Get(InCommandPool);
 		vkDestroyCommandPool(m_LogicalDevice, pool.Pool, nullptr);
 		m_CommandPools.Return(InCommandPool);
 	}
 
-	CommandList VulkanRenderContext::CreateCommandList(CommandPool InCommandPool)
+	CommandListHandle VulkanRenderContext::CreateCommandList(CommandPoolHandle InCommandPool)
 	{
 		auto& pool = m_CommandPools.Get(InCommandPool);
 
@@ -62,7 +62,7 @@ namespace Yuki {
 		return pool.AllocatedLists[pool.NextList++];
 	}
 
-	void VulkanRenderContext::CommandListBegin(CommandList InCommandList)
+	void VulkanRenderContext::CommandListBegin(CommandListHandle InCommandList)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 
@@ -76,13 +76,13 @@ namespace Yuki {
 		YUKI_VERIFY(vkBeginCommandBuffer(commandList.CommandBuffer, &beginInfo) == VK_SUCCESS);
 	}
 
-	void VulkanRenderContext::CommandListEnd(CommandList InCommandList)
+	void VulkanRenderContext::CommandListEnd(CommandListHandle InCommandList)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		YUKI_VERIFY(vkEndCommandBuffer(commandList.CommandBuffer) == VK_SUCCESS);
 	}
 
-	void VulkanRenderContext::CommandListBeginRendering(CommandList InCommandList, Swapchain InSwapchain)
+	void VulkanRenderContext::CommandListBeginRendering(CommandListHandle InCommandList, SwapchainHandle InSwapchain)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& swapchain = m_Swapchains.Get(InSwapchain);
@@ -157,20 +157,20 @@ namespace Yuki {
 		vkCmdBeginRendering(commandList.CommandBuffer, &renderingInfo);
 	}
 
-	void VulkanRenderContext::CommandListEndRendering(CommandList InCommandList)
+	void VulkanRenderContext::CommandListEndRendering(CommandListHandle InCommandList)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		vkCmdEndRendering(commandList.CommandBuffer);
 	}
 
-	void VulkanRenderContext::CommandListBindPipeline(CommandList InCommandList, Pipeline InPipeline)
+	void VulkanRenderContext::CommandListBindPipeline(CommandListHandle InCommandList, PipelineHandle InPipeline)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& pipeline = m_Pipelines.Get(InPipeline);
 		vkCmdBindPipeline(commandList.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Pipeline);
 	}
 
-	void VulkanRenderContext::CommandListBindBuffer(CommandList InCommandList, Buffer InBuffer)
+	void VulkanRenderContext::CommandListBindBuffer(CommandListHandle InCommandList, BufferHandle InBuffer)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& buffer = m_Buffers.Get(InBuffer);
@@ -190,7 +190,7 @@ namespace Yuki {
 		}
 	}
 
-	void VulkanRenderContext::CommandListBindDescriptorSet(CommandList InCommandList, Pipeline InPipeline, DescriptorSet InSet)
+	void VulkanRenderContext::CommandListBindDescriptorSet(CommandListHandle InCommandList, PipelineHandle InPipeline, DescriptorSetHandle InSet)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& pipeline = m_Pipelines.Get(InPipeline);
@@ -198,14 +198,14 @@ namespace Yuki {
 		vkCmdBindDescriptorSets(commandList.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Layout, 0, 1, &set.Handle, 0, nullptr);
 	}
 
-	void VulkanRenderContext::CommandListPushConstants(CommandList InCommandList, Pipeline InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset)
+	void VulkanRenderContext::CommandListPushConstants(CommandListHandle InCommandList, PipelineHandle InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& pipeline = m_Pipelines.Get(InPipeline);
 		vkCmdPushConstants(commandList.CommandBuffer, pipeline.Layout, VK_SHADER_STAGE_ALL, InOffset, InDataSize, InData);
 	}
 
-	void VulkanRenderContext::CommandListTransitionImage(CommandList InCommandList, Image InImage, ImageLayout InNewLayout)
+	void VulkanRenderContext::CommandListTransitionImage(CommandListHandle InCommandList, ImageHandle InImage, ImageLayout InNewLayout)
 	{
 		auto& image = m_Images.Get(InImage);
 		auto& commandList = m_CommandLists.Get(InCommandList);
@@ -246,7 +246,7 @@ namespace Yuki {
 		image.AccessFlags = 0;
 	}
 
-	void VulkanRenderContext::CommandListCopyToBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize)
+	void VulkanRenderContext::CommandListCopyToBuffer(CommandListHandle InCommandList, BufferHandle InDstBuffer, uint32_t InDstOffset, BufferHandle InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& dstBuffer = m_Buffers.Get(InDstBuffer);
@@ -276,7 +276,7 @@ namespace Yuki {
 		vkCmdCopyBuffer2(commandList.CommandBuffer, &bufferCopyInfo);
 	}
 	
-	void VulkanRenderContext::CommandListCopyToImage(CommandList InCommandList, Image InDstImage, Buffer InSrcBuffer, uint32_t InSrcOffset)
+	void VulkanRenderContext::CommandListCopyToImage(CommandListHandle InCommandList, ImageHandle InDstImage, BufferHandle InSrcBuffer, uint32_t InSrcOffset)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& image = m_Images.Get(InDstImage);
@@ -319,7 +319,7 @@ namespace Yuki {
 		CommandListTransitionImage(InCommandList, InDstImage, prevImageLayout);
 	}
 
-	void VulkanRenderContext::CommandListBlitImage(CommandList InCommandList, Image InDstImage, Image InSrcImage)
+	void VulkanRenderContext::CommandListBlitImage(CommandListHandle InCommandList, ImageHandle InDstImage, ImageHandle InSrcImage)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& dstImage = m_Images.Get(InDstImage);
@@ -376,19 +376,19 @@ namespace Yuki {
 		CommandListTransitionImage(InCommandList, InSrcImage, srcImageLayout);
 	}
 
-	void VulkanRenderContext::CommandListDraw(CommandList InCommandList, uint32_t InVertexCount)
+	void VulkanRenderContext::CommandListDraw(CommandListHandle InCommandList, uint32_t InVertexCount)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		vkCmdDraw(commandList.CommandBuffer, InVertexCount, 1, 0, 0);
 	}
 
-	void VulkanRenderContext::CommandListDrawIndexed(CommandList InCommandList, uint32_t InIndexCount)
+	void VulkanRenderContext::CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		vkCmdDrawIndexed(commandList.CommandBuffer, InIndexCount, 1, 0, 0, 0);
 	}
 
-	void VulkanRenderContext::CommandListPrepareSwapchainPresent(CommandList InCommandList, Swapchain InSwapchain)
+	void VulkanRenderContext::CommandListPrepareSwapchainPresent(CommandListHandle InCommandList, SwapchainHandle InSwapchain)
 	{
 		auto& swapchain = m_Swapchains.Get(InSwapchain);
 		CommandListTransitionImage(InCommandList, swapchain.Images[swapchain.CurrentImage], ImageLayout::Present);

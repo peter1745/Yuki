@@ -7,15 +7,16 @@
 namespace Yuki {
 
 	class RenderContext;
+	struct Pipeline;
 
 	struct PipelineInfo
 	{
-		Shader PipelineShader = {};
+		ShaderHandle PipelineShader = {};
 		
 		struct PushConstantInfo { uint32_t Offset; uint32_t Size; };
 		DynamicArray<PushConstantInfo> PushConstants;
 
-		DynamicArray<DescriptorSetLayout> DescriptorSetLayouts;
+		DynamicArray<DescriptorSetLayoutHandle> DescriptorSetLayouts;
 
 		struct ColorAttachmentInfo
 		{
@@ -33,9 +34,9 @@ namespace Yuki {
 	public:
 		PipelineBuilder(RenderContext* InContext);
 
-		PipelineBuilder& WithShader(Shader InShader);
+		PipelineBuilder& WithShader(ShaderHandle InShader);
 		PipelineBuilder& PushConstant(uint32_t InSize);
-		PipelineBuilder& AddDescriptorSetLayout(DescriptorSetLayout InLayout);
+		PipelineBuilder& AddDescriptorSetLayout(DescriptorSetLayoutHandle InLayout);
 		PipelineBuilder& ColorAttachment(ImageFormat InFormat);
 		PipelineBuilder& DepthAttachment();
 		PipelineBuilder& SetPolygonMode(PolygonModeType InPolygonMode);

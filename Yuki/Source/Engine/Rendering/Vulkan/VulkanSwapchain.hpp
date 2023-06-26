@@ -22,11 +22,11 @@ namespace Yuki {
 
 		VkSwapchainKHR Swapchain = VK_NULL_HANDLE;
 		
-		DynamicArray<Image> Images;
-		DynamicArray<ImageView> ImageViews;
+		DynamicArray<ImageHandle> Images;
+		DynamicArray<ImageViewHandle> ImageViews;
 		uint32_t CurrentImage = 0;
 
-		Image DepthImage{};
+		ImageHandle DepthImage{};
 
 		DynamicArray<VkSemaphore> Semaphores;
 		uint32_t SemaphoreIndex = 0;

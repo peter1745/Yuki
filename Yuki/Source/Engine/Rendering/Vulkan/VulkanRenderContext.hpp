@@ -25,84 +25,84 @@ namespace Yuki {
 
 		void DeviceWaitIdle() const override;
 
-		Queue GetGraphicsQueue(size_t InIndex = 0) const override
+		QueueHandle GetGraphicsQueue(size_t InIndex = 0) const override
 		{
 			//std::scoped_lock lock(m_Mutex);
 			return m_GraphicsQueues[InIndex];
 		}
 
-		Queue GetTransferQueue(size_t InIndex = 0) const override
+		QueueHandle GetTransferQueue(size_t InIndex = 0) const override
 		{
 			//std::scoped_lock lock(m_Mutex1);
 			return m_TransferQueues[InIndex];
 		}
 
-		DynamicArray<Swapchain> GetSwapchains() const override;
+		DynamicArray<SwapchainHandle> GetSwapchains() const override;
 
 	public:
-		void QueueWaitIdle(Queue InQueue) override;
-		void QueueSubmitCommandLists(Queue InQueue, const InitializerList<CommandList>& InCommandLists, const InitializerList<Fence> InWaits, const InitializerList<Fence> InSignals) override;
-		void QueueAcquireImages(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) override;
-		void QueuePresent(Queue InQueue, std::span<Swapchain> InSwapchains, const InitializerList<Fence>& InFences) override;
+		void QueueWaitIdle(QueueHandle InQueue) override;
+		void QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const InitializerList<FenceHandle> InWaits, const InitializerList<FenceHandle> InSignals) override;
+		void QueueAcquireImages(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) override;
+		void QueuePresent(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) override;
 
 	public:
-		Swapchain CreateSwapchain(GenericWindow* InWindow) override;
-		void Destroy(Swapchain InSwapchain) override;
+		SwapchainHandle CreateSwapchain(GenericWindow* InWindow) override;
+		void Destroy(SwapchainHandle InSwapchain) override;
 
-		Fence CreateFence() override;
-		void Destroy(Fence InFence) override;
-		void FenceWait(Fence InFence, uint64_t InValue = 0) override;
+		FenceHandle CreateFence() override;
+		void Destroy(FenceHandle InFence) override;
+		void FenceWait(FenceHandle InFence, uint64_t InValue = 0) override;
 
-		CommandPool CreateCommandPool(Queue InQueue) override;
-		void CommandPoolReset(CommandPool InCommandPool) override;
-		void Destroy(CommandPool InCommandPool) override;
+		CommandPoolHandle CreateCommandPool(QueueHandle InQueue) override;
+		void CommandPoolReset(CommandPoolHandle InCommandPool) override;
+		void Destroy(CommandPoolHandle InCommandPool) override;
 
-		CommandList CreateCommandList(CommandPool InCommandPool) override;
-		void CommandListBegin(CommandList InCommandList) override;
-		void CommandListEnd(CommandList InCommandList) override;
-		void CommandListBeginRendering(CommandList InCommandList, Swapchain InSwapchain) override;
-		void CommandListEndRendering(CommandList InCommandList) override;
-		void CommandListBindPipeline(CommandList InCommandList, Pipeline InPipeline) override;
-		void CommandListBindBuffer(CommandList InCommandList, Buffer InBuffer) override;
-		void CommandListBindDescriptorSet(CommandList InCommandList, Pipeline InPipeline, DescriptorSet InSet) override;
-		void CommandListPushConstants(CommandList InCommandList, Pipeline InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) override;
-		void CommandListTransitionImage(CommandList InCommandList, Image InImage, ImageLayout InNewLayout) override;
-		void CommandListCopyToBuffer(CommandList InCommandList, Buffer InDstBuffer, uint32_t InDstOffset, Buffer InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) override;
-		void CommandListCopyToImage(CommandList InCommandList, Image InDstImage, Buffer InSrcBuffer, uint32_t InSrcOffset) override;
-		void CommandListBlitImage(CommandList InCommandList, Image InDstImage, Image InSrcImage) override;
-		void CommandListDraw(CommandList InCommandList, uint32_t InVertexCount) override;
-		void CommandListDrawIndexed(CommandList InCommandList, uint32_t InIndexCount) override;
-		void CommandListPrepareSwapchainPresent(CommandList InCommandList, Swapchain InSwapchain) override;
+		CommandListHandle CreateCommandList(CommandPoolHandle InCommandPool) override;
+		void CommandListBegin(CommandListHandle InCommandList) override;
+		void CommandListEnd(CommandListHandle InCommandList) override;
+		void CommandListBeginRendering(CommandListHandle InCommandList, SwapchainHandle InSwapchain) override;
+		void CommandListEndRendering(CommandListHandle InCommandList) override;
+		void CommandListBindPipeline(CommandListHandle InCommandList, PipelineHandle InPipeline) override;
+		void CommandListBindBuffer(CommandListHandle InCommandList, BufferHandle InBuffer) override;
+		void CommandListBindDescriptorSet(CommandListHandle InCommandList, PipelineHandle InPipeline, DescriptorSetHandle InSet) override;
+		void CommandListPushConstants(CommandListHandle InCommandList, PipelineHandle InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) override;
+		void CommandListTransitionImage(CommandListHandle InCommandList, ImageHandle InImage, ImageLayout InNewLayout) override;
+		void CommandListCopyToBuffer(CommandListHandle InCommandList, BufferHandle InDstBuffer, uint32_t InDstOffset, BufferHandle InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) override;
+		void CommandListCopyToImage(CommandListHandle InCommandList, ImageHandle InDstImage, BufferHandle InSrcBuffer, uint32_t InSrcOffset) override;
+		void CommandListBlitImage(CommandListHandle InCommandList, ImageHandle InDstImage, ImageHandle InSrcImage) override;
+		void CommandListDraw(CommandListHandle InCommandList, uint32_t InVertexCount) override;
+		void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount) override;
+		void CommandListPrepareSwapchainPresent(CommandListHandle InCommandList, SwapchainHandle InSwapchain) override;
 
-		Image CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
-		void Destroy(Image InImage) override;
-		ImageView CreateImageView(Image InImage) override;
-		void Destroy(ImageView InImageView) override;
+		ImageHandle CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
+		void Destroy(ImageHandle InImage) override;
+		ImageViewHandle CreateImageView(ImageHandle InImage) override;
+		void Destroy(ImageViewHandle InImageView) override;
 
-		Sampler CreateSampler() override;
-		void Destroy(Sampler InSampler) override;
+		SamplerHandle CreateSampler() override;
+		void Destroy(SamplerHandle InSampler) override;
 
-		Shader CreateShader(const std::filesystem::path& InFilePath) override;
-		void Destroy(Shader InShader) override;
+		ShaderHandle CreateShader(const std::filesystem::path& InFilePath) override;
+		void Destroy(ShaderHandle InShader) override;
 
-		Pipeline CreatePipeline(const PipelineInfo& InPipelineInfo) override;
-		void Destroy(Pipeline InPipeline) override;
+		PipelineHandle CreatePipeline(const PipelineInfo& InPipelineInfo) override;
+		void Destroy(PipelineHandle InPipeline) override;
 
-		Buffer CreateBuffer(const BufferInfo& InBufferInfo) override;
-		void Destroy(Buffer InBuffer) override;
-		void BufferSetData(Buffer InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset = 0) override;
-		uint64_t BufferGetDeviceAddress(Buffer InBuffer) const override;
+		BufferHandle CreateBuffer(const BufferInfo& InBufferInfo) override;
+		void Destroy(BufferHandle InBuffer) override;
+		void BufferSetData(BufferHandle InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset = 0) override;
+		uint64_t BufferGetDeviceAddress(BufferHandle InBuffer) const override;
 
-		DescriptorSetLayout CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) override;
-		void Destroy(DescriptorSetLayout InLayout) override;
-		DescriptorPool CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) override;
-		void Destroy(DescriptorPool InPool) override;
-		DescriptorSet DescriptorPoolAllocateDescriptorSet(DescriptorPool InPool, DescriptorSetLayout InLayout) override;
-		void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, Sampler InSampler, uint32_t InArrayOffset) override;
-		void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<Image> InImages, std::span<Sampler> InSamplers, uint32_t InArrayOffset) override;
-		void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, Sampler InSampler, uint32_t InArrayOffset) override;
-		void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<ImageView> InImageViews, std::span<Sampler> InSamplers, uint32_t InArrayOffset) override;
-		void DescriptorSetWrite(DescriptorSet InSet, uint32_t InBinding, std::span<std::pair<uint32_t, Buffer>> InBuffers, uint32_t InArrayOffset) override;
+		DescriptorSetLayoutHandle CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) override;
+		void Destroy(DescriptorSetLayoutHandle InLayout) override;
+		DescriptorPoolHandle CreateDescriptorPool(std::span<DescriptorCount> InDescriptorCounts) override;
+		void Destroy(DescriptorPoolHandle InPool) override;
+		DescriptorSetHandle DescriptorPoolAllocateDescriptorSet(DescriptorPoolHandle InPool, DescriptorSetLayoutHandle InLayout) override;
+		void DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageHandle> InImages, SamplerHandle InSampler, uint32_t InArrayOffset) override;
+		void DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageHandle> InImages, std::span<SamplerHandle> InSamplers, uint32_t InArrayOffset) override;
+		void DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageViewHandle> InImageViews, SamplerHandle InSampler, uint32_t InArrayOffset) override;
+		void DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<ImageViewHandle> InImageViews, std::span<SamplerHandle> InSamplers, uint32_t InArrayOffset) override;
+		void DescriptorSetWrite(DescriptorSetHandle InSet, uint32_t InBinding, std::span<std::pair<uint32_t, BufferHandle>> InBuffers, uint32_t InArrayOffset) override;
 
 	private:
 		void RecreateSwapchain(VulkanSwapchain& InSwapchain);
@@ -125,27 +125,27 @@ namespace Yuki {
 
 		mutable std::shared_mutex m_Mutex;
 		mutable std::shared_mutex m_Mutex1;
-		DynamicArray<Queue> m_GraphicsQueues;
-		DynamicArray<Queue> m_TransferQueues;
-		DynamicArray<Queue> m_DeviceQueues;
+		DynamicArray<QueueHandle> m_GraphicsQueues;
+		DynamicArray<QueueHandle> m_TransferQueues;
+		DynamicArray<QueueHandle> m_DeviceQueues;
 
 		VmaAllocator m_Allocator{};
 
 	private:
-		ResourceRegistry<Queue, VulkanQueue> m_Queues;
-		ResourceRegistry<Swapchain, VulkanSwapchain> m_Swapchains;
-		ResourceRegistry<Fence, VulkanFence> m_Fences;
-		ResourceRegistry<CommandPool, VulkanCommandPool> m_CommandPools;
-		ResourceRegistry<CommandList, VulkanCommandList> m_CommandLists;
-		ResourceRegistry<Image, VulkanImage> m_Images;
-		ResourceRegistry<ImageView, VulkanImageView> m_ImageViews;
-		ResourceRegistry<Sampler, VulkanSampler> m_Samplers;
-		ResourceRegistry<Shader, VulkanShader> m_Shaders;
-		ResourceRegistry<Pipeline, VulkanPipeline> m_Pipelines;
-		ResourceRegistry<Buffer, VulkanBuffer> m_Buffers;
-		ResourceRegistry<DescriptorSetLayout, VulkanDescriptorSetLayout> m_DescriptorSetLayouts;
-		ResourceRegistry<DescriptorPool, VulkanDescriptorPool> m_DescriptorPools;
-		ResourceRegistry<DescriptorSet, VulkanDescriptorSet> m_DescriptorSets;
+		ResourceRegistry<QueueHandle, VulkanQueue> m_Queues;
+		ResourceRegistry<SwapchainHandle, VulkanSwapchain> m_Swapchains;
+		ResourceRegistry<FenceHandle, VulkanFence> m_Fences;
+		ResourceRegistry<CommandPoolHandle, VulkanCommandPool> m_CommandPools;
+		ResourceRegistry<CommandListHandle, VulkanCommandList> m_CommandLists;
+		ResourceRegistry<ImageHandle, VulkanImage> m_Images;
+		ResourceRegistry<ImageViewHandle, VulkanImageView> m_ImageViews;
+		ResourceRegistry<SamplerHandle, VulkanSampler> m_Samplers;
+		ResourceRegistry<ShaderHandle, VulkanShader> m_Shaders;
+		ResourceRegistry<PipelineHandle, VulkanPipeline> m_Pipelines;
+		ResourceRegistry<BufferHandle, VulkanBuffer> m_Buffers;
+		ResourceRegistry<DescriptorSetLayoutHandle, VulkanDescriptorSetLayout> m_DescriptorSetLayouts;
+		ResourceRegistry<DescriptorPoolHandle, VulkanDescriptorPool> m_DescriptorPools;
+		ResourceRegistry<DescriptorSetHandle, VulkanDescriptorSet> m_DescriptorSets;
 
 	private:
 		friend class RenderContext;
