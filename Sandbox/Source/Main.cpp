@@ -6,6 +6,7 @@
 #include <Yuki/EntryPoint.hpp>
 #include <Yuki/Core/Application.hpp>
 #include <Yuki/Core/Logging.hpp>
+#include <Yuki/Core/Timer.hpp>
 #include <Yuki/Math/Math.hpp>
 #include <Yuki/Math/Mat4.hpp>
 #include <Yuki/EventSystem/ApplicationEvents.hpp>
@@ -53,7 +54,7 @@ private:
 
 		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
 		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
-		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/Small_City_LVL/Small_City_LVL.gltf");
+		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/Small_City_LVL/Small_City_LVL.gltf");
 		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/powerplant/powerplant.gltf");
 
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
@@ -109,7 +110,7 @@ private:
 
 	Yuki::SceneRenderer* m_Renderer = nullptr;
 
-	std::shared_mutex m_MeshesMutex;
+	std::recursive_mutex m_MeshesMutex;
 	Yuki::DynamicArray<Yuki::Mesh> m_Meshes;
 	Yuki::DynamicArray<size_t> m_MeshDataUploadQueue;
 };

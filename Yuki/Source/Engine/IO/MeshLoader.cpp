@@ -23,72 +23,27 @@ namespace Yuki {
 
 	static constexpr uint32_t s_StagingBufferSize = 100 * 1024 * 1024;
 
-	void ProcessNodeHierarchy(fastgltf::Asset* InAsset, Mesh& InMesh, fastgltf::Node& InNode, const Math::Mat4& InParentTransform)
+	void ProcessNodeHierarchy(fastgltf::Asset* InAsset, Mesh& InMesh, size_t InNodeIndex, const Math::Mat4& InParentTransform)
 	{
-		auto& TRS = std::get<fastgltf::Node::TRS>(InNode.transform);
+		auto& node = InAsset->nodes[InNodeIndex];
+		auto& TRS = std::get<fastgltf::Node::TRS>(node.transform);
 		Math::Mat4 modelTransform = Math::Mat4::Translation(Math::Vec3{TRS.translation}) * Math::Mat4::Rotation(Math::Quat{ TRS.rotation }) * Math::Mat4::Scale(Math::Vec3{TRS.scale});
 		Math::Mat4 transform = InParentTransform * modelTransform;
 
-		if (InNode.meshIndex.has_value())
+		if (node.meshIndex.has_value())
 		{
-			auto& meshInstance = InMesh.Instances.emplace_back();
-			meshInstance.SourceIndex = InNode.meshIndex.value();
-			meshInstance.Transform = transform;
-		}
-
-		for (auto childNodeIndex : InNode.children)
-			ProcessNodeHierarchy(InAsset, InMesh, InAsset->nodes[childNodeIndex], transform);
-	}
-
-	void MeshLoader::ProcessMaterials(fastgltf::Asset* InAsset, const std::filesystem::path& InBasePath, MeshData& InMeshData)
-	{
-		InMeshData.Images.resize(InAsset->textures.size());
-		LogInfo("Loading {} textures...", InAsset->textures.size());
-
-#pragma omp parallel for
-		for (size_t i = 0; i < InAsset->textures.size(); i++)
-		{
-			auto& textureInfo = InAsset->textures[i];
-
-			YUKI_VERIFY(textureInfo.imageIndex.has_value());
-			auto& imageInfo = InAsset->images[textureInfo.imageIndex.value()];
-
-			int width, height;
-			stbi_uc* imageData = nullptr;
-			std::visit(ImageVisitor
+			size_t sourceIndex = node.meshIndex.value();
+			const auto& sourceMesh = InMesh.Sources[sourceIndex];
+			if (sourceMesh.VertexData != Buffer{} && sourceMesh.IndexBuffer != Buffer{} && sourceMesh.IndexCount > 0)
 			{
-				[&](fastgltf::sources::URI& InURI)
-				{
-					imageData = stbi_load(fmt::format("{}/{}", InBasePath.string(), InURI.uri.path()).c_str(), &width, &height, nullptr, STBI_rgb_alpha);
-				},
-				[&](fastgltf::sources::Vector& InVector)
-				{
-					imageData = stbi_load_from_memory(InVector.bytes.data(), uint32_t(InVector.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
-				},
-				[&](fastgltf::sources::ByteView& InByteView)
-				{
-					imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(InByteView.bytes.data()), uint32_t(InByteView.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
-				},
-				[&](fastgltf::sources::BufferView& InBufferView)
-				{
-					auto& view = InAsset->bufferViews[InBufferView.bufferViewIndex];
-					auto& buffer = InAsset->buffers[view.bufferIndex];
-					auto* bytes = fastgltf::DefaultBufferDataAdapter{}(buffer)+view.byteOffset;
-					imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(bytes), uint32_t(view.byteLength), &width, &height, nullptr, STBI_rgb_alpha);
-				},
-				[&](auto&) {}
-			}, imageInfo.data);
-
-			YUKI_VERIFY(imageData);
-
-			auto& image = InMeshData.Images[i];
-			image.Width = uint32_t(width);
-			image.Height = uint32_t(height);
-			image.Data.resize(width * height * 4);
-			memcpy(image.Data.data(), imageData, width * height * 4);
-
-			stbi_image_free(imageData);
+				auto& meshInstance = InMesh.Instances[InNodeIndex];
+				meshInstance.SourceIndex = sourceIndex;
+				meshInstance.Transform = transform;
+			}
 		}
+
+		for (auto childNodeIndex : node.children)
+			ProcessNodeHierarchy(InAsset, InMesh, childNodeIndex, transform);
 	}
 
 	void FlushStagingBuffer(RenderContext* InContext, CommandPool InCommandPool, CommandList InCommandList)
@@ -104,205 +59,282 @@ namespace Yuki {
 	MeshLoader::MeshLoader(RenderContext* InContext, PushMeshCallback InCallback)
 		: m_Context(InContext), m_Callback(std::move(InCallback))
 	{
-		m_JobSystem.Init(3);
+		m_JobSystem.Init(8);
 
-		m_CommandPool = m_Context->CreateCommandPool(m_Context->GetTransferQueue());
-		m_StagingBuffer = m_Context->CreateBuffer({
+		m_MeshStagingBuffer = m_Context->CreateBuffer({
 			.Type = BufferType::StagingBuffer,
 			.Size = s_StagingBufferSize
 		});
 
-		m_JobSystem.Submit([this](size_t InWorkerID)
-		{
-			std::scoped_lock lock(m_UploadQueueMutex);
-
-			if (m_UploadQueue.empty())
-				return;
-
-			LogInfo("Running Upload Job, upload queue size: {}", m_UploadQueue.size());
-
-			for (auto&[mesh, meshData] : m_UploadQueue)
-			{
-				DynamicArray<std::pair<Buffer, Buffer>> buffers;
-				
-				m_Context->CommandPoolReset(m_CommandPool);
-				auto commandList = m_Context->CreateCommandList(m_CommandPool);
-				m_Context->CommandListBegin(commandList);
-				for (const auto& instanceData : meshData.InstanceData)
-				{
-					Buffer vertexBuffer;
-					Buffer indexBuffer;
-
-					{
-						uint32_t vertexDataSize = uint32_t(instanceData.Vertices.size()) * sizeof(Vertex);
-
-						vertexBuffer = m_Context->CreateBuffer({
-							.Type = BufferType::StorageBuffer,
-							.Size = vertexDataSize
-						});
-
-						if (vertexBuffer != Buffer{})
-						{
-							for (uint32_t bufferOffset = 0; bufferOffset < vertexDataSize; bufferOffset += s_StagingBufferSize)
-							{
-								const std::byte* ptr = (const std::byte*)instanceData.Vertices.data();
-								uint32_t blockSize = std::min(bufferOffset + s_StagingBufferSize, vertexDataSize) - bufferOffset;
-								m_Context->BufferSetData(m_StagingBuffer, ptr + bufferOffset, blockSize, 0);
-								m_Context->CommandListCopyToBuffer(commandList, vertexBuffer, bufferOffset, m_StagingBuffer, 0, blockSize);
-								FlushStagingBuffer(m_Context, m_CommandPool, commandList);
-							}
-						}
-					}
-
-					{
-						uint32_t indexDataSize = uint32_t(instanceData.Indices.size()) * sizeof(uint32_t);
-
-						indexBuffer = m_Context->CreateBuffer({
-							.Type = BufferType::IndexBuffer,
-							.Size = indexDataSize
-						});
-
-						if (indexBuffer != Buffer{})
-						{
-							for (uint32_t bufferOffset = 0; bufferOffset < indexDataSize; bufferOffset += s_StagingBufferSize)
-							{
-								const std::byte* ptr = (const std::byte*)instanceData.Indices.data();
-								uint32_t blockSize = std::min(bufferOffset + s_StagingBufferSize, indexDataSize) - bufferOffset;
-								m_Context->BufferSetData(m_StagingBuffer, ptr + bufferOffset, blockSize, 0);
-								m_Context->CommandListCopyToBuffer(commandList, indexBuffer, bufferOffset, m_StagingBuffer, 0, blockSize);
-								FlushStagingBuffer(m_Context, m_CommandPool, commandList);
-							}
-						}
-					}
-
-					buffers.push_back({ vertexBuffer, indexBuffer });
-				}
-
-				m_Context->CommandListEnd(commandList);
-				m_Context->QueueSubmitCommandLists(m_Context->GetTransferQueue(), { commandList }, {}, {});
-				m_Context->QueueWaitIdle(m_Context->GetTransferQueue());
-
-				m_Context->CommandPoolReset(m_CommandPool);
-
-				mesh.Sources.resize(meshData.InstanceData.size());
-				for (size_t i = 0; i < meshData.InstanceData.size(); i++)
-				{
-					mesh.Sources[i] =
-					{
-						.VertexData = buffers[i].first,
-						.IndexBuffer = buffers[i].second,
-						.IndexCount = uint32_t(meshData.InstanceData[i].Indices.size())
-					};
-				}
-
-				{
-					mesh.Textures.resize(meshData.Images.size());
-					for (size_t i = 0; i < meshData.Images.size(); i++)
-					{
-						const auto& imageData = meshData.Images[i];
-						bool shouldBlit = imageData.Width > 1024 && imageData.Height > 1024;
-						Queue queue = shouldBlit ? m_Context->GetGraphicsQueue(1) : m_Context->GetTransferQueue();
-
-						auto commandPool = m_Context->CreateCommandPool(queue);
-						auto imageCommandList = m_Context->CreateCommandList(commandPool);
-						m_Context->CommandListBegin(imageCommandList);
-
-						Image blittedImage{};
-						Image image = m_Context->CreateImage(imageData.Width, imageData.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination);
-						m_Context->CommandListTransitionImage(imageCommandList, image, ImageLayout::ShaderReadOnly);
-						m_Context->BufferSetData(m_StagingBuffer, imageData.Data.data(), uint32_t(imageData.Data.size()));
-						m_Context->CommandListCopyToImage(imageCommandList, image, m_StagingBuffer, 0);
-
-						if (shouldBlit)
-						{
-							blittedImage = m_Context->CreateImage(1024, 1024, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
-							m_Context->CommandListTransitionImage(imageCommandList, blittedImage, ImageLayout::ShaderReadOnly);
-							m_Context->CommandListBlitImage(imageCommandList, blittedImage, image);
-						}
-
-						m_Context->CommandListEnd(imageCommandList);
-						m_Context->QueueSubmitCommandLists(queue, { imageCommandList }, {}, {});
-						m_Context->QueueWaitIdle(queue);
-
-						if (shouldBlit)
-						{
-							m_Context->Destroy(image);
-							image = blittedImage;
-						}
-
-						mesh.Textures[i] = image;
-					}
-				}
-
-				//m_Context->CommandPoolReset(m_CommandPool);
-
-				/*{
-					mesh.MaterialsBuffer = m_Context->CreateBuffer({
-						.Type = BufferType::StorageBuffer,
-						.Size = uint32_t(sizeof(Yuki::MeshMaterial) * meshData.Materials.size())
-					});
-
-					auto materialsCommandList = m_Context->CreateCommandList(m_CommandPool);
-					m_Context->CommandListBegin(materialsCommandList);
-					m_Context->BufferSetData(m_StagingBuffer, meshData.Materials.data(), uint32_t(meshData.Materials.size() * sizeof(MeshMaterial)));
-					m_Context->CommandListCopyToBuffer(materialsCommandList, mesh.MaterialsBuffer, 0, m_StagingBuffer, 0, 0);
-					m_Context->CommandListEnd(materialsCommandList);
-					m_Context->QueueSubmitCommandLists(m_Context->GetTransferQueue(), { materialsCommandList }, {}, {});
-					m_Context->QueueWaitIdle(m_Context->GetTransferQueue());
-				}*/
-
-				m_Callback(mesh);
-			}
-
-			m_UploadQueue.clear();
-			LogInfo("Upload Job Finished, upload queue size: {}", m_UploadQueue.size());
-			
-		}, JobFlags::RescheduleOnFinish);
+		m_ImageStagingBuffer = m_Context->CreateBuffer({
+			.Type = BufferType::StagingBuffer,
+			.Size = s_StagingBufferSize
+		});
 	}
 
 	void MeshLoader::LoadGLTFMesh(const std::filesystem::path& InFilePath)
 	{
-		m_JobSystem.Submit([this, filePath = InFilePath](size_t InWorkerID)
+		fastgltf::Parser parser;
+		fastgltf::GltfDataBuffer dataBuffer;
+		dataBuffer.loadFromFile(InFilePath);
+
+		std::unique_ptr<fastgltf::glTF> gltfAsset;
+
+		fastgltf::Options options = fastgltf::Options::DontRequireValidAssetMember |
+			fastgltf::Options::LoadGLBBuffers |
+			fastgltf::Options::LoadExternalBuffers |
+			fastgltf::Options::DecomposeNodeMatrices;
+
+		switch (fastgltf::determineGltfFileType(&dataBuffer))
 		{
-			fastgltf::Parser parser;
-			fastgltf::GltfDataBuffer dataBuffer;
-			dataBuffer.loadFromFile(filePath);
+		case fastgltf::GltfType::glTF:
+		{
+			gltfAsset = parser.loadGLTF(&dataBuffer, InFilePath.parent_path(), options);
+			break;
+		}
+		case fastgltf::GltfType::GLB:
+		{
+			gltfAsset = parser.loadBinaryGLTF(&dataBuffer, InFilePath.parent_path(), options);
+			break;
+		}
+		}
 
-			std::unique_ptr<fastgltf::glTF> gltfAsset;
+		YUKI_VERIFY(parser.getError() == fastgltf::Error::None);
+		YUKI_VERIFY(gltfAsset->parse() == fastgltf::Error::None);
 
-			fastgltf::Options options = fastgltf::Options::DontRequireValidAssetMember |
-				fastgltf::Options::LoadGLBBuffers |
-				fastgltf::Options::LoadExternalBuffers |
-				fastgltf::Options::DecomposeNodeMatrices |
-				fastgltf::Options::LoadExternalImages;
+		auto* assetPtr = gltfAsset->getParsedAsset().release();
 
-			switch (fastgltf::determineGltfFileType(&dataBuffer))
+		auto[meshIndex, mesh] = m_MeshQueue.EmplaceBack();
+
+		auto[meshDataIndex, meshData] = m_ProcessingQueue.EmplaceBack();
+		mesh.Sources.resize(assetPtr->meshes.size());
+		meshData.SourceData.resize(assetPtr->meshes.size());
+		meshData.Images.resize(assetPtr->textures.size());
+		mesh.Textures.resize(assetPtr->textures.size());
+
+		fastgltf::Scene* scene = nullptr;
+		if (assetPtr->defaultScene.has_value())
+			scene = &assetPtr->scenes[assetPtr->defaultScene.value()];
+		else
+			scene = &assetPtr->scenes[0];
+		YUKI_VERIFY(scene);
+
+		mesh.Instances.resize(assetPtr->nodes.size());
+
+		auto[instanceCreateBarrierIndex, instanceCreateBarrier] = m_Barriers.EmplaceBack();
+
+#define SINGLE_IMAGE_JOB 0
+#if SINGLE_IMAGE_JOB
+		auto[barrierIndex0, imageUploadBarrier] = m_Barriers.EmplaceBack();
+		auto[index, imageLoadJob] = m_LoadJobs.EmplaceBack();
+		imageLoadJob.Task = [asset = assetPtr, &mesh, &meshData, basePath = InFilePath.parent_path()](size_t InThreadID)
+		{
+			for (size_t i = 0; i < asset->textures.size(); i++)
 			{
-			case fastgltf::GltfType::glTF:
+				auto& textureInfo = asset->textures[i];
+
+				YUKI_VERIFY(textureInfo.imageIndex.has_value());
+				auto& imageInfo = asset->images[textureInfo.imageIndex.value()];
+
+				int width, height;
+				stbi_uc* imageData = nullptr;
+				std::visit(ImageVisitor
+				{
+					[&](fastgltf::sources::URI& InURI)
+					{
+						ScopedTimer t("URI");
+						imageData = stbi_load(fmt::format("{}/{}", basePath.string(), InURI.uri.path()).c_str(), &width, &height, nullptr, STBI_rgb_alpha);
+					},
+					[&](fastgltf::sources::Vector& InVector)
+					{
+						ScopedTimer t("Vector");
+						imageData = stbi_load_from_memory(InVector.bytes.data(), uint32_t(InVector.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
+					},
+					[&](fastgltf::sources::ByteView& InByteView)
+					{
+						ScopedTimer t("ByteView");
+						imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(InByteView.bytes.data()), uint32_t(InByteView.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
+					},
+					[&](fastgltf::sources::BufferView& InBufferView)
+					{
+						ScopedTimer t("BufferView");
+						auto& view = asset->bufferViews[InBufferView.bufferViewIndex];
+						auto& buffer = asset->buffers[view.bufferIndex];
+						auto* bytes = fastgltf::DefaultBufferDataAdapter{}(buffer) + view.byteOffset;
+						imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(bytes), uint32_t(view.byteLength), &width, &height, nullptr, STBI_rgb_alpha);
+					},
+					[&](auto&) {}
+				}, imageInfo.data);
+
+				YUKI_VERIFY(imageData);
+
+				auto& image = meshData.Images[i];
+				image.Width = uint32_t(width);
+				image.Height = uint32_t(height);
+				image.Data = reinterpret_cast<std::byte*>(imageData);
+			}
+		};
+		imageLoadJob.AddSignal(&imageUploadBarrier);
+
+		auto[imageUploadIndex, imageUploadJob] = m_LoadJobs.EmplaceBack();
+		imageUploadJob.Task = [context = m_Context, &meshData, &mesh, stagingBuffer = m_ImageStagingBuffer](size_t InThreadID) mutable
+		{
+			for (size_t i = 0; i < meshData.Images.size(); i++)
 			{
-				gltfAsset = parser.loadGLTF(&dataBuffer, filePath.parent_path(), options);
-				break;
+				LogInfo("Uploading textures");
+				Fence fence = context->CreateFence();
+
+				const auto& imageData = meshData.Images[i];
+				bool shouldBlit = imageData.Width > 1024 && imageData.Height > 1024;
+				Queue queue = shouldBlit ? context->GetGraphicsQueue(1) : context->GetTransferQueue();
+
+				auto commandPool = context->CreateCommandPool(queue);
+				auto imageCommandList = context->CreateCommandList(commandPool);
+				context->CommandListBegin(imageCommandList);
+
+				Image blittedImage{};
+				Image image = context->CreateImage(imageData.Width, imageData.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination);
+				context->CommandListTransitionImage(imageCommandList, image, ImageLayout::ShaderReadOnly);
+				context->BufferSetData(stagingBuffer, imageData.Data, imageData.Width * imageData.Height * 4);
+				context->CommandListCopyToImage(imageCommandList, image, stagingBuffer, 0);
+
+				if (shouldBlit)
+				{
+					blittedImage = context->CreateImage(1024, 1024, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
+					context->CommandListTransitionImage(imageCommandList, blittedImage, ImageLayout::ShaderReadOnly);
+					context->CommandListBlitImage(imageCommandList, blittedImage, image);
+				}
+
+				context->CommandListEnd(imageCommandList);
+				context->QueueSubmitCommandLists(queue, { imageCommandList }, {}, { fence });
+				context->FenceWait(fence);
+				context->Destroy(fence);
+				context->Destroy(commandPool);
+
+				if (shouldBlit)
+				{
+					context->Destroy(image);
+					image = blittedImage;
+				}
+
+				stbi_image_free(imageData.Data);
+
+				mesh.Textures[i] = image;
+				LogInfo("Done uploading textures!");
 			}
-			case fastgltf::GltfType::GLB:
+		};
+		imageUploadJob.AddSignal(&instanceCreateBarrier);
+		imageUploadBarrier.Pending.push_back(&imageUploadJob);
+		m_JobSystem.Schedule(&imageLoadJob);
+#else
+		auto[barrierIndex0, imageUploadBarrier] = m_Barriers.EmplaceBack();
+		auto[imageUploadIndex, imageUploadJob] = m_LoadJobs.EmplaceBack();
+		imageUploadJob.Task = [context = m_Context, &meshData, &mesh, stagingBuffer = m_ImageStagingBuffer](size_t InThreadID) mutable
+		{
+			LogInfo("Uploading textures");
+			for (size_t i = 0; i < meshData.Images.size(); i++)
 			{
-				gltfAsset = parser.loadBinaryGLTF(&dataBuffer, filePath.parent_path(), options);
-				break;
+				Fence fence = context->CreateFence();
+
+				const auto& imageData = meshData.Images[i];
+				bool shouldBlit = imageData.Width > 1024 && imageData.Height > 1024;
+				Queue queue = shouldBlit ? context->GetGraphicsQueue(1) : context->GetTransferQueue();
+
+				auto commandPool = context->CreateCommandPool(queue);
+				auto imageCommandList = context->CreateCommandList(commandPool);
+				context->CommandListBegin(imageCommandList);
+
+				Image blittedImage{};
+				Image image = context->CreateImage(imageData.Width, imageData.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination);
+				context->CommandListTransitionImage(imageCommandList, image, ImageLayout::ShaderReadOnly);
+				context->BufferSetData(stagingBuffer, imageData.Data, imageData.Width * imageData.Height * 4);
+				context->CommandListCopyToImage(imageCommandList, image, stagingBuffer, 0);
+
+				if (shouldBlit)
+				{
+					blittedImage = context->CreateImage(1024, 1024, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
+					context->CommandListTransitionImage(imageCommandList, blittedImage, ImageLayout::ShaderReadOnly);
+					context->CommandListBlitImage(imageCommandList, blittedImage, image);
+				}
+
+				context->CommandListEnd(imageCommandList);
+				context->QueueSubmitCommandLists(queue, { imageCommandList }, {}, { fence });
+				context->FenceWait(fence);
+				context->Destroy(fence);
+				context->Destroy(commandPool);
+
+				if (shouldBlit)
+				{
+					context->Destroy(image);
+					image = blittedImage;
+				}
+
+				stbi_image_free(imageData.Data);
+
+				mesh.Textures[i] = image;
 			}
-			}
+				LogInfo("Done uploading textures!");
+		};
+		imageUploadJob.AddSignal(&instanceCreateBarrier);
+		imageUploadBarrier.Pending.push_back(&imageUploadJob);
 
-			YUKI_VERIFY(parser.getError() == fastgltf::Error::None);
-			YUKI_VERIFY(gltfAsset->parse() == fastgltf::Error::None);
+		for (size_t i = 0; i < assetPtr->textures.size(); i++)
+		{
+			auto[index, imageLoadJob] = m_LoadJobs.EmplaceBack();
+			imageLoadJob.Task = [asset = assetPtr, textureIndex = i, &mesh, &meshData, basePath = InFilePath.parent_path()](size_t InThreadID)
+			{
+				auto& textureInfo = asset->textures[textureIndex];
 
-			auto asset = gltfAsset->getParsedAsset();
+				YUKI_VERIFY(textureInfo.imageIndex.has_value());
+				auto& imageInfo = asset->images[textureInfo.imageIndex.value()];
 
-			std::scoped_lock lock(m_UploadQueueMutex);
-			auto&[mesh, meshData] = m_UploadQueue.emplace_back();
-			meshData.InstanceData.reserve(asset->meshes.size());
+				int width, height;
+				stbi_uc* imageData = nullptr;
+				std::visit(ImageVisitor
+				{
+					[&](fastgltf::sources::URI& InURI)
+					{
+						ScopedTimer t("URI");
+						imageData = stbi_load(fmt::format("{}/{}", basePath.string(), InURI.uri.path()).c_str(), &width, &height, nullptr, STBI_rgb_alpha);
+					},
+					[&](fastgltf::sources::Vector& InVector)
+					{
+						ScopedTimer t("Vector");
+						imageData = stbi_load_from_memory(InVector.bytes.data(), uint32_t(InVector.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
+					},
+					[&](fastgltf::sources::ByteView& InByteView)
+					{
+						ScopedTimer t("ByteView");
+						imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(InByteView.bytes.data()), uint32_t(InByteView.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
+					},
+					[&](fastgltf::sources::BufferView& InBufferView)
+					{
+						ScopedTimer t("BufferView");
+						auto& view = asset->bufferViews[InBufferView.bufferViewIndex];
+						auto& buffer = asset->buffers[view.bufferIndex];
+						auto* bytes = fastgltf::DefaultBufferDataAdapter{}(buffer) + view.byteOffset;
+						imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(bytes), uint32_t(view.byteLength), &width, &height, nullptr, STBI_rgb_alpha);
+					},
+					[&](auto&) {}
+				}, imageInfo.data);
 
-			ProcessMaterials(asset.get(), filePath.parent_path(), meshData);
+				YUKI_VERIFY(imageData);
 
-			LogInfo("Done! Loading {} materials...", asset->materials.size());
+				auto& image = meshData.Images[textureIndex];
+				image.Width = uint32_t(width);
+				image.Height = uint32_t(height);
+				image.Data = reinterpret_cast<std::byte*>(imageData);
+			};
 
+			imageLoadJob.AddSignal(&imageUploadBarrier);
+			m_JobSystem.Schedule(&imageLoadJob);
+		}
+		
+#endif
+		auto[materialJobIndex, materialLoadJob] = m_LoadJobs.EmplaceBack();
+		materialLoadJob.Task = [asset = assetPtr, &mesh, &meshData, basePath = InFilePath.parent_path()](size_t InThreadID)
+		{
+			LogInfo("Reading Materials");
 			for (auto& material : asset->materials)
 			{
 				auto& meshMaterial = mesh.Materials.emplace_back();
@@ -318,12 +350,20 @@ namespace Yuki {
 				auto& colorTexture = pbrData.baseColorTexture.value();
 				meshMaterial.AlbedoTextureIndex = uint32_t(colorTexture.textureIndex);
 			}
+			LogInfo("Done reading materials");
+		};
+		m_JobSystem.Schedule(&materialLoadJob);
 
-			LogInfo("Done!");
+		auto[barrierIndex1, vertexUploadBarrier] = m_Barriers.EmplaceBack();
 
-			for (auto& gltfMesh : asset->meshes)
+		auto[vertexLoadIndex, vertexLoadJob] = m_LoadJobs.EmplaceBack();
+		vertexLoadJob.Task = [asset = assetPtr, &meshData, basePath = InFilePath.parent_path()](size_t InThreadID)
+		{
+			LogInfo("Loading Vertex Data");
+			for (size_t i = 0; i < asset->meshes.size(); i++)
 			{
-				MeshInstanceData& instanceData = meshData.InstanceData.emplace_back();
+				auto& gltfMesh = asset->meshes[i];
+				MeshSourceData& sourceData = meshData.SourceData[i];
 
 				for (auto& primitive : gltfMesh.primitives)
 				{
@@ -335,23 +375,23 @@ namespace Yuki {
 					if (!primitive.indicesAccessor.has_value())
 						break;
 
-					size_t baseVertexOffset = instanceData.Vertices.size();
+					size_t baseVertexOffset = sourceData.Vertices.size();
 					size_t vertexID = baseVertexOffset;
-					instanceData.Vertices.resize(baseVertexOffset + positionAccessor.count);
+					sourceData.Vertices.resize(baseVertexOffset + positionAccessor.count);
 
 					{
 						auto& indicesAccessor = asset->accessors[primitive.indicesAccessor.value()];
 						fastgltf::iterateAccessor<uint32_t>(*asset, indicesAccessor, [&](uint32_t InIndex)
 						{
-							instanceData.Indices.emplace_back(InIndex + uint32_t(baseVertexOffset));
+							sourceData.Indices.emplace_back(InIndex + uint32_t(baseVertexOffset));
 						});
 					}
 
 					{
 						fastgltf::iterateAccessor<Math::Vec3>(*asset, positionAccessor, [&](Math::Vec3 InPosition)
 						{
-							instanceData.Vertices[vertexID].Position = InPosition;
-							instanceData.Vertices[vertexID].MaterialIndex = uint32_t(primitive.materialIndex.value_or(0));
+							sourceData.Vertices[vertexID].Position = InPosition;
+							sourceData.Vertices[vertexID].MaterialIndex = uint32_t(primitive.materialIndex.value_or(0));
 							vertexID++;
 						});
 						vertexID = baseVertexOffset;
@@ -362,7 +402,7 @@ namespace Yuki {
 						auto& normalsAccessor = asset->accessors[primitive.attributes["NORMAL"]];
 						fastgltf::iterateAccessor<Math::Vec3>(*asset, normalsAccessor, [&](Math::Vec3 InNormal)
 						{
-							instanceData.Vertices[vertexID++].Normal = InNormal;
+							sourceData.Vertices[vertexID++].Normal = InNormal;
 						});
 						vertexID = baseVertexOffset;
 					}
@@ -372,28 +412,109 @@ namespace Yuki {
 						auto& uvAccessor = asset->accessors[primitive.attributes["TEXCOORD_0"]];
 						fastgltf::iterateAccessor<Math::Vec2>(*asset, uvAccessor, [&](Math::Vec2 InUV)
 						{
-							instanceData.Vertices[vertexID++].UV = InUV;
+							sourceData.Vertices[vertexID++].UV = InUV;
 						});
 						vertexID = baseVertexOffset;
 					}
 				}
 			}
 
-			fastgltf::Scene* scene = nullptr;
-			if (asset->defaultScene.has_value())
-				scene = &asset->scenes[asset->defaultScene.value()];
-			else
-				scene = &asset->scenes[0];
-			YUKI_VERIFY(scene);
+			LogInfo("Done loading vertex data");
+		};
+		vertexLoadJob.AddSignal(&vertexUploadBarrier);
 
-			mesh.Instances.reserve(scene->nodeIndices.size());
+		auto[vertexUploadIndex, vertexUploadJob] = m_LoadJobs.EmplaceBack();
+		vertexUploadJob.Task = [context = m_Context, &meshData, &mesh, stagingBuffer = m_MeshStagingBuffer](size_t InThreadID) mutable
+		{
+			LogInfo("Uploading vertex data");
 
+			auto commandPool = context->CreateCommandPool(context->GetTransferQueue(1));
+			Fence fence = context->CreateFence();
+
+			for (size_t i = 0; i < meshData.SourceData.size(); i++)
+			{
+				auto& meshSource = mesh.Sources[i];
+				const auto& sourceData = meshData.SourceData[i];
+
+				{
+					uint32_t vertexDataSize = uint32_t(sourceData.Vertices.size()) * sizeof(Vertex);
+
+					meshSource.VertexData = context->CreateBuffer({
+						.Type = BufferType::StorageBuffer,
+						.Size = vertexDataSize
+					});
+
+					if (meshSource.VertexData != Buffer{})
+					{
+						for (uint32_t bufferOffset = 0; bufferOffset < vertexDataSize; bufferOffset += s_StagingBufferSize)
+						{
+							auto commandList = context->CreateCommandList(commandPool);
+							context->CommandListBegin(commandList);
+
+							const std::byte* ptr = (const std::byte*)sourceData.Vertices.data();
+							uint32_t blockSize = std::min(bufferOffset + s_StagingBufferSize, vertexDataSize) - bufferOffset;
+							context->BufferSetData(stagingBuffer, ptr + bufferOffset, blockSize, 0);
+							context->CommandListCopyToBuffer(commandList, meshSource.VertexData, bufferOffset, stagingBuffer, 0, blockSize);
+
+							context->CommandListEnd(commandList);
+							context->QueueSubmitCommandLists(context->GetTransferQueue(1), { commandList }, {}, { fence });
+							context->FenceWait(fence);
+						}
+					}
+				}
+
+				{
+					uint32_t indexDataSize = uint32_t(sourceData.Indices.size()) * sizeof(uint32_t);
+
+					meshSource.IndexBuffer = context->CreateBuffer({
+						.Type = BufferType::IndexBuffer,
+						.Size = indexDataSize
+					});
+
+					if (meshSource.IndexBuffer != Buffer{})
+					{
+						for (uint32_t bufferOffset = 0; bufferOffset < indexDataSize; bufferOffset += s_StagingBufferSize)
+						{
+							auto commandList = context->CreateCommandList(commandPool);
+							context->CommandListBegin(commandList);
+
+							const std::byte* ptr = (const std::byte*)sourceData.Indices.data();
+							uint32_t blockSize = std::min(bufferOffset + s_StagingBufferSize, indexDataSize) - bufferOffset;
+							context->BufferSetData(stagingBuffer, ptr + bufferOffset, blockSize, 0);
+							context->CommandListCopyToBuffer(commandList, meshSource.IndexBuffer, bufferOffset, stagingBuffer, 0, blockSize);
+
+							context->CommandListEnd(commandList);
+							context->QueueSubmitCommandLists(context->GetTransferQueue(1), { commandList }, {}, { fence });
+							context->FenceWait(fence);
+						}
+
+						meshSource.IndexCount = uint32_t(sourceData.Indices.size());
+					}
+				}
+			}
+
+			context->Destroy(fence);
+			context->Destroy(commandPool);
+
+			LogInfo("Done uploading vertex data");
+		};
+		vertexUploadJob.AddSignal(&instanceCreateBarrier);
+		vertexUploadBarrier.Pending.push_back(&vertexUploadJob);
+		m_JobSystem.Schedule(&vertexLoadJob);
+
+		auto[instanceCreateJobIndex, instanceCreateJob] = m_LoadJobs.EmplaceBack();
+		instanceCreateJob.Task = [asset = assetPtr, scene, &mesh, &meshData, this](size_t InThreadID) mutable
+		{
 			Math::Mat4 transform;
 			transform.SetIdentity();
 
 			for (auto nodeIndex : scene->nodeIndices)
-				ProcessNodeHierarchy(asset.get(), mesh, asset->nodes[nodeIndex], transform);
-		});
+				ProcessNodeHierarchy(asset, mesh, nodeIndex, transform);
+
+			mesh.Instances.shrink_to_fit();
+			m_Callback(std::move(mesh));
+		};
+		instanceCreateBarrier.Pending.push_back(&instanceCreateJob);
 	}
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Yuki/Core/StableDynamicArray.hpp"
+
 #include <vector>
 #include <utility>
 #include <type_traits>
@@ -16,16 +18,15 @@ namespace Yuki {
 			Exists = 1,
 		};
 
-		std::shared_mutex Mutex;
-		std::vector<ElementFlag> Flags;
+		mutable std::shared_mutex Mutex;
 		std::vector<TKey> FreeList;
-		std::vector<TElement> Elements;
+		StableDynamicArray<std::pair<std::atomic<ElementFlag>, TElement>> Elements;
 
 		ResourceRegistry()
 		{
 			std::scoped_lock lock(Mutex);
-			Flags.push_back(ElementFlag::Empty);
-			Elements.push_back({});
+			auto[index, entry] = Elements.EmplaceBackNoLock();
+			entry.first = ElementFlag::Exists;
 		}
 
 		std::pair<TKey, TElement&> Acquire()
@@ -34,68 +35,68 @@ namespace Yuki {
 
 			if (FreeList.empty())
 			{
-				auto& element = Elements.emplace_back();
-				Flags.emplace_back(ElementFlag::Exists);
-				return { TKey(Elements.size() - 1), element };
+				auto[index, entry] = Elements.EmplaceBackNoLock();
+				entry.first = ElementFlag::Exists;
+				return { TKey(index), entry.second };
 			}
 
 			TKey key = FreeList.back();
 			FreeList.pop_back();
-			Flags[static_cast<std::underlying_type_t<TKey>>(key)] = ElementFlag::Exists;
-			return { key, Elements[static_cast<std::underlying_type_t<TKey>>(key)] };
+			auto&[flag, element] = Elements[static_cast<std::underlying_type_t<TKey>>(key)];
+			flag = ElementFlag::Exists;
+			return { key, element };
 		}
 
 		void Return(TKey InKey)
 		{
 			std::scoped_lock lock(Mutex);
-			Flags[static_cast<std::underlying_type_t<TKey>>(InKey)] = ElementFlag::Empty;
+			auto&[flag, element] = Elements[static_cast<std::underlying_type_t<TKey>>(InKey)];
+			flag = ElementFlag::Empty;
 			FreeList.emplace_back(InKey);
 		}
 
 		bool IsValid(TKey InKey) const
 		{
-			//std::scoped_lock lock(Mutex);
-			return Flags[static_cast<std::underlying_type_t<TKey>>(InKey)] == ElementFlag::Exists;
+			const auto&[flag, element] = Elements[static_cast<std::underlying_type_t<TKey>>(InKey)];
+			return flag == ElementFlag::Exists;
 		}
 
 		TElement& Get(TKey InKey)
 		{
-			std::scoped_lock lock(Mutex);
-			return Elements[static_cast<std::underlying_type_t<TKey>>(InKey)];
+			return Elements[static_cast<std::underlying_type_t<TKey>>(InKey)].second;
 		}
 
 		const TElement& Get(TKey InKey) const
 		{
-			//std::scoped_lock lock(Mutex);
-			return Elements[static_cast<std::underlying_type_t<TKey>>(InKey)];
+			return Elements[static_cast<std::underlying_type_t<TKey>>(InKey)].second;
 		}
 
 		template<typename TFunction>
 		void ForEach(TFunction&& InFunction)
 		{
-			std::scoped_lock lock(Mutex);
-			for (size_t i = 0; i < Elements.size(); i++)
+			for (size_t i = 1; i < Elements.GetElementCount(); i++)
 			{
-				if (Flags[i] == ElementFlag::Exists)
-					InFunction(TKey(i), Elements[i]);
+				auto&[flag, element] = Elements[i];
+				if (flag == ElementFlag::Exists)
+					InFunction(TKey(i), element);
 			}
 		}
 
 		template<typename TFunction>
 		void ForEach(TFunction&& InFunction) const
 		{
-			//std::scoped_lock lock(Mutex);
-			for (size_t i = 0; i < Elements.size(); i++)
+			for (size_t i = 1; i < Elements.GetElementCount(); i++)
 			{
-				if (Flags[i] == ElementFlag::Exists)
-					InFunction(TKey(i), Elements[i]);
+				const auto&[flag, element] = Elements[i];
+				if (flag == ElementFlag::Exists)
+					InFunction(TKey(i), element);
 			}
 		}
 
 		uint32_t GetCount() const
 		{
-			//std::scoped_lock lock(Mutex);
-			return uint32_t(Elements.size() - FreeList.size());
+			std::scoped_lock lock(Mutex);
+			return uint32_t(Elements.GetElementCount() - FreeList.size());
 		}
 	};
 

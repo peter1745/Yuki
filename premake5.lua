@@ -1,5 +1,3 @@
-require "Premake/premake-vscode/vscode"
-
 workspace "Yuki"
 	configurations { "RelWithDebug", "Debug", "Release" }
 	architecture "x86_64"
@@ -63,3 +61,4 @@ group ""
 
 include "Yuki/"
 include "Sandbox/"
+include "TestFramework/"

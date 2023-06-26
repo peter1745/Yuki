@@ -21,8 +21,8 @@ namespace Yuki {
 
 		virtual void DeviceWaitIdle() const = 0;
 
-		virtual Queue GetGraphicsQueue(size_t InQueueIndex = 0) const = 0;
-		virtual Queue GetTransferQueue() const = 0;
+		virtual Queue GetGraphicsQueue(size_t InIndex = 0) const = 0;
+		virtual Queue GetTransferQueue(size_t InIndex = 0) const = 0;
 
 		virtual DynamicArray<Swapchain> GetSwapchains() const = 0;
 
@@ -36,7 +36,7 @@ namespace Yuki {
 		virtual void Destroy(Swapchain InSwapchain) = 0;
 
 		virtual Fence CreateFence() = 0;
-		virtual void DestroyFence(Fence InFence) = 0;
+		virtual void Destroy(Fence InFence) = 0;
 		virtual void FenceWait(Fence InFence, uint64_t InValue = 0) = 0;
 
 		virtual CommandPool CreateCommandPool(Queue InQueue) = 0;
@@ -58,6 +58,7 @@ namespace Yuki {
 		virtual void CommandListBlitImage(CommandList InCommandList, Image InDstImage, Image InSrcImage) = 0;
 		virtual void CommandListDraw(CommandList InCommandList, uint32_t InVertexCount) = 0;
 		virtual void CommandListDrawIndexed(CommandList InCommandList, uint32_t InIndexCount) = 0;
+		virtual void CommandListPrepareSwapchainPresent(CommandList InCommandList, Swapchain InSwapchain) = 0;
 
 		virtual Image CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;
 		virtual void Destroy(Image InImage) = 0;

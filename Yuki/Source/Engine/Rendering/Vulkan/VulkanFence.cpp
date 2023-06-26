@@ -24,7 +24,7 @@ namespace Yuki {
 		return handle;
 	}
 
-	void VulkanRenderContext::DestroyFence(Fence InFence)
+	void VulkanRenderContext::Destroy(Fence InFence)
 	{
 		auto& fence = m_Fences.Get(InFence);
 		vkDestroySemaphore(m_LogicalDevice, fence.Semaphore, nullptr);

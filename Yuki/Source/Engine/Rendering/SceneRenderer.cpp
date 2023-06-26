@@ -45,6 +45,9 @@ namespace Yuki {
 		m_Context->DescriptorSetWrite(m_MaterialSet, 0, InMesh.Textures, m_Sampler, m_TextureCount);
 		m_MaterialCount += uint32_t(InMesh.Materials.size());
 		m_TextureCount += uint32_t(InMesh.Textures.size());
+
+		LogInfo("Material Count: {}", m_MaterialCount);
+		LogInfo("Texture Count: {}", m_TextureCount);
 	}
 
 	void SceneRenderer::BeginFrame(const Math::Mat4& InViewProjection)
@@ -67,8 +70,12 @@ namespace Yuki {
 	void SceneRenderer::EndFrame(Fence InFence)
 	{
 		m_Context->CommandListEndRendering(m_CommandList);
+
+		// Transition images to present
+		m_Context->CommandListPrepareSwapchainPresent(m_CommandList, m_TargetSwapchain);
+
 		m_Context->CommandListEnd(m_CommandList);
-		m_Context->QueueSubmitCommandLists(m_GraphicsQueue, { m_CommandList }, { InFence }, {});
+		m_Context->QueueSubmitCommandLists(m_GraphicsQueue, { m_CommandList }, { InFence }, { InFence });
 	}
 
 	void SceneRenderer::Submit(Mesh& InMesh)
@@ -77,14 +84,7 @@ namespace Yuki {
 
 		for (const auto& meshInstance : InMesh.Instances)
 		{
-			if (meshInstance.SourceIndex >= InMesh.Sources.size())
-				continue;
-
 			const auto& meshData = InMesh.Sources[meshInstance.SourceIndex];
-
-			if (meshData.VertexData == Buffer{} || meshData.IndexBuffer == Buffer{})
-				continue;
-
 			m_PushConstants.Transform = meshInstance.Transform;
 			m_PushConstants.VertexVA = m_Context->BufferGetDeviceAddress(meshData.VertexData);
 			m_Context->CommandListPushConstants(m_CommandList, m_ActivePipeline, &m_PushConstants, sizeof(PushConstants));

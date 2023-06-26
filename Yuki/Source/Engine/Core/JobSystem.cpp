@@ -1,10 +1,14 @@
 #include "Core/JobSystem.hpp"
 
+#if defined(YUKI_PLATFORM_WINDOWS)
+	#include "Platform/Windows/WindowsUtils.hpp"
+#endif
+
 namespace Yuki {
 
-	JobSystem::JobSystem(uint32_t InThreads)
+	JobSystem::JobSystem(uint32_t InThreadCount)
 	{
-		Init(InThreads);
+		Init(InThreadCount);
 	}
 
 	JobSystem::~JobSystem()
@@ -12,122 +16,89 @@ namespace Yuki {
 		Shutdown();
 	}
 
-	void JobSystem::Init(uint32_t InThreads)
+	void JobSystem::Init(uint32_t InThreadCount)
 	{
-		m_Running = true;
-		
-		for (uint32_t i = 0; i < InThreads; i++)
+		for (uint32_t i = 0; i < InThreadCount; i++)
 		{
-			m_WorkerThreads.emplace_back([&]()
+			WorkerThreadData workerData =
 			{
-				WorkerThread(i);
-			});
+				.ThreadID = m_WorkerThreads.size(),
+				.ProducerToken = moodycamel::ProducerToken(m_Jobs),
+				.ConsumerToken = moodycamel::ConsumerToken(m_Jobs)
+			};
+
+			std::string name = fmt::format("Worker-{}", i);
+			auto& worker = m_WorkerThreads.emplace_back(&JobSystem::WorkerThread, this, std::move(workerData));
+			SetWorkerName(worker, name);
+		}
+	}
+
+	void JobSystem::SetWorkerName(std::jthread& InThread, std::string_view InName)
+	{
+		if constexpr (s_Platform == Platform::Windows)
+		{
+			auto name = WindowsUtils::ConvertUtf8ToWide(InName);
+			SetThreadDescription(InThread.native_handle(), name.c_str());
 		}
 	}
 
 	void JobSystem::Shutdown()
 	{
-		{
-			std::scoped_lock lock(m_Mutex);
-			m_Running = false;
-			m_ConditionVariable.notify_all();
-
-			while (!m_FinishedJobs.empty())
-			{
-				Job* job = m_FinishedJobs.front();
-				m_FinishedJobs.pop();
-				delete job;
-			}
-		}
-		
-		{
-			std::scoped_lock lock(m_JobQueueMutex);
-
-			while (!m_JobQueue.empty())
-			{
-				auto* job = m_JobQueue.back();
-				m_JobQueue.pop();
-				delete job;
-			}
-		}
+		m_ExecuteJobs = false;
+		m_ConditionVariable.notify_all();
 	}
 
-	Job* JobSystem::Submit(Job::FuncType&& InJobFunc, JobFlags InFlags)
+	void JobSystem::Schedule(Job* InJob)
 	{
-		Job* job = nullptr;
-		if (!m_FinishedJobs.empty())
-		{
-			std::scoped_lock lock(m_FinishedJobsMutex);
-			job = m_FinishedJobs.front();
-			m_FinishedJobs.pop();
-		}
-		else
-		{
-			job = new Job();
-		}
-
-		std::scoped_lock lock(m_JobQueueMutex);
-		job->m_JobFunc = std::move(InJobFunc);
-		job->m_Done = false;
-		job->m_Flags = InFlags;
-		m_JobQueue.push(job);
+		m_Jobs.enqueue(InJob);
 		m_ConditionVariable.notify_one();
-
-		return job;
 	}
 
-	void JobSystem::SubmitAndWait(Job::FuncType&& InJobFunc, JobFlags InFlags)
+	void JobSystem::ScheduleWithProducer(moodycamel::ProducerToken& InToken, Job* InJob)
 	{
-		const auto* job = Submit(std::move(InJobFunc));
-		job->Wait();
+		m_Jobs.enqueue(InToken, InJob);
+		m_ConditionVariable.notify_one();
 	}
 
-	void JobSystem::WaitAll() const
-	{
-		while (!m_JobQueue.empty())
-		{
-			const Job* job = m_JobQueue.front();
-			job->Wait();
-		}
-	}
-
-	void JobSystem::WorkerThread(size_t InWorkerID)
+	void JobSystem::WorkerThread(WorkerThreadData InWorkerData)
 	{
 		while (true)
 		{
-			std::unique_lock lock(m_Mutex);
+			Job* job = nullptr;
 
-			while (m_JobQueue.empty())
+			uint32_t spins = 1;
+			do {
+				m_Jobs.try_dequeue_from_producer(InWorkerData.ProducerToken, job);
+			} while (!job && spins--);
+
+			if (!job)
 			{
-				if (!m_Running)
-					return;
+				std::unique_lock lock(m_GlobalMutex);
 
-				m_ConditionVariable.wait(lock);
+				while (m_Jobs.try_dequeue(InWorkerData.ConsumerToken, job), !job)
+				{
+					if (!m_ExecuteJobs)
+						return;
+
+					m_ConditionVariable.wait(lock);
+				}
 			}
 
-			if (!m_Running)
-				return;
-
-			auto* job = m_JobQueue.front();
-			m_JobQueue.pop();
-
-			lock.unlock();
-
-			job->m_JobFunc(InWorkerID);
-
-			if (job->m_Flags & JobFlags::RescheduleOnFinish)
+			job->Task(InWorkerData.ThreadID);
+			
+			for (auto* barrier : job->Signals)
 			{
-				std::scoped_lock jobQueueLock(m_JobQueueMutex);
-				m_JobQueue.push(job);
+				if (--barrier->Counter == 0)
+				{
+					for (auto* pending : barrier->Pending)
+						ScheduleWithProducer(InWorkerData.ProducerToken, pending);
+
+					barrier->Counter.notify_all();
+				}
 			}
-			else
-			{
-				job->m_Done = true;
-				job->m_Done.notify_all();
-				
-				std::scoped_lock finishedLock(m_FinishedJobsMutex);
-				m_FinishedJobs.push(job);
-			}
+
+			if (job->OnDone)
+				job->OnDone();
 		}
 	}
 

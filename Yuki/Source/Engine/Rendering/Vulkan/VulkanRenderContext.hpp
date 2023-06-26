@@ -25,8 +25,17 @@ namespace Yuki {
 
 		void DeviceWaitIdle() const override;
 
-		Queue GetGraphicsQueue(size_t InQueueIndex) const override { return m_GraphicsQueues[InQueueIndex]; }
-		Queue GetTransferQueue() const override { return m_TransferQueue; }
+		Queue GetGraphicsQueue(size_t InIndex = 0) const override
+		{
+			//std::scoped_lock lock(m_Mutex);
+			return m_GraphicsQueues[InIndex];
+		}
+
+		Queue GetTransferQueue(size_t InIndex = 0) const override
+		{
+			//std::scoped_lock lock(m_Mutex1);
+			return m_TransferQueues[InIndex];
+		}
 
 		DynamicArray<Swapchain> GetSwapchains() const override;
 
@@ -41,7 +50,7 @@ namespace Yuki {
 		void Destroy(Swapchain InSwapchain) override;
 
 		Fence CreateFence() override;
-		void DestroyFence(Fence InFence) override;
+		void Destroy(Fence InFence) override;
 		void FenceWait(Fence InFence, uint64_t InValue = 0) override;
 
 		CommandPool CreateCommandPool(Queue InQueue) override;
@@ -63,6 +72,7 @@ namespace Yuki {
 		void CommandListBlitImage(CommandList InCommandList, Image InDstImage, Image InSrcImage) override;
 		void CommandListDraw(CommandList InCommandList, uint32_t InVertexCount) override;
 		void CommandListDrawIndexed(CommandList InCommandList, uint32_t InIndexCount) override;
+		void CommandListPrepareSwapchainPresent(CommandList InCommandList, Swapchain InSwapchain) override;
 
 		Image CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
 		void Destroy(Image InImage) override;
@@ -113,8 +123,11 @@ namespace Yuki {
 
 		VkDebugUtilsMessengerEXT m_DebugUtilsMessengerHandle = VK_NULL_HANDLE;
 
+		mutable std::shared_mutex m_Mutex;
+		mutable std::shared_mutex m_Mutex1;
 		DynamicArray<Queue> m_GraphicsQueues;
-		Queue m_TransferQueue;
+		DynamicArray<Queue> m_TransferQueues;
+		DynamicArray<Queue> m_DeviceQueues;
 
 		VmaAllocator m_Allocator{};
 

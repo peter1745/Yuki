@@ -61,7 +61,7 @@ namespace Yuki {
 			.pSignalSemaphoreInfos = signalSemaphores.data(),
 		};
 
-		vkQueueSubmit2(queue.Queue, 1, &submitInfo, VK_NULL_HANDLE);
+		YUKI_VERIFY(vkQueueSubmit2(queue.Queue, 1, &submitInfo, VK_NULL_HANDLE) == VK_SUCCESS);
 	}
 
 	static VkResult AcquireNextImage(VkDevice InLogicalDevice, VulkanSwapchain& InSwapchain)
@@ -147,23 +147,6 @@ namespace Yuki {
 			return;
 
 		auto& queue = m_Queues.Get(InQueue);
-		
-		// Transition images to present
-		{
-			auto pool = CreateCommandPool(InQueue);
-			auto commandListHandle = CreateCommandList(pool);
-			CommandListBegin(commandListHandle);
-
-			for (auto swapchainHandle : InSwapchains)
-			{
-				auto& swapchain = m_Swapchains.Get(swapchainHandle);
-				//YUKI_VERIFY(m_Images.Get(swapchain.Images[swapchain.CurrentImage]).Layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-				CommandListTransitionImage(commandListHandle, swapchain.Images[swapchain.CurrentImage], ImageLayout::Present);
-			}
-
-			CommandListEnd(commandListHandle);
-			QueueSubmitCommandLists(InQueue, { commandListHandle }, {}, InFences);
-		}
 
 		std::vector<VkResult> presentResults(InSwapchains.size());
 		std::vector<VkSemaphore> binaryWaits;

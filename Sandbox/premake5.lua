@@ -13,7 +13,9 @@ project "Sandbox"
         "../Yuki/Include/",
         
         "../ThirdParty/spdlog/include/",
-        "../ThirdParty/ankerl/include/"
+        "../ThirdParty/ankerl/include/",
+
+        "../ThirdParty/",
     }
 
     libdirs {

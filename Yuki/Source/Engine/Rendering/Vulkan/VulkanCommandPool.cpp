@@ -27,7 +27,7 @@ namespace Yuki {
 	void VulkanRenderContext::CommandPoolReset(CommandPool InCommandPool)
 	{
 		auto& pool = m_CommandPools.Get(InCommandPool);
-		vkResetCommandPool(m_LogicalDevice, pool.Pool, 0);
+		YUKI_VERIFY(vkResetCommandPool(m_LogicalDevice, pool.Pool, 0) == VK_SUCCESS);
 		pool.NextList = 0;
 	}
 
@@ -54,7 +54,7 @@ namespace Yuki {
 				.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 				.commandBufferCount = 1,
 			};
-			vkAllocateCommandBuffers(m_LogicalDevice, &allocateInfo, &commandList.CommandBuffer);
+			YUKI_VERIFY(vkAllocateCommandBuffers(m_LogicalDevice, &allocateInfo, &commandList.CommandBuffer) == VK_SUCCESS);
 
 			pool.AllocatedLists.emplace_back(handle);
 		}
@@ -73,13 +73,13 @@ namespace Yuki {
 			.flags = 0,
 			.pInheritanceInfo = nullptr,
 		};
-		vkBeginCommandBuffer(commandList.CommandBuffer, &beginInfo);
+		YUKI_VERIFY(vkBeginCommandBuffer(commandList.CommandBuffer, &beginInfo) == VK_SUCCESS);
 	}
 
 	void VulkanRenderContext::CommandListEnd(CommandList InCommandList)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
-		vkEndCommandBuffer(commandList.CommandBuffer);
+		YUKI_VERIFY(vkEndCommandBuffer(commandList.CommandBuffer) == VK_SUCCESS);
 	}
 
 	void VulkanRenderContext::CommandListBeginRendering(CommandList InCommandList, Swapchain InSwapchain)
@@ -386,6 +386,12 @@ namespace Yuki {
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		vkCmdDrawIndexed(commandList.CommandBuffer, InIndexCount, 1, 0, 0, 0);
+	}
+
+	void VulkanRenderContext::CommandListPrepareSwapchainPresent(CommandList InCommandList, Swapchain InSwapchain)
+	{
+		auto& swapchain = m_Swapchains.Get(InSwapchain);
+		CommandListTransitionImage(InCommandList, swapchain.Images[swapchain.CurrentImage], ImageLayout::Present);
 	}
 
 }
