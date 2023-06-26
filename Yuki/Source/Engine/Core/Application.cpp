@@ -1,8 +1,7 @@
 #include "Core/Application.hpp"
+#include "Core/Timer.hpp"
+
 #include "EventSystem/ApplicationEvents.hpp"
-#include "Rendering/RHI/Queue.hpp"
-#include "Rendering/RHI/Fence.hpp"
-#include "Rendering/RHI/Swapchain.hpp"
 
 namespace Yuki {
 
@@ -14,7 +13,7 @@ namespace Yuki {
 	GenericWindow* Application::NewWindow(WindowAttributes InWindowAttributes)
 	{
 		InWindowAttributes.EventCallback = [this](Event* InEvent) { m_EventSystem->PostEvent(InEvent); };
-		Unique<GenericWindow> window = GenericWindow::New(m_RenderContext.GetPtr(), InWindowAttributes);
+		Unique<GenericWindow> window = GenericWindow::New(m_RenderContext, InWindowAttributes);
 		window->Create();
 		return m_Windows.emplace_back(std::move(window)).GetPtr();
 	}
@@ -22,7 +21,6 @@ namespace Yuki {
 	void Application::Initialize()
 	{
 		m_RenderContext = RenderContext::New(m_RenderingAPI);
-		m_RenderContext->Initialize();
 
 		m_EventSystem = Unique<EventSystem>::Create();
 		m_EventSystem->AddListener(this, &Application::OnWindowClose);
@@ -36,26 +34,26 @@ namespace Yuki {
 	{
 		while (m_RunEngineLoop)
 		{
+			Timer timer("RunLoop");
+
 			for (const auto& window : m_Windows)
 				window->ProcessEvents();
 
-			OnRunLoop();
+			OnRunLoop(m_DeltaTime);
 
 			// Clean up closed windows
 			auto it = std::remove_if(m_Windows.begin(), m_Windows.end(), [this](const auto& InWindow) { return std::find(m_ClosedWindows.begin(), m_ClosedWindows.end(), InWindow.GetPtr()) != m_ClosedWindows.end(); });
 			if (it != m_Windows.end())
 				m_Windows.erase(it);
-		}
 
-		m_RenderContext->WaitDeviceIdle();
+			m_DeltaTime = timer.ElapsedSeconds();
+		}
 	}
 
 	void Application::Destroy()
 	{
 		OnDestroy();
 		m_Windows.clear();
-		m_RenderContext->WaitDeviceIdle();
-		m_RenderContext->Destroy();
 	}
 
 	void Application::OnWindowClose(const WindowCloseEvent& InEvent)

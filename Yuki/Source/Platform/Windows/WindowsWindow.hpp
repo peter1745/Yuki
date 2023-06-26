@@ -26,7 +26,7 @@ namespace Yuki {
 
 		void ProcessEvents() override;
 
-		Viewport* GetViewport() const override { return m_Viewport.GetPtr(); }
+		SwapchainHandle GetSwapchain() const override { return m_Swapchain; }
 
 		int64_t GetRawMouseDeltaX() override
 		{
@@ -63,7 +63,7 @@ namespace Yuki {
 		HWND m_WindowHandle = nullptr;
 		WindowAttributes m_Attributes;
 		RenderContext* m_RenderContext;
-		Unique<Viewport> m_Viewport = nullptr;
+		SwapchainHandle m_Swapchain;
 
 		int64_t m_LastMouseDeltaX = 0;
 		int64_t m_LastMouseDeltaY = 0;

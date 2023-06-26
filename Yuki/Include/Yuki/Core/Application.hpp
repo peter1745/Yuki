@@ -3,7 +3,8 @@
 #include "GenericWindow.hpp"
 
 #include "Yuki/EventSystem/EventSystem.hpp"
-#include "Yuki/Rendering/RHI/RenderContext.hpp"
+#include "Yuki/Rendering/RenderAPI.hpp"
+#include "Yuki/Rendering/RenderContext.hpp"
 
 namespace Yuki {
 
@@ -25,7 +26,7 @@ namespace Yuki {
 
 	private:
 		virtual void OnInitialize() {}
-		virtual void OnRunLoop() {}
+		virtual void OnRunLoop(float InDeltaTime) {}
 		virtual void OnDestroy() {}
 
 	private:
@@ -39,7 +40,7 @@ namespace Yuki {
 		std::string m_Name;
 		RenderAPI m_RenderingAPI = RenderAPI::Vulkan;
 
-		List<Unique<GenericWindow>> m_Windows;
+		DynamicArray<Unique<GenericWindow>> m_Windows;
 		Unique<EventSystem> m_EventSystem = nullptr;
 		Unique<RenderContext> m_RenderContext = nullptr;
 
@@ -47,7 +48,10 @@ namespace Yuki {
 
 		int32_t m_ExitCode = 0;
 
-		List<GenericWindow*> m_ClosedWindows;
+		DynamicArray<GenericWindow*> m_ClosedWindows;
+
+		float m_LastFrameTime = 0.0f;
+		float m_DeltaTime = 0.0f;
 
 	private:
 		template<typename TAppClass>

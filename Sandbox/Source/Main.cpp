@@ -1,17 +1,17 @@
 #include <iostream>
 #include <filesystem>
-
+#include <array>
+#include <span>
 
 #include <Yuki/EntryPoint.hpp>
 #include <Yuki/Core/Application.hpp>
 #include <Yuki/Core/Logging.hpp>
+#include <Yuki/Core/Timer.hpp>
 #include <Yuki/Math/Math.hpp>
+#include <Yuki/Math/Mat4.hpp>
 #include <Yuki/EventSystem/ApplicationEvents.hpp>
-#include <Yuki/Rendering/RHI/GraphicsPipelineBuilder.hpp>
-#include <Yuki/Rendering/RHI/ShaderCompiler.hpp>
-#include <Yuki/Rendering/RHI/RenderTarget.hpp>
-#include <Yuki/Rendering/RHI/Queue.hpp>
-#include <Yuki/Rendering/RHI/Fence.hpp>
+#include <Yuki/Rendering/PipelineBuilder.hpp>
+#include <Yuki/Rendering/DescriptorSetBuilder.hpp>
 #include <Yuki/Rendering/SceneRenderer.hpp>
 #include <Yuki/IO/MeshLoader.hpp>
 
@@ -41,75 +41,81 @@ private:
 			.Height = 1080
 		});
 
-		m_Fence = GetRenderContext()->CreateFence();
+		m_GraphicsQueue = { GetRenderContext()->GetGraphicsQueue(), GetRenderContext() };
 
-		m_Renderer = new Yuki::SceneRenderer(GetRenderContext());
+		m_Fence = Yuki::Fence(GetRenderContext());
 
-		m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
-		//m_Mesh = Yuki::MeshLoader::LoadGLTFMesh(GetRenderContext(), "Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+		m_Renderer = new Yuki::SceneRenderer(GetRenderContext(), m_Windows[0]->GetSwapchain());
+
+		m_MeshLoader = Yuki::Unique<Yuki::MeshLoader>::Create(GetRenderContext(), [this](Yuki::Mesh InMesh)
+		{
+			std::scoped_lock lock(m_MeshesMutex);
+			m_Meshes.emplace_back(std::move(InMesh));
+			m_MeshDataUploadQueue.emplace_back(m_Meshes.size() - 1);
+		});
+
+		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
+		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/Small_City_LVL/Small_City_LVL.gltf");
+		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/powerplant/powerplant.gltf");
 
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
 	}
 
-	void OnRunLoop() override
+	void OnRunLoop(float InDeltaTime) override
 	{
-		m_Camera->Update(0.0f);
+		m_Camera->Update(InDeltaTime);
 
-		// Collect Viewports
-		std::vector<Yuki::Viewport*> viewports;
-		viewports.reserve(m_Windows.size());
-		for (auto* window : m_Windows)
-		{
-			if (window == nullptr || window->GetViewport() == nullptr)
-				continue;
+		// Collect Swapchains
+		auto swapchains = GetRenderContext()->GetSwapchains();
 
-			viewports.emplace_back(window->GetViewport());
-		}
+		if (swapchains.empty())
+			return;
 
-		m_Fence->Wait();
+		m_Fence.Wait();
 
 		// Acquire Images for all Viewports
-		GetRenderContext()->GetGraphicsQueue()->AcquireImages(viewports, { m_Fence });
+		m_GraphicsQueue.AcquireImages(swapchains, { m_Fence });
 
-		m_Renderer->BeginFrame();
-
-		if (!viewports.empty() && viewports[0])
 		{
-			m_Renderer->SetTargetViewport(viewports[0]);
-			m_Renderer->BeginDraw(m_Camera->GetViewMatrix());
-			m_Renderer->DrawMesh(m_Mesh);
-			m_Renderer->EndDraw();
+			std::scoped_lock lock(m_MeshesMutex);
+
+			const auto& windowAttribs = m_Windows[0]->GetAttributes();
+			m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)windowAttribs.Width / windowAttribs.Height, 0.05f) * m_Camera->GetViewMatrix());
+
+			while (!m_MeshDataUploadQueue.empty())
+			{
+				m_Renderer->RegisterMeshData(m_Meshes[m_MeshDataUploadQueue.back()]);
+				m_MeshDataUploadQueue.pop_back();
+			}
+
+			for (auto& mesh : m_Meshes)
+				m_Renderer->Submit(mesh);
+
+			m_Renderer->EndFrame(m_Fence);
 		}
 
-		m_Renderer->EndFrame();
-		GetRenderContext()->GetGraphicsQueue()->SubmitCommandBuffers({ m_Renderer->GetCurrentCommandBuffer() }, { m_Fence }, {});
-
 		// Present all swapchain images
-		GetRenderContext()->GetGraphicsQueue()->Present(viewports, { m_Fence });
+		m_GraphicsQueue.Present(swapchains, { m_Fence });
 	}
 
 	void OnDestroy() override
 	{
-		m_Mesh.Meshes.clear();
-		m_Mesh.Instances.clear();
-		m_Mesh.LoadedImages.clear();
-		m_Mesh.Textures.clear();
-		m_Mesh.Materials.clear();
-
-		m_Fence.Release();
-
-		delete m_Renderer;
 	}
 
 private:
 	std::vector<Yuki::GenericWindow*> m_Windows;
-	Yuki::Unique<Yuki::Fence> m_Fence = nullptr;
+	Yuki::Queue m_GraphicsQueue{};
+	Yuki::Fence m_Fence{};
 
 	Yuki::Unique<FreeCamera> m_Camera = nullptr;
+	Yuki::Unique<Yuki::MeshLoader> m_MeshLoader = nullptr;
 
 	Yuki::SceneRenderer* m_Renderer = nullptr;
 
-	Yuki::LoadedMesh m_Mesh;
+	std::recursive_mutex m_MeshesMutex;
+	Yuki::DynamicArray<Yuki::Mesh> m_Meshes;
+	Yuki::DynamicArray<size_t> m_MeshDataUploadQueue;
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

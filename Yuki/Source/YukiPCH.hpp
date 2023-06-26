@@ -16,6 +16,8 @@
 
 #include <random>
 
+#include <limits>
+
 #include <ranges>
 
 #if defined(YUKI_PLATFORM_WINDOWS)
@@ -27,6 +29,5 @@
 
 #include "Core/Core.hpp"
 #include "Core/Debug.hpp"
-#include "Core/Stopwatch.hpp"
 
 #include "Memory/Unique.hpp"

@@ -2,10 +2,6 @@
 	path = ThirdParty/spdlog
 	url = https://github.com/gabime/spdlog
 	shallow = true
-[submodule "Premake/premake-vscode"]
-	path = Premake/premake-vscode
-	url = https://github.com/peter1745/premake-vscode
-	shallow = true
 [submodule "ThirdParty/fastgltf"]
 	path = ThirdParty/fastgltf
 	url = https://github.com/spnda/fastgltf
@@ -13,4 +9,8 @@
 [submodule "ThirdParty/simdjson"]
 	path = ThirdParty/simdjson
 	url = https://github.com/simdjson/simdjson
+	shallow = true
+[submodule "ThirdParty/concurrentqueue"]
+	path = ThirdParty/concurrentqueue
+	url = https://github.com/cameron314/concurrentqueue
 	shallow = true

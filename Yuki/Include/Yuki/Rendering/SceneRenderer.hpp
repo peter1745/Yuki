@@ -1,58 +1,65 @@
 #pragma once
 
 #include "MeshData.hpp"
-#include "RHI/RenderContext.hpp"
-#include "RHI/RenderInterface.hpp"
-#include "RHI/CommandBufferPool.hpp"
-#include "RHI/GraphicsPipeline.hpp"
-#include "RHI/DescriptorSet.hpp"
-#include "RHI/Sampler.hpp"
-	
+#include "RenderResources.hpp"
+
+#include "Yuki/Math/Mat4.hpp"
+
 namespace Yuki {
 
 	class SceneRenderer
 	{
 	public:
-		SceneRenderer(RenderContext* InContext);
+		SceneRenderer(RenderContext* InContext, SwapchainHandle InSwapchain);
 
-		void SetTargetViewport(Viewport* InViewport);
-		void BeginFrame();
-		void BeginDraw(const Math::Mat4& InViewMatrix);
-		void DrawMesh(LoadedMesh& InMesh);
-		void EndDraw();
-		void EndFrame();
+		void BeginFrame(const Math::Mat4& InViewProjection);
+		void EndFrame(FenceHandle InFence);
 
-		CommandBuffer* GetCurrentCommandBuffer() const { return m_CommandBuffer; }
+		void Submit(Mesh& InMesh);
+
+		void SetWireframeMode(bool InEnable) { m_ActivePipeline = InEnable ? m_WireframePipeline : m_Pipeline; }
+
+		void RegisterMeshData(Mesh& InMesh);
 
 	private:
 		void CreateDescriptorSets();
-		void BuildPipelines();
+		void CreatePipelines();
 
 	private:
 		RenderContext* m_Context = nullptr;
-		Unique<RenderInterface> m_RenderInterface = nullptr;
-		Unique<CommandBufferPool> m_CommandPool = nullptr;
-		CommandBuffer* m_CommandBuffer = nullptr;
+		Swapchain m_TargetSwapchain{};
+		Queue m_GraphicsQueue{};
 
-		Unique<Buffer> m_StagingBuffer = nullptr;
+		Shader m_MeshShader{};
+		Pipeline m_Pipeline{};
+		Pipeline m_WireframePipeline{};
+		Pipeline m_ActivePipeline{};
 
-		Viewport* m_Viewport = nullptr;
+		CommandPool m_CommandPool{};
+		CommandList m_CommandList{};
 
-		Unique<DescriptorPool> m_DescriptorPool = nullptr;
-		DescriptorSet* m_MaterialDescriptorSet = nullptr;
+		Sampler m_Sampler{};
 
-		Unique<Sampler> m_Sampler = nullptr;
+		Buffer m_StagingBuffer{};
+		Buffer m_MaterialsBuffer{};
 
-		Unique<Buffer> m_MaterialStorageBuffer = nullptr;
+		uint32_t m_MaterialCount = 0;
+		uint32_t m_TextureCount = 0;
 
-		Unique<Shader> m_MeshShader = nullptr;
-		Unique<GraphicsPipeline> m_MeshPipeline = nullptr;
+		DescriptorPool m_DescriptorPool{};
+		DescriptorSetLayout m_DescriptorSetLayout{};
+		DescriptorSet m_MaterialSet{};
+		uint32_t m_MaterialSetOffset = 0;
+		uint32_t m_MaterialSetTextureOffset = 0;
 
-		struct FrameTransforms
+		struct PushConstants
 		{
 			Math::Mat4 ViewProjection;
 			Math::Mat4 Transform;
-		} m_FrameTransforms;
+			uint64_t VertexVA;
+			uint64_t MaterialVA;
+			uint32_t MaterialOffset;
+		} m_PushConstants;
 	};
 
 }
