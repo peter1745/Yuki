@@ -31,7 +31,6 @@ project "Yuki"
         "../ThirdParty/ankerl/include/",
         "../ThirdParty/fastgltf/include/",
         "../ThirdParty/stb_image/include/",
-        "../ThirdParty/imgui/",
         "../ThirdParty/",
 
         VulkanSDKPath,
