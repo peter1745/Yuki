@@ -133,6 +133,43 @@ namespace Yuki {
 		return handle;
 	}
 
+	ShaderHandle VulkanRenderContext::CreateShader(std::string_view InSource)
+	{
+		auto[handle, shader] = m_Shaders.Acquire();
+
+		auto shaderModules = ParseShaderSource(InSource);
+
+		Map<ShaderModuleType, std::vector<uint32_t>> compiledByteCode;
+		for (const auto& [shaderModuleType, moduleSource] : shaderModules)
+		{
+			auto result = CompileModule(shaderModuleType, moduleSource);
+
+			if (result.GetCompilationStatus() != shaderc_compilation_status_success)
+			{
+				compiledByteCode.clear();
+				break;
+			}
+
+			compiledByteCode[shaderModuleType] = std::vector<uint32_t>(result.begin(), result.end());
+		}
+
+		shader.Name = "Unnamed";
+
+		for (const auto& [shaderModuleType, moduleByteCode] : compiledByteCode)
+		{
+			VkShaderModuleCreateInfo moduleCreateInfo =
+			{
+				.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+				.codeSize = moduleByteCode.size() * sizeof(uint32_t),
+				.pCode = moduleByteCode.data()
+			};
+
+			vkCreateShaderModule(m_LogicalDevice, &moduleCreateInfo, nullptr, &shader.Modules[shaderModuleType]);
+		}
+
+		return handle;
+	}
+
 	void VulkanRenderContext::Destroy(ShaderHandle InShader)
 	{
 		auto& shader = m_Shaders.Get(InShader);

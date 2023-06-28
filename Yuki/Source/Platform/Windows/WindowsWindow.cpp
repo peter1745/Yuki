@@ -9,6 +9,30 @@ namespace Yuki {
 	static std::array<RAWINPUT, 1000> s_RawInputBuffer;
 	static std::array<KeyCode, 512> s_KeyCodes;
 
+	void OnMouseButtonEvent(WindowsWindow::WindowData* InWindowData, MouseButton InButton, MouseButtonState InState, int32_t InMouseX, int32_t InMouseY)
+	{
+		InWindowData->MouseButtonStates[InButton] = InState;
+
+		WindowMouseClickEvent mouseClickEvent;
+		mouseClickEvent.Window = InWindowData->This;
+		mouseClickEvent.Button = InButton;
+		mouseClickEvent.State = InState;
+		mouseClickEvent.MouseX = InMouseX;
+		mouseClickEvent.MouseY = InMouseY;
+
+		if (InState == MouseButtonState::Pressed)
+		{
+			SetCapture(InWindowData->This->GetWindowHandle());
+		}
+		else
+		{
+			ReleaseCapture();
+		}
+
+		if (InWindowData->Attributes->EventCallback)
+			InWindowData->Attributes->EventCallback(&mouseClickEvent);
+	}
+
 	LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		auto* windowData = reinterpret_cast<WindowsWindow::WindowData*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
@@ -43,32 +67,44 @@ namespace Yuki {
 		}
 		case WM_LBUTTONDOWN:
 		{
-			windowData->MouseButtonStates[MouseButton::Left] = MouseButtonState::Pressed;
+			OnMouseButtonEvent(windowData, MouseButton::Left, MouseButtonState::Pressed, LOWORD(lParam), HIWORD(lParam));
 			break;
 		}
 		case WM_MBUTTONDOWN:
 		{
-			windowData->MouseButtonStates[MouseButton::Middle] = MouseButtonState::Pressed;
+			OnMouseButtonEvent(windowData, MouseButton::Middle, MouseButtonState::Pressed, LOWORD(lParam), HIWORD(lParam));
 			break;
 		}
 		case WM_RBUTTONDOWN:
 		{
-			windowData->MouseButtonStates[MouseButton::Right] = MouseButtonState::Pressed;
+			OnMouseButtonEvent(windowData, MouseButton::Right, MouseButtonState::Pressed, LOWORD(lParam), HIWORD(lParam));
 			break;
 		}
 		case WM_LBUTTONUP:
 		{
-			windowData->MouseButtonStates[MouseButton::Left] = MouseButtonState::Released;
+			OnMouseButtonEvent(windowData, MouseButton::Left, MouseButtonState::Released, LOWORD(lParam), HIWORD(lParam));
 			break;
 		}
 		case WM_MBUTTONUP:
 		{
-			windowData->MouseButtonStates[MouseButton::Middle] = MouseButtonState::Released;
+			OnMouseButtonEvent(windowData, MouseButton::Middle, MouseButtonState::Released, LOWORD(lParam), HIWORD(lParam));
 			break;
 		}
 		case WM_RBUTTONUP:
 		{
-			windowData->MouseButtonStates[MouseButton::Right] = MouseButtonState::Released;
+			OnMouseButtonEvent(windowData, MouseButton::Right, MouseButtonState::Released, LOWORD(lParam), HIWORD(lParam));
+			break;
+		}
+		case WM_MOUSEMOVE:
+		{
+			WindowMouseMoveEvent mouseMoveEvent;
+			mouseMoveEvent.Window = windowData->This;
+			mouseMoveEvent.MouseX = int32_t(LOWORD(lParam));
+			mouseMoveEvent.MouseY = int32_t(HIWORD(lParam));
+
+			if (windowData->Attributes->EventCallback)
+				windowData->Attributes->EventCallback(&mouseMoveEvent);
+
 			break;
 		}
 		case WM_KEYDOWN:
@@ -114,6 +150,14 @@ namespace Yuki {
 					key = KeyCode::LeftControl;
 				}
 			}
+
+			WindowKeyboardEvent keyboardEvent;
+			keyboardEvent.Window = windowData->This;
+			keyboardEvent.Key = key;
+			keyboardEvent.State = state;
+
+			if (windowData->Attributes->EventCallback)
+				windowData->Attributes->EventCallback(&keyboardEvent);
 
 			windowData->KeyStates[key] = state;
 			break;

@@ -23,6 +23,9 @@ namespace Yuki::Math {
 	constexpr T Min(T InValue, T InOtherValue) { return InValue < InOtherValue ? InValue : InOtherValue; }
 
 	template<typename T>
+	constexpr T Max(T InValue, T InOtherValue) { return InValue > InOtherValue ? InValue : InOtherValue; }
+
+	template<typename T>
 	constexpr T Clamp(T InValue, T InMin, T InMax)
 	{
 		if (InValue > InMax)

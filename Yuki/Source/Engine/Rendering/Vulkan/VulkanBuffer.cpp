@@ -97,4 +97,12 @@ namespace Yuki {
 		return buffer.DeviceAddress;
 	}
 
+	void* VulkanRenderContext::BufferGetMappedMemory(BufferHandle InBuffer)
+	{
+		auto& buffer = m_Buffers.Get(InBuffer);
+		VmaAllocationInfo allocationInfo;
+		vmaGetAllocationInfo(m_Allocator, buffer.Allocation, &allocationInfo);
+		return allocationInfo.pMappedData;
+	}
+
 }

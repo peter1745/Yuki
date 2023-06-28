@@ -92,7 +92,7 @@ namespace Yuki {
 			m_PushConstants.Transform = meshInstance.Transform;
 			m_PushConstants.VertexVA = meshData.VertexData.GetDeviceAddress();
 			m_CommandList.PushConstants(m_ActivePipeline, &m_PushConstants, sizeof(PushConstants));
-			m_CommandList.BindBuffer(meshData.IndexBuffer);
+			m_CommandList.BindIndexBuffer(meshData.IndexBuffer, 0);
 			m_CommandList.DrawIndexed(meshData.IndexCount);
 		}
 	}
@@ -115,7 +115,7 @@ namespace Yuki {
 
 	void SceneRenderer::CreatePipelines()
 	{
-		m_MeshShader = Shader(m_Context, "Resources/Shaders/Geometry.glsl");
+		m_MeshShader = Shader(m_Context, std::filesystem::path("Resources/Shaders/Geometry.glsl"));
 		
 		m_Pipeline = PipelineBuilder(m_Context)
 			.WithShader(m_MeshShader)

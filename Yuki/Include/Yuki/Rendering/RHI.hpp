@@ -108,5 +108,11 @@ namespace Yuki {
 		uint32_t Count;
 	};
 
+	struct Scissor
+	{
+		float X, Y;
+		float Width, Height;
+	};
+
 
 }

@@ -50,14 +50,16 @@ namespace Yuki {
 		virtual void CommandListEndRendering(CommandListHandle InCommandList) = 0;
 		virtual void CommandListBindPipeline(CommandListHandle InCommandList, PipelineHandle InPipeline) = 0;
 		virtual void CommandListBindBuffer(CommandListHandle InCommandList, BufferHandle InBuffer) = 0;
+		virtual void CommandListBindIndexBuffer(CommandListHandle InCommandList, BufferHandle InBuffer, uint32_t InOffset, bool InUse32Bit = true) = 0;
 		virtual void CommandListBindDescriptorSet(CommandListHandle InCommandList, PipelineHandle InPipeline, DescriptorSetHandle InSet) = 0;
+		virtual void CommandListSetScissor(CommandListHandle InCommandList, Scissor InScissor) = 0;
 		virtual void CommandListPushConstants(CommandListHandle InCommandList, PipelineHandle InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) = 0;
 		virtual void CommandListTransitionImage(CommandListHandle InCommandList, ImageHandle InImage, ImageLayout InNewLayout) = 0;
 		virtual void CommandListCopyToBuffer(CommandListHandle InCommandList, BufferHandle InDstBuffer, uint32_t InDstOffset, BufferHandle InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) = 0;
 		virtual void CommandListCopyToImage(CommandListHandle InCommandList, ImageHandle InDstImage, BufferHandle InSrcBuffer, uint32_t InSrcOffset) = 0;
 		virtual void CommandListBlitImage(CommandListHandle InCommandList, ImageHandle InDstImage, ImageHandle InSrcImage) = 0;
 		virtual void CommandListDraw(CommandListHandle InCommandList, uint32_t InVertexCount) = 0;
-		virtual void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount) = 0;
+		virtual void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset = 0) = 0;
 		virtual void CommandListPrepareSwapchainPresent(CommandListHandle InCommandList, SwapchainHandle InSwapchain) = 0;
 
 		virtual ImageHandle CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;
@@ -69,6 +71,7 @@ namespace Yuki {
 		virtual void Destroy(SamplerHandle InSampler) = 0;
 
 		virtual ShaderHandle CreateShader(const std::filesystem::path& InFilePath) = 0;
+		virtual ShaderHandle CreateShader(std::string_view InSource) = 0;
 		virtual void Destroy(ShaderHandle InShader) = 0;
 
 		virtual PipelineHandle CreatePipeline(const PipelineInfo& InPipelineInfo) = 0;
@@ -78,6 +81,7 @@ namespace Yuki {
 		virtual void Destroy(BufferHandle InBuffer) = 0;
 		virtual void BufferSetData(BufferHandle InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset = 0) = 0;
 		virtual uint64_t BufferGetDeviceAddress(BufferHandle InBuffer) const = 0;
+		virtual void* BufferGetMappedMemory(BufferHandle InBuffer) = 0;
 
 		virtual DescriptorSetLayoutHandle CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) = 0;
 		virtual void Destroy(DescriptorSetLayoutHandle InLayout) = 0;

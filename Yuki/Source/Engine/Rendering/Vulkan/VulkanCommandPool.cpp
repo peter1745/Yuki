@@ -190,12 +190,32 @@ namespace Yuki {
 		}
 	}
 
+	void VulkanRenderContext::CommandListBindIndexBuffer(CommandListHandle InCommandList, BufferHandle InBuffer, uint32_t InOffset, bool InUse32Bit)
+	{
+		auto& commandList = m_CommandLists.Get(InCommandList);
+		auto& buffer = m_Buffers.Get(InBuffer);
+		vkCmdBindIndexBuffer(commandList.CommandBuffer, buffer.Handle, InOffset, InUse32Bit ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+	}
+
 	void VulkanRenderContext::CommandListBindDescriptorSet(CommandListHandle InCommandList, PipelineHandle InPipeline, DescriptorSetHandle InSet)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		auto& pipeline = m_Pipelines.Get(InPipeline);
 		auto& set = m_DescriptorSets.Get(InSet);
 		vkCmdBindDescriptorSets(commandList.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Layout, 0, 1, &set.Handle, 0, nullptr);
+	}
+
+	void VulkanRenderContext::CommandListSetScissor(CommandListHandle InCommandList, Scissor InScissor)
+	{
+		auto& commandList = m_CommandLists.Get(InCommandList);
+		InScissor.X = Math::Max(InScissor.X, 0.0f);
+		InScissor.Y = Math::Max(InScissor.Y, 0.0f);
+		VkRect2D scissor =
+		{
+			.offset = { int32_t(InScissor.X), int32_t(InScissor.Y) },
+			.extent = { uint32_t(InScissor.Width), uint32_t(InScissor.Height) },
+		};
+		vkCmdSetScissor(commandList.CommandBuffer, 0, 1, &scissor);
 	}
 
 	void VulkanRenderContext::CommandListPushConstants(CommandListHandle InCommandList, PipelineHandle InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset)
@@ -382,7 +402,7 @@ namespace Yuki {
 		vkCmdDraw(commandList.CommandBuffer, InVertexCount, 1, 0, 0);
 	}
 
-	void VulkanRenderContext::CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount)
+	void VulkanRenderContext::CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
 		vkCmdDrawIndexed(commandList.CommandBuffer, InIndexCount, 1, 0, 0, 0);

@@ -21,6 +21,8 @@ namespace Yuki {
 
 		void RegisterMeshData(Mesh& InMesh);
 
+		CommandList GetCommandList() { return m_CommandList; }
+
 	private:
 		void CreateDescriptorSets();
 		void CreatePipelines();

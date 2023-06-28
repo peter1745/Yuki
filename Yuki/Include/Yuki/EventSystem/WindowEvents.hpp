@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Event.hpp"
+#include "Yuki/IO/KeyCodes.hpp"
 
 namespace Yuki {
 
@@ -23,6 +24,35 @@ namespace Yuki {
 		GenericWindow* Window;
 
 		YUKI_EVENT_IMPL(WindowClose)
+	};
+
+	struct WindowMouseMoveEvent : public Event
+	{
+		GenericWindow* Window;
+		int32_t MouseX;
+		int32_t MouseY;
+
+		YUKI_EVENT_IMPL(WindowMouseMove)
+	};
+
+	struct WindowMouseClickEvent : public Event
+	{
+		GenericWindow* Window;
+		MouseButton Button;
+		MouseButtonState State;
+		int32_t MouseX;
+		int32_t MouseY;
+
+		YUKI_EVENT_IMPL(WindowMouseClick)
+	};
+
+	struct WindowKeyboardEvent : public Event
+	{
+		GenericWindow* Window;
+		KeyCode Key;
+		KeyState State;
+
+		YUKI_EVENT_IMPL(WindowKeyboardInput)
 	};
 
 }

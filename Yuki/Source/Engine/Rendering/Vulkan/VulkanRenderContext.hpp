@@ -64,14 +64,16 @@ namespace Yuki {
 		void CommandListEndRendering(CommandListHandle InCommandList) override;
 		void CommandListBindPipeline(CommandListHandle InCommandList, PipelineHandle InPipeline) override;
 		void CommandListBindBuffer(CommandListHandle InCommandList, BufferHandle InBuffer) override;
+		void CommandListBindIndexBuffer(CommandListHandle InCommandList, BufferHandle InBuffer, uint32_t InOffset, bool InUse32Bit = true) override;
 		void CommandListBindDescriptorSet(CommandListHandle InCommandList, PipelineHandle InPipeline, DescriptorSetHandle InSet) override;
+		void CommandListSetScissor(CommandListHandle InCommandList, Scissor InScissor) override;
 		void CommandListPushConstants(CommandListHandle InCommandList, PipelineHandle InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) override;
 		void CommandListTransitionImage(CommandListHandle InCommandList, ImageHandle InImage, ImageLayout InNewLayout) override;
 		void CommandListCopyToBuffer(CommandListHandle InCommandList, BufferHandle InDstBuffer, uint32_t InDstOffset, BufferHandle InSrcBuffer, uint32_t InSrcOffset, uint32_t InSize) override;
 		void CommandListCopyToImage(CommandListHandle InCommandList, ImageHandle InDstImage, BufferHandle InSrcBuffer, uint32_t InSrcOffset) override;
 		void CommandListBlitImage(CommandListHandle InCommandList, ImageHandle InDstImage, ImageHandle InSrcImage) override;
 		void CommandListDraw(CommandListHandle InCommandList, uint32_t InVertexCount) override;
-		void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount) override;
+		void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset = 0) override;
 		void CommandListPrepareSwapchainPresent(CommandListHandle InCommandList, SwapchainHandle InSwapchain) override;
 
 		ImageHandle CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
@@ -83,6 +85,7 @@ namespace Yuki {
 		void Destroy(SamplerHandle InSampler) override;
 
 		ShaderHandle CreateShader(const std::filesystem::path& InFilePath) override;
+		ShaderHandle CreateShader(std::string_view InSource) override;
 		void Destroy(ShaderHandle InShader) override;
 
 		PipelineHandle CreatePipeline(const PipelineInfo& InPipelineInfo) override;
@@ -92,6 +95,7 @@ namespace Yuki {
 		void Destroy(BufferHandle InBuffer) override;
 		void BufferSetData(BufferHandle InBuffer, const void* InData, uint32_t InDataSize, uint32_t InBufferOffset = 0) override;
 		uint64_t BufferGetDeviceAddress(BufferHandle InBuffer) const override;
+		void* BufferGetMappedMemory(BufferHandle InBuffer) override;
 
 		DescriptorSetLayoutHandle CreateDescriptorSetLayout(const DescriptorSetLayoutInfo& InLayoutInfo) override;
 		void Destroy(DescriptorSetLayoutHandle InLayout) override;

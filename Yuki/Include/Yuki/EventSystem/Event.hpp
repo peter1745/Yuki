@@ -7,6 +7,7 @@ namespace Yuki {
 		ApplicationClose,
 		
 		WindowResize, WindowClose,
+		WindowMouseMove, WindowMouseClick, WindowKeyboardInput,
 
 		COUNT
 	};

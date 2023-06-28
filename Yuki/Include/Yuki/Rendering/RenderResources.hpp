@@ -69,14 +69,19 @@ namespace Yuki {
 			Context->CommandListBindPipeline(Handle, InPipeline);
 		}
 
-		void BindBuffer(BufferHandle InBuffer)
+		void BindIndexBuffer(BufferHandle InBuffer, uint32_t InOffset, bool InUse32Bit = true)
 		{
-			Context->CommandListBindBuffer(Handle, InBuffer);
+			Context->CommandListBindIndexBuffer(Handle, InBuffer, InOffset, InUse32Bit);
 		}
 
 		void BindDescriptorSet(PipelineHandle InPipeline, DescriptorSetHandle InSet)
 		{
 			Context->CommandListBindDescriptorSet(Handle, InPipeline, InSet);
+		}
+
+		void SetScissor(Scissor InScissor)
+		{
+			Context->CommandListSetScissor(Handle, InScissor);
 		}
 
 		void PushConstants(PipelineHandle InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0)
@@ -109,9 +114,9 @@ namespace Yuki {
 			Context->CommandListDraw(Handle, InVertexCount);
 		}
 
-		void DrawIndexed(uint32_t InIndexCount)
+		void DrawIndexed(uint32_t InIndexCount, uint32_t InIndexOffset = 0)
 		{
-			Context->CommandListDrawIndexed(Handle, InIndexCount);
+			Context->CommandListDrawIndexed(Handle, InIndexCount, InIndexOffset);
 		}
 
 		void PrepareSwapchainPresent(SwapchainHandle InSwapchain)
@@ -204,6 +209,11 @@ namespace Yuki {
 			Context = InContext;
 			Handle = InContext->CreateShader(InFilePath);
 		}
+		Shader(RenderContext* InContext, std::string_view InSource)
+		{
+			Context = InContext;
+			Handle = InContext->CreateShader(InSource);
+		}
 
 		operator ShaderHandle() const { return Handle; }
 	};
@@ -234,6 +244,7 @@ namespace Yuki {
 		}
 
 		uint64_t GetDeviceAddress() const { return Context->BufferGetDeviceAddress(Handle); }
+		void* GetMappedData() { return Context->BufferGetMappedMemory(Handle); }
 
 		operator BufferHandle() const { return Handle; }
 	};
