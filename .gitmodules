@@ -14,3 +14,7 @@
 	path = ThirdParty/concurrentqueue
 	url = https://github.com/cameron314/concurrentqueue
 	shallow = true
+[submodule "ThirdParty/imgui"]
+	path = ThirdParty/imgui
+	url = https://github.com/ocornut/imgui
+	shallow = true

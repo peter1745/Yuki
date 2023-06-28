@@ -15,6 +15,7 @@ project "Sandbox"
         "../ThirdParty/spdlog/include/",
         "../ThirdParty/ankerl/include/",
 
+		"../ThirdParty/imgui/",
         "../ThirdParty/",
     }
 
@@ -28,6 +29,7 @@ project "Sandbox"
 		"fastgltf",
 		"simdjson",
         "stb_image",
+        "DearImGui",
     }
 
     filter { "configurations:Debug" }
