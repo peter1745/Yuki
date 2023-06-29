@@ -37,6 +37,11 @@ namespace Yuki {
 	{
 		auto* windowData = reinterpret_cast<WindowsWindow::WindowData*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
+		if (windowData && windowData->WindowProcCallback && windowData->WindowProcCallback(hwnd, uMsg, wParam, lParam))
+		{
+			return TRUE;
+		}
+
 		switch (uMsg)
 		{
 		case WM_NCCREATE:

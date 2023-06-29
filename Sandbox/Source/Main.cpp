@@ -15,6 +15,10 @@
 #include <Yuki/Rendering/SceneRenderer.hpp>
 #include <Yuki/IO/MeshLoader.hpp>
 
+#include <Yuki/ImGui/ImGuiWindowContext.hpp>
+#include <Yuki/ImGui/ImGuiRenderContext.hpp>
+#include <imgui/imgui.h>
+
 #include "FreeCamera.hpp"
 
 class TestApplication : public Yuki::Application
@@ -56,10 +60,23 @@ private:
 
 		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
 		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
-		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/Small_City_LVL/Small_City_LVL.gltf");
+		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/Small_City_LVL/Small_City_LVL.gltf");
 		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/powerplant/powerplant.gltf");
 
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
+
+		ImGui::SetCurrentContext(ImGui::CreateContext());
+		auto& io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+		ImGui::StyleColorsDark();
+
+		m_ImGuiWindowContext = Yuki::Unique<Yuki::ImGuiWindowContext>::Create(m_Windows[0]);
+		m_ImGuiRenderContext = Yuki::ImGuiRenderContext::New(m_Windows[0]->GetSwapchain(), GetRenderContext());
+
+		m_CommandPool = Yuki::CommandPool(GetRenderContext(), m_GraphicsQueue);
+		m_ImGuiCommandList = m_CommandPool.CreateCommandList();
 	}
 
 	void OnRunLoop(float InDeltaTime) override
@@ -95,6 +112,33 @@ private:
 			m_Renderer->EndFrame(m_Fence);
 		}
 
+		m_CommandPool.Reset();
+
+		m_ImGuiCommandList.Begin();
+
+		m_ImGuiRenderContext->NewFrame(m_ImGuiCommandList);
+		m_ImGuiWindowContext->NewFrame();
+		ImGui::NewFrame();
+
+		if (ImGui::Begin("Test"))
+		{
+			ImGui::TextUnformatted("Hello, World?");
+		}
+		ImGui::End();
+
+		if (ImGui::Begin("Test2"))
+		{
+			ImGui::TextUnformatted("Hello, World!");
+		}
+		ImGui::End();
+
+		ImGui::Render();
+		m_ImGuiRenderContext->EndFrame(m_ImGuiCommandList);
+		m_ImGuiCommandList.PrepareSwapchainPresent(m_Windows[0]->GetSwapchain());
+		m_ImGuiCommandList.End();
+
+		m_GraphicsQueue.SubmitCommandLists({ m_ImGuiCommandList }, { m_Fence }, { m_Fence });
+
 		// Present all swapchain images
 		m_GraphicsQueue.Present(swapchains, { m_Fence });
 	}
@@ -113,9 +157,15 @@ private:
 
 	Yuki::SceneRenderer* m_Renderer = nullptr;
 
-	std::recursive_mutex m_MeshesMutex;
+	std::shared_mutex m_MeshesMutex;
 	Yuki::DynamicArray<Yuki::Mesh> m_Meshes;
 	Yuki::DynamicArray<size_t> m_MeshDataUploadQueue;
+
+	Yuki::Unique<Yuki::ImGuiWindowContext> m_ImGuiWindowContext;
+	Yuki::Unique<Yuki::ImGuiRenderContext> m_ImGuiRenderContext;
+
+	Yuki::CommandPool m_CommandPool{};
+	Yuki::CommandList m_ImGuiCommandList{};
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

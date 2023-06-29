@@ -62,6 +62,7 @@ namespace Yuki {
 		void End() { Context->CommandListEnd(Handle); }
 
 		void BeginRendering(SwapchainHandle InSwapchain) { Context->CommandListBeginRendering(Handle, InSwapchain); }
+		void BeginRendering(const RenderTargetInfo& InRenderTarget) { Context->CommandListBeginRendering(Handle, InRenderTarget); }
 		void EndRendering() { Context->CommandListEndRendering(Handle); }
 
 		void BindPipeline(PipelineHandle InPipeline)
@@ -134,7 +135,7 @@ namespace Yuki {
 		RenderContext* Context{};
 
 		CommandPool() = default;
-		CommandPool(RenderContext* InContext, Queue InQueue)
+		CommandPool(RenderContext* InContext, QueueHandle InQueue)
 		{
 			Context = InContext;
 			Handle = InContext->CreateCommandPool(InQueue);

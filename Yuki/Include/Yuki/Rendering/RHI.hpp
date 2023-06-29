@@ -95,7 +95,20 @@ namespace Yuki {
 	enum class DescriptorPoolHandle{};
 	enum class DescriptorSetHandle{};
 	enum class DescriptorSetLayoutHandle{};
-	enum class DescriptorType { CombinedImageSampler, StorageBuffer };
+	enum class DescriptorType
+	{
+		Sampler,
+		CombinedImageSampler,
+		SampledImage,
+		StorageImage,
+		UniformTexelBuffer,
+		StorageTexelBuffer,
+		UniformBuffer,
+		StorageBuffer,
+		UniformBufferDynamic,
+		StorageBufferDynamic,
+		InputAttachment,
+	};
 	struct DescriptorSetLayoutInfo
 	{
 		ShaderStage Stages = ShaderStage::None;
@@ -114,5 +127,19 @@ namespace Yuki {
 		float Width, Height;
 	};
 
+	enum class AttachmentStoreOp { Store, DontCare };
+	enum class AttachmentLoadOp { Clear, Load, DontCare };
+	struct RenderTargetAttachment
+	{
+		ImageHandle ImageHandle{};
+		ImageViewHandle ImageViewHandle{};
+		AttachmentLoadOp LoadOp = AttachmentLoadOp::Clear;
+		AttachmentStoreOp StoreOp = AttachmentStoreOp::Store;
+	};
+	struct RenderTargetInfo
+	{
+		DynamicArray<RenderTargetAttachment> ColorAttachments;
+		RenderTargetAttachment DepthAttachment{};
+	};
 
 }

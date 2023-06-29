@@ -28,6 +28,7 @@ project "Sandbox"
 		"fastgltf",
 		"simdjson",
         "stb_image",
+        "DearImGui",
     }
 
     filter { "configurations:Debug" }

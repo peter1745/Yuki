@@ -23,6 +23,8 @@ namespace Yuki {
 	public:
 		~VulkanRenderContext();
 
+		RenderAPI GetRenderAPI() const override { return RenderAPI::Vulkan; }
+
 		void DeviceWaitIdle() const override;
 
 		QueueHandle GetGraphicsQueue(size_t InIndex = 0) const override
@@ -61,6 +63,7 @@ namespace Yuki {
 		void CommandListBegin(CommandListHandle InCommandList) override;
 		void CommandListEnd(CommandListHandle InCommandList) override;
 		void CommandListBeginRendering(CommandListHandle InCommandList, SwapchainHandle InSwapchain) override;
+		void CommandListBeginRendering(CommandListHandle InCommandList, const RenderTargetInfo& InRenderTarget) override;
 		void CommandListEndRendering(CommandListHandle InCommandList) override;
 		void CommandListBindPipeline(CommandListHandle InCommandList, PipelineHandle InPipeline) override;
 		void CommandListBindBuffer(CommandListHandle InCommandList, BufferHandle InBuffer) override;
@@ -120,7 +123,7 @@ namespace Yuki {
 
 		uint32_t SelectQueue(VkQueueFlags InQueueFlags) const;
 
-	private:
+	public:
 		VkInstance m_Instance = VK_NULL_HANDLE;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
@@ -135,7 +138,6 @@ namespace Yuki {
 
 		VmaAllocator m_Allocator{};
 
-	private:
 		ResourceRegistry<QueueHandle, VulkanQueue> m_Queues;
 		ResourceRegistry<SwapchainHandle, VulkanSwapchain> m_Swapchains;
 		ResourceRegistry<FenceHandle, VulkanFence> m_Fences;

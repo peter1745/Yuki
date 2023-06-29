@@ -19,6 +19,8 @@ namespace Yuki {
 	public:
 		virtual ~RenderContext() = default;
 
+		virtual RenderAPI GetRenderAPI() const = 0;
+
 		virtual void DeviceWaitIdle() const = 0;
 
 		virtual QueueHandle GetGraphicsQueue(size_t InIndex = 0) const = 0;
@@ -47,6 +49,7 @@ namespace Yuki {
 		virtual void CommandListBegin(CommandListHandle InCommandList) = 0;
 		virtual void CommandListEnd(CommandListHandle InCommandList) = 0;
 		virtual void CommandListBeginRendering(CommandListHandle InCommandList, SwapchainHandle InSwapchain) = 0;
+		virtual void CommandListBeginRendering(CommandListHandle InCommandList, const RenderTargetInfo& InRenderTarget) = 0;
 		virtual void CommandListEndRendering(CommandListHandle InCommandList) = 0;
 		virtual void CommandListBindPipeline(CommandListHandle InCommandList, PipelineHandle InPipeline) = 0;
 		virtual void CommandListBindBuffer(CommandListHandle InCommandList, BufferHandle InBuffer) = 0;

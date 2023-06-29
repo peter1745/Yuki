@@ -7,12 +7,15 @@ namespace Yuki {
 	class WindowsWindow : public GenericWindow
 	{
 	public:
+		using WndProcCallback = LRESULT(*)(HWND, UINT, WPARAM, LPARAM);
+
 		struct WindowData
 		{
 			WindowsWindow* This = nullptr;
 			WindowAttributes* Attributes = nullptr;
 			Map<KeyCode, KeyState> KeyStates;
 			Map<MouseButton, MouseButtonState> MouseButtonStates;
+			WndProcCallback WindowProcCallback = nullptr;
 		};
 
 	public:
@@ -51,6 +54,8 @@ namespace Yuki {
 		bool IsMouseButtonPressed(MouseButton InButton) const override;
 
 		HWND GetWindowHandle() const { return m_WindowHandle; }
+
+		void SetWndProcCallback(WndProcCallback InCallback) { m_WindowData.WindowProcCallback = InCallback; }
 
 	public:
 		const WindowAttributes& GetAttributes() const override { return m_Attributes; }

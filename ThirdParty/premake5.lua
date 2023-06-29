@@ -49,3 +49,36 @@ project "stb_image"
 	includedirs {
 		"stb_image/include/stb_image/"
 	}
+
+local VulkanSDKPath = os.getenv("VULKAN_SDK") .. "/include"
+
+project "DearImGui"
+	kind "StaticLib"
+
+	files {
+		"imgui/imgui_draw.cpp",
+		"imgui/imgui_tables.cpp",
+		"imgui/imgui.cpp",
+		"imgui/imgui_widgets.cpp",
+
+		"imgui/backends/imgui_impl_vulkan.cpp",
+		"imgui/misc/cpp/imgui_stdlib.cpp",
+	}
+
+	includedirs {
+		"imgui/"
+	}
+
+	externalincludedirs {
+		VulkanSDKPath
+	}
+
+	defines {
+		"IMGUI_IMPL_VULKAN_NO_PROTOTYPES"
+	}
+
+	filter { "system:windows" }
+		files {
+			"imgui/backends/imgui_impl_win32.cpp"
+		}
+

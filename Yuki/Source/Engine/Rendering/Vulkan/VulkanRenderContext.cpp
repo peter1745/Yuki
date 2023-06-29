@@ -221,6 +221,7 @@ namespace Yuki {
 			.descriptorBindingPartiallyBound = VK_TRUE,
 			.runtimeDescriptorArray = VK_TRUE,
 			.scalarBlockLayout = VK_TRUE,
+			.imagelessFramebuffer = VK_TRUE,
 			.timelineSemaphore = VK_TRUE,
 			.bufferDeviceAddress = VK_TRUE,
 		};

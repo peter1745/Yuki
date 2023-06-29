@@ -157,6 +157,95 @@ namespace Yuki {
 		vkCmdBeginRendering(commandList.CommandBuffer, &renderingInfo);
 	}
 
+	void VulkanRenderContext::CommandListBeginRendering(CommandListHandle InCommandList, const RenderTargetInfo& InRenderTarget)
+	{
+		auto& commandList = m_CommandLists.Get(InCommandList);
+
+		DynamicArray<VkRenderingAttachmentInfo> renderingAttachments;
+		renderingAttachments.reserve(InRenderTarget.ColorAttachments.size());
+
+		VkClearColorValue clearColor = { 0.05f, 0.05f, 0.05f, 1.0f };
+
+		uint32_t renderWidth = 0;
+		uint32_t renderHeight = 0;
+
+		for (const auto& attachment : InRenderTarget.ColorAttachments)
+		{
+			ImageViewHandle handle = attachment.ImageViewHandle;
+			if (attachment.ImageHandle != ImageHandle{} && handle == ImageViewHandle{})
+			{
+				const auto& image = m_Images.Get(attachment.ImageHandle);
+				handle = image.DefaultImageView;
+
+				if (renderWidth == 0)
+				{
+					renderWidth = image.Width;
+					renderHeight = image.Height;
+				}
+			}
+
+			const auto& imageView = m_ImageViews.Get(handle);
+
+			if (renderWidth == 0)
+			{
+				const auto& image = m_Images.Get(imageView.SourceImage);
+				renderWidth = image.Width;
+				renderHeight = image.Height;
+			}
+
+			auto& attachmentInfo = renderingAttachments.emplace_back();
+			attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			attachmentInfo.pNext = nullptr;
+			attachmentInfo.imageView = imageView.ImageView;
+			attachmentInfo.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+			attachmentInfo.loadOp = attachment.LoadOp == AttachmentLoadOp::Load ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
+			attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			attachmentInfo.clearValue = { .color = clearColor, };
+		}
+
+		VkClearDepthStencilValue depthClearValue = { .depth = 0.0f };
+		VkRenderingAttachmentInfo depthAttachmentInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+			.pNext = nullptr,
+			.imageView = VK_NULL_HANDLE,
+			.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.clearValue = {
+				.depthStencil = depthClearValue
+			},
+		};
+
+		if (InRenderTarget.DepthAttachment.ImageViewHandle != ImageViewHandle{})
+		{
+			depthAttachmentInfo.imageView = m_ImageViews.Get(InRenderTarget.DepthAttachment.ImageViewHandle).ImageView;
+		}
+		else if (InRenderTarget.DepthAttachment.ImageHandle != ImageHandle{})
+		{
+			const auto& imageView = m_ImageViews.Get(m_Images.Get(InRenderTarget.DepthAttachment.ImageHandle).DefaultImageView);
+			depthAttachmentInfo.imageView = imageView.ImageView;
+		}
+
+		VkRenderingInfo renderingInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.renderArea = {
+				.offset = { 0, 0 },
+				.extent = { renderWidth, renderHeight }
+			},
+			.layerCount = 1,
+			.viewMask = 0,
+			.colorAttachmentCount = uint32_t(renderingAttachments.size()),
+			.pColorAttachments = renderingAttachments.data(),
+			.pDepthAttachment = &depthAttachmentInfo,
+			.pStencilAttachment = nullptr,
+		};
+		vkCmdBeginRendering(commandList.CommandBuffer, &renderingInfo);
+	}
+
 	void VulkanRenderContext::CommandListEndRendering(CommandListHandle InCommandList)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
