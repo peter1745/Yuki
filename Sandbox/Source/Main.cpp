@@ -65,10 +65,16 @@ private:
 
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
 
+		InitializeImGui();
+	}
+
+	void InitializeImGui()
+	{
 		ImGui::SetCurrentContext(ImGui::CreateContext());
 		auto& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigWindowsMoveFromTitleBarOnly = true;
 
 		ImGui::StyleColorsDark();
 
@@ -77,6 +83,9 @@ private:
 
 		m_CommandPool = Yuki::CommandPool(GetRenderContext(), m_GraphicsQueue);
 		m_ImGuiCommandList = m_CommandPool.CreateCommandList();
+
+		auto& style = ImGui::GetStyle();
+		style.FramePadding = ImVec2(6.0f, 6.0f);
 	}
 
 	void OnRunLoop(float InDeltaTime) override
@@ -120,17 +129,7 @@ private:
 		m_ImGuiWindowContext->NewFrame();
 		ImGui::NewFrame();
 
-		if (ImGui::Begin("Test"))
-		{
-			ImGui::TextUnformatted("Hello, World?");
-		}
-		ImGui::End();
-
-		if (ImGui::Begin("Test2"))
-		{
-			ImGui::TextUnformatted("Hello, World!");
-		}
-		ImGui::End();
+		DrawUI();
 
 		ImGui::Render();
 		m_ImGuiRenderContext->EndFrame(m_ImGuiCommandList);
@@ -141,6 +140,15 @@ private:
 
 		// Present all swapchain images
 		m_GraphicsQueue.Present(swapchains, { m_Fence });
+	}
+
+	void DrawUI()
+	{
+		if (ImGui::Begin("Settings"))
+		{
+			ImGui::DragFloat("Camera Speed", &m_Camera->GetMovementSpeed());
+		}
+		ImGui::End();
 	}
 
 	void OnDestroy() override
