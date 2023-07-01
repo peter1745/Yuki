@@ -116,6 +116,8 @@ private:
 
 		m_World.progress();
 
+		GetRenderContext()->GetTransferScheduler().Execute();
+
 		const auto& windowAttribs = m_Windows[0]->GetAttributes();
 		m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)windowAttribs.Width / windowAttribs.Height, 0.05f) * m_Camera->GetViewMatrix());
 		m_Renderer->RenderEntities();

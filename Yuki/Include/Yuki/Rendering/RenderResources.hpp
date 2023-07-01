@@ -10,7 +10,7 @@ namespace Yuki {
 		RenderContext* Context{};
 
 		void WaitIdle() { Context->QueueWaitIdle(Handle); }
-		void SubmitCommandLists(const InitializerList<CommandListHandle>& InCommandLists, const InitializerList<FenceHandle> InWaits, const InitializerList<FenceHandle> InSignals)
+		void SubmitCommandLists(const InitializerList<CommandListHandle>& InCommandLists, const DynamicArray<FenceHandle> InWaits, const DynamicArray<FenceHandle> InSignals)
 		{
 			Context->QueueSubmitCommandLists(Handle, InCommandLists, InWaits, InSignals);
 		}

@@ -35,13 +35,17 @@ namespace Yuki {
 					m_LastInstanceID++;
 				}
 
-				auto commandList = m_CommandPool.CreateCommandList();
-				commandList.Begin();
-				commandList.CopyToBuffer(m_ObjectStorageBuffer, bufferIndex * sizeof(GPUObject), m_ObjectStagingBuffer, bufferIndex * sizeof(GPUObject), uint32_t(mesh.Instances.size()) * sizeof(GPUObject));
-				commandList.CopyToBuffer(m_TransformStorageBuffer, bufferIndex * sizeof(Math::Mat4), m_TransformStagingBuffer, bufferIndex * sizeof(Math::Mat4), uint32_t(mesh.Instances.size()) * sizeof(Math::Mat4));
-				commandList.End();
+				m_Context->GetTransferScheduler().Schedule([this, startIndex = bufferIndex, handle = InMesh.Value, &mesh](CommandListHandle InCommandList)
+				{
+					CommandList commandList{InCommandList, m_Context};
+					commandList.CopyToBuffer(m_ObjectStorageBuffer, startIndex * sizeof(GPUObject), m_ObjectStagingBuffer, startIndex * sizeof(GPUObject), uint32_t(mesh.Instances.size()) * sizeof(GPUObject));
+					commandList.CopyToBuffer(m_TransformStorageBuffer, startIndex * sizeof(Math::Mat4), m_TransformStagingBuffer, startIndex * sizeof(Math::Mat4), uint32_t(mesh.Instances.size()) * sizeof(Math::Mat4));
+				}, [this, handle = InMesh.Value]()
+				{
+					m_Meshes.MarkReady(handle);
+				}, {}, {});
 
-				m_GraphicsQueue.SubmitCommandLists({ commandList }, { m_Fence }, { m_Fence });
+				//m_GraphicsQueue.SubmitCommandLists({ commandList }, { m_Fence }, { m_Fence });
 			});
 
 
@@ -150,6 +154,9 @@ namespace Yuki {
 		auto filter = m_World.filter<const Entities::MeshComponent>();
 		filter.each([&](const Entities::MeshComponent& InMesh)
 		{
+			if (!m_Meshes.IsValid(InMesh.Value))
+				return;
+
 			const auto& mesh = m_Meshes.Get(InMesh.Value);
 
 			for (const auto& meshInstance : mesh.Instances)
@@ -160,7 +167,6 @@ namespace Yuki {
 				instanceIndex++;
 			}
 		});
-
 	}
 
 	void EntityRenderer::EndFrame()

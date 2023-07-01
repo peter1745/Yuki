@@ -8,19 +8,23 @@ namespace Yuki {
 	class InitializerList
 	{
 	public:
+		std::initializer_list<T> List;
+
 		constexpr InitializerList(const std::initializer_list<T>& InList)
-		    : m_List(InList)
+		    : List(InList)
 		{
 		}
 
-		constexpr bool Empty() const { return m_List.size() == 0; }
+		constexpr InitializerList(const T* InBegin, const T* InEnd)
+		    : List({ InBegin, InEnd })
+		{
+		}
 
-		constexpr size_t Size() const { return m_List.size(); }
+		constexpr bool Empty() const { return List.size() == 0; }
 
-		constexpr T operator[](size_t InIndex) const { return *(m_List.begin() + InIndex); }
+		constexpr size_t Size() const { return List.size(); }
 
-	private:
-		std::initializer_list<T> m_List;
+		constexpr T operator[](size_t InIndex) const { return *(List.begin() + InIndex); }
 	};
 
 }

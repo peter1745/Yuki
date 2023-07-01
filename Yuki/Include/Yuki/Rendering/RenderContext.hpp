@@ -3,6 +3,7 @@
 #include "RenderAPI.hpp"
 #include "RHI.hpp"
 #include "PipelineBuilder.hpp"
+#include "TransferScheduler.hpp"
 
 #include "Yuki/Core/InitializerList.hpp"
 #include "Yuki/Memory/Unique.hpp"
@@ -28,9 +29,11 @@ namespace Yuki {
 
 		virtual DynamicArray<SwapchainHandle> GetSwapchains() const = 0;
 
+		virtual TransferScheduler& GetTransferScheduler() = 0;
+
 	public:
 		virtual void QueueWaitIdle(QueueHandle InQueue) = 0;
-		virtual void QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const InitializerList<FenceHandle> InWaits, const InitializerList<FenceHandle> InSignals) = 0;
+		virtual void QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const DynamicArray<FenceHandle> InWaits, const DynamicArray<FenceHandle> InSignals) = 0;
 		virtual void QueueAcquireImages(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) = 0;
 		virtual void QueuePresent(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) = 0;
 

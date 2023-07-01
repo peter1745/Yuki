@@ -41,9 +41,11 @@ namespace Yuki {
 
 		DynamicArray<SwapchainHandle> GetSwapchains() const override;
 
+		TransferScheduler& GetTransferScheduler() override { return *m_TransferScheduler; }
+
 	public:
 		void QueueWaitIdle(QueueHandle InQueue) override;
-		void QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const InitializerList<FenceHandle> InWaits, const InitializerList<FenceHandle> InSignals) override;
+		void QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const DynamicArray<FenceHandle> InWaits, const DynamicArray<FenceHandle> InSignals) override;
 		void QueueAcquireImages(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) override;
 		void QueuePresent(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) override;
 
@@ -134,7 +136,7 @@ namespace Yuki {
 		mutable std::shared_mutex m_Mutex1;
 		DynamicArray<QueueHandle> m_GraphicsQueues;
 		DynamicArray<QueueHandle> m_TransferQueues;
-		DynamicArray<QueueHandle> m_DeviceQueues;
+		DynamicArray<uint32_t> m_QueueFamilies;
 
 		VmaAllocator m_Allocator{};
 
@@ -152,6 +154,8 @@ namespace Yuki {
 		ResourceRegistry<DescriptorSetLayoutHandle, VulkanDescriptorSetLayout> m_DescriptorSetLayouts;
 		ResourceRegistry<DescriptorPoolHandle, VulkanDescriptorPool> m_DescriptorPools;
 		ResourceRegistry<DescriptorSetHandle, VulkanDescriptorSet> m_DescriptorSets;
+
+		Unique<TransferScheduler> m_TransferScheduler;
 
 	private:
 		friend class RenderContext;

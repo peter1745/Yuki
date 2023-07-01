@@ -129,6 +129,8 @@ namespace Yuki {
 
 			vmaCreateAllocator(&allocatorCreateInfo, &m_Allocator);
 		}
+
+		m_TransferScheduler = Unique<TransferScheduler>::Create(this);
 	}
 
 	VulkanRenderContext::~VulkanRenderContext()
@@ -273,6 +275,9 @@ namespace Yuki {
 			vkGetDeviceQueue(m_LogicalDevice, transferQueue, 1, &queue.Queue);
 			m_TransferQueues.emplace_back(queueHandle);
 		}
+
+		m_QueueFamilies.emplace_back(graphicsQueue);
+		m_QueueFamilies.emplace_back(transferQueue);
 	}
 
 	void VulkanRenderContext::DeviceWaitIdle() const
