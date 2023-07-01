@@ -43,7 +43,7 @@ namespace Yuki {
 		commandList.End();
 		m_GraphicsQueue.SubmitCommandLists({ commandList }, {}, {});
 
-		InMesh.MaterialOffset = m_MaterialCount;
+		//InMesh.MaterialOffset = m_MaterialCount;
 
 		m_MaterialSet.Write(0, InMesh.Textures, m_Sampler, m_TextureCount);
 		m_MaterialCount += uint32_t(InMesh.Materials.size());
@@ -84,7 +84,7 @@ namespace Yuki {
 
 	void SceneRenderer::Submit(Mesh& InMesh)
 	{
-		m_PushConstants.MaterialOffset = InMesh.MaterialOffset;
+		//m_PushConstants.MaterialOffset = InMesh.MaterialOffset;
 
 		for (const auto& meshInstance : InMesh.Instances)
 		{

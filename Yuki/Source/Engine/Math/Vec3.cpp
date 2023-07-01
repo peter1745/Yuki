@@ -28,7 +28,7 @@ namespace Yuki::Math {
         return result;
     }
 
-    Vec3 Vec3::Cross(const Vec3 &InOther) const
+    Vec3 Vec3::Cross(const Vec3& InOther) const
     {
         Vec3 result;
 		result.X = Y * InOther.Z - Z * InOther.Y;

@@ -51,6 +51,7 @@ namespace Yuki {
 		RenderContext* m_Context = nullptr;
 		Buffer m_MeshStagingBuffer{};
 		Buffer m_ImageStagingBuffer{};
+		Buffer m_MaterialStagingBuffer{};
 
 		PushMeshCallback m_Callback;
 

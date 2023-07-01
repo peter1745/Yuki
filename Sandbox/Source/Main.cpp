@@ -1,3 +1,5 @@
+#include "FreeCamera.hpp"
+
 #include <iostream>
 #include <filesystem>
 #include <array>
@@ -13,13 +15,18 @@
 #include <Yuki/Rendering/PipelineBuilder.hpp>
 #include <Yuki/Rendering/DescriptorSetBuilder.hpp>
 #include <Yuki/Rendering/SceneRenderer.hpp>
+#include <Yuki/Rendering/EntityRenderer.hpp>
 #include <Yuki/IO/MeshLoader.hpp>
+#include <Yuki/Core/ResourceRegistry.hpp>
+
+#include <Yuki/Entities/TransformComponents.hpp>
+#include <Yuki/Entities/RenderingComponents.hpp>
 
 #include <Yuki/ImGui/ImGuiWindowContext.hpp>
 #include <Yuki/ImGui/ImGuiRenderContext.hpp>
-#include <imgui/imgui.h>
 
-#include "FreeCamera.hpp"
+#include <imgui/imgui.h>
+#include <flecs/flecs.h>
 
 class TestApplication : public Yuki::Application
 {
@@ -49,21 +56,23 @@ private:
 
 		m_Fence = Yuki::Fence(GetRenderContext());
 
-		m_Renderer = new Yuki::SceneRenderer(GetRenderContext(), m_Windows[0]->GetSwapchain());
+		m_Renderer = new Yuki::EntityRenderer(GetRenderContext(), m_Windows[0]->GetSwapchain(), m_World);
 
 		m_MeshLoader = Yuki::Unique<Yuki::MeshLoader>::Create(GetRenderContext(), [this](Yuki::Mesh InMesh)
 		{
-			std::scoped_lock lock(m_MeshesMutex);
-			m_Meshes.emplace_back(std::move(InMesh));
-			m_MeshDataUploadQueue.emplace_back(m_Meshes.size() - 1);
+			auto handle = m_Renderer->SubmitForUpload(std::move(InMesh));
+			std::scoped_lock lock(m_Mutex);
+			m_LoadedMeshes.push_back(handle);
 		});
 
 		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
-		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
+		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
 		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/Small_City_LVL/Small_City_LVL.gltf");
-		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/powerplant/powerplant.gltf");
+		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/powerplant/powerplant.gltf");
 
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
+
+		m_CameraEntity = m_World.entity("Camera Entity").add<Yuki::Entities::CameraComponent>();
 
 		InitializeImGui();
 	}
@@ -103,23 +112,14 @@ private:
 		// Acquire Images for all Viewports
 		m_GraphicsQueue.AcquireImages(swapchains, { m_Fence });
 
-		{
-			std::scoped_lock lock(m_MeshesMutex);
+		m_Renderer->Reset();
 
-			const auto& windowAttribs = m_Windows[0]->GetAttributes();
-			m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)windowAttribs.Width / windowAttribs.Height, 0.05f) * m_Camera->GetViewMatrix());
+		m_World.progress();
 
-			while (!m_MeshDataUploadQueue.empty())
-			{
-				m_Renderer->RegisterMeshData(m_Meshes[m_MeshDataUploadQueue.back()]);
-				m_MeshDataUploadQueue.pop_back();
-			}
-
-			for (auto& mesh : m_Meshes)
-				m_Renderer->Submit(mesh);
-
-			m_Renderer->EndFrame(m_Fence);
-		}
+		const auto& windowAttribs = m_Windows[0]->GetAttributes();
+		m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)windowAttribs.Width / windowAttribs.Height, 0.05f) * m_Camera->GetViewMatrix());
+		m_Renderer->RenderEntities();
+		m_Renderer->EndFrame();
 
 		m_CommandPool.Reset();
 
@@ -147,6 +147,17 @@ private:
 		if (ImGui::Begin("Settings"))
 		{
 			ImGui::DragFloat("Camera Speed", &m_Camera->GetMovementSpeed());
+
+			std::scoped_lock lock(m_Mutex);
+			for (auto handle : m_LoadedMeshes)
+			{
+				auto label = fmt::format("Mesh {}", static_cast<int32_t>(handle));
+				if (ImGui::Button(label.c_str()))
+				{
+					m_World.entity()
+						.set<Yuki::Entities::MeshComponent>({ handle });
+				}
+			}
 		}
 		ImGui::End();
 	}
@@ -163,17 +174,19 @@ private:
 	Yuki::Unique<FreeCamera> m_Camera = nullptr;
 	Yuki::Unique<Yuki::MeshLoader> m_MeshLoader = nullptr;
 
-	Yuki::SceneRenderer* m_Renderer = nullptr;
-
-	std::shared_mutex m_MeshesMutex;
-	Yuki::DynamicArray<Yuki::Mesh> m_Meshes;
-	Yuki::DynamicArray<size_t> m_MeshDataUploadQueue;
+	Yuki::EntityRenderer* m_Renderer;
 
 	Yuki::Unique<Yuki::ImGuiWindowContext> m_ImGuiWindowContext;
 	Yuki::Unique<Yuki::ImGuiRenderContext> m_ImGuiRenderContext;
 
 	Yuki::CommandPool m_CommandPool{};
 	Yuki::CommandList m_ImGuiCommandList{};
+
+	std::shared_mutex m_Mutex;
+	Yuki::DynamicArray<Yuki::MeshHandle> m_LoadedMeshes;
+
+	flecs::world m_World;
+	flecs::entity m_CameraEntity;
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

@@ -29,6 +29,7 @@ project "Sandbox"
 		"simdjson",
         "stb_image",
         "DearImGui",
+		"flecs",
     }
 
     filter { "configurations:Debug" }

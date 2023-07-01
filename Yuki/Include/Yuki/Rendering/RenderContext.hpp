@@ -62,7 +62,7 @@ namespace Yuki {
 		virtual void CommandListCopyToImage(CommandListHandle InCommandList, ImageHandle InDstImage, BufferHandle InSrcBuffer, uint32_t InSrcOffset) = 0;
 		virtual void CommandListBlitImage(CommandListHandle InCommandList, ImageHandle InDstImage, ImageHandle InSrcImage) = 0;
 		virtual void CommandListDraw(CommandListHandle InCommandList, uint32_t InVertexCount) = 0;
-		virtual void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset = 0) = 0;
+		virtual void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset = 0, uint32_t InInstanceIndex = 0) = 0;
 		virtual void CommandListPrepareSwapchainPresent(CommandListHandle InCommandList, SwapchainHandle InSwapchain) = 0;
 
 		virtual ImageHandle CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;

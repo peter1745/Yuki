@@ -115,9 +115,9 @@ namespace Yuki {
 			Context->CommandListDraw(Handle, InVertexCount);
 		}
 
-		void DrawIndexed(uint32_t InIndexCount, uint32_t InIndexOffset = 0)
+		void DrawIndexed(uint32_t InIndexCount, uint32_t InIndexOffset = 0, uint32_t InInstanceIndex = 0)
 		{
-			Context->CommandListDrawIndexed(Handle, InIndexCount, InIndexOffset);
+			Context->CommandListDrawIndexed(Handle, InIndexCount, InIndexOffset, InInstanceIndex);
 		}
 
 		void PrepareSwapchainPresent(SwapchainHandle InSwapchain)

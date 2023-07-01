@@ -491,10 +491,10 @@ namespace Yuki {
 		vkCmdDraw(commandList.CommandBuffer, InVertexCount, 1, 0, 0);
 	}
 
-	void VulkanRenderContext::CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset)
+	void VulkanRenderContext::CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset, uint32_t InInstanceIndex)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
-		vkCmdDrawIndexed(commandList.CommandBuffer, InIndexCount, 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandList.CommandBuffer, InIndexCount, 1, 0, 0, InInstanceIndex);
 	}
 
 	void VulkanRenderContext::CommandListPrepareSwapchainPresent(CommandListHandle InCommandList, SwapchainHandle InSwapchain)

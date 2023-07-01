@@ -183,12 +183,12 @@ namespace Yuki {
 
 		DynamicArray<VkDeviceQueueCreateInfo> queueCreateInfos;
 		queueCreateInfos.resize(2);
-		auto graphicsQueuePriorities = std::array{ 1.0f, 1.0f };
+		auto graphicsQueuePriorities = std::array{ 1.0f, 1.0f, 1.0f, 1.0f };
 		queueCreateInfos[0] =
 		{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			.queueFamilyIndex = graphicsQueue,
-			.queueCount = 2,
+			.queueCount = 4,
 			.pQueuePriorities = graphicsQueuePriorities.data(),
 		};
 
@@ -252,17 +252,11 @@ namespace Yuki {
 		YUKI_VERIFY(vkCreateDevice(m_PhysicalDevice, &deviceInfo, nullptr, &m_LogicalDevice) == VK_SUCCESS);
 		volkLoadDevice(m_LogicalDevice);
 
+		for (uint32_t i = 0; i < queueCreateInfos[0].queueCount; i++)
 		{
 			auto[queueHandle, queue] = m_Queues.Acquire();
 			queue.FamilyIndex = graphicsQueue;
-			vkGetDeviceQueue(m_LogicalDevice, graphicsQueue, 0, &queue.Queue);
-			m_GraphicsQueues.emplace_back(queueHandle);
-		}
-
-		{
-			auto[queueHandle, queue] = m_Queues.Acquire();
-			queue.FamilyIndex = graphicsQueue;
-			vkGetDeviceQueue(m_LogicalDevice, graphicsQueue, 1, &queue.Queue);
+			vkGetDeviceQueue(m_LogicalDevice, graphicsQueue, i, &queue.Queue);
 			m_GraphicsQueues.emplace_back(queueHandle);
 		}
 

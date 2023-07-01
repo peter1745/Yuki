@@ -17,7 +17,7 @@ namespace Yuki {
 
 	struct MeshMaterial
 	{
-		uint32_t AlbedoTextureIndex = 0;
+		int32_t AlbedoTextureIndex = -1;
 	};
 
 	struct MeshSource
@@ -39,7 +39,7 @@ namespace Yuki {
 		DynamicArray<MeshInstance> Instances;
 		DynamicArray<ImageHandle> Textures;
 		DynamicArray<MeshMaterial> Materials;
-		uint32_t MaterialOffset = 0;
+		Buffer MaterialStorageBuffer{};
 	};
 
 }

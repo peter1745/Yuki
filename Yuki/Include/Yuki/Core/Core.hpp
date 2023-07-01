@@ -37,4 +37,6 @@ namespace Yuki {
 	#error Unknown Configuration!
 #endif
 
+	#define YUKI_UNUSED(x) (void)x
+
 }

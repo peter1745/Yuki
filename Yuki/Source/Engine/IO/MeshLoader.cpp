@@ -70,6 +70,11 @@ namespace Yuki {
 			.Type = BufferType::StagingBuffer,
 			.Size = s_StagingBufferSize
 		});
+
+		m_MaterialStagingBuffer = Buffer(m_Context, {
+			.Type = BufferType::StagingBuffer,
+			.Size = 10 * 1024 * 1024
+		});
 	}
 
 	void MeshLoader::LoadGLTFMesh(const std::filesystem::path& InFilePath)
@@ -123,220 +128,119 @@ namespace Yuki {
 
 		auto[instanceCreateBarrierIndex, instanceCreateBarrier] = m_Barriers.EmplaceBack();
 
-#define SINGLE_IMAGE_JOB 0
-#if SINGLE_IMAGE_JOB
-		auto[barrierIndex0, imageUploadBarrier] = m_Barriers.EmplaceBack();
-		auto[index, imageLoadJob] = m_LoadJobs.EmplaceBack();
-		imageLoadJob.Task = [asset = assetPtr, &mesh, &meshData, basePath = InFilePath.parent_path()](size_t InThreadID)
+		if (!assetPtr->textures.empty())
 		{
-			for (size_t i = 0; i < asset->textures.size(); i++)
-			{
-				auto& textureInfo = asset->textures[i];
-
-				YUKI_VERIFY(textureInfo.imageIndex.has_value());
-				auto& imageInfo = asset->images[textureInfo.imageIndex.value()];
-
-				int width, height;
-				stbi_uc* imageData = nullptr;
-				std::visit(ImageVisitor
-				{
-					[&](fastgltf::sources::URI& InURI)
-					{
-						ScopedTimer t("URI");
-						imageData = stbi_load(fmt::format("{}/{}", basePath.string(), InURI.uri.path()).c_str(), &width, &height, nullptr, STBI_rgb_alpha);
-					},
-					[&](fastgltf::sources::Vector& InVector)
-					{
-						ScopedTimer t("Vector");
-						imageData = stbi_load_from_memory(InVector.bytes.data(), uint32_t(InVector.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
-					},
-					[&](fastgltf::sources::ByteView& InByteView)
-					{
-						ScopedTimer t("ByteView");
-						imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(InByteView.bytes.data()), uint32_t(InByteView.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
-					},
-					[&](fastgltf::sources::BufferView& InBufferView)
-					{
-						ScopedTimer t("BufferView");
-						auto& view = asset->bufferViews[InBufferView.bufferViewIndex];
-						auto& buffer = asset->buffers[view.bufferIndex];
-						auto* bytes = fastgltf::DefaultBufferDataAdapter{}(buffer) + view.byteOffset;
-						imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(bytes), uint32_t(view.byteLength), &width, &height, nullptr, STBI_rgb_alpha);
-					},
-					[&](auto&) {}
-				}, imageInfo.data);
-
-				YUKI_VERIFY(imageData);
-
-				auto& image = meshData.Images[i];
-				image.Width = uint32_t(width);
-				image.Height = uint32_t(height);
-				image.Data = reinterpret_cast<std::byte*>(imageData);
-			}
-		};
-		imageLoadJob.AddSignal(&imageUploadBarrier);
-
-		auto[imageUploadIndex, imageUploadJob] = m_LoadJobs.EmplaceBack();
-		imageUploadJob.Task = [context = m_Context, &meshData, &mesh, stagingBuffer = m_ImageStagingBuffer](size_t InThreadID) mutable
-		{
-			for (size_t i = 0; i < meshData.Images.size(); i++)
+			auto[barrierIndex0, imageUploadBarrier] = m_Barriers.EmplaceBack();
+			auto[imageUploadIndex, imageUploadJob] = m_LoadJobs.EmplaceBack();
+			imageUploadJob.Task = [context = m_Context, &meshData, &mesh, stagingBuffer = m_ImageStagingBuffer](size_t InThreadID) mutable
 			{
 				LogInfo("Uploading textures");
-				Fence fence = context->CreateFence();
-
-				const auto& imageData = meshData.Images[i];
-				bool shouldBlit = imageData.Width > 1024 && imageData.Height > 1024;
-				Queue queue = shouldBlit ? context->GetGraphicsQueue(1) : context->GetTransferQueue();
-
-				auto commandPool = context->CreateCommandPool(queue);
-				auto imageCommandList = context->CreateCommandList(commandPool);
-				context->CommandListBegin(imageCommandList);
-
-				Image blittedImage{};
-				Image image = context->CreateImage(imageData.Width, imageData.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination);
-				context->CommandListTransitionImage(imageCommandList, image, ImageLayout::ShaderReadOnly);
-				context->BufferSetData(stagingBuffer, imageData.Data, imageData.Width * imageData.Height * 4);
-				context->CommandListCopyToImage(imageCommandList, image, stagingBuffer, 0);
-
-				if (shouldBlit)
+				for (size_t i = 0; i < meshData.Images.size(); i++)
 				{
-					blittedImage = context->CreateImage(1024, 1024, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
-					context->CommandListTransitionImage(imageCommandList, blittedImage, ImageLayout::ShaderReadOnly);
-					context->CommandListBlitImage(imageCommandList, blittedImage, image);
+					Fence fence{context};
+
+					const auto& imageData = meshData.Images[i];
+					bool shouldBlit = imageData.Width > 1024 && imageData.Height > 1024;
+					Queue queue = { shouldBlit ? context->GetGraphicsQueue(1) : context->GetTransferQueue(), context };
+
+					auto commandPool = CommandPool(context, queue);
+					auto imageCommandList = commandPool.CreateCommandList();
+					imageCommandList.Begin();
+
+					Image blittedImage{};
+					Image image{context, imageData.Width, imageData.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination};
+					imageCommandList.TransitionImage(image, ImageLayout::ShaderReadOnly);
+					stagingBuffer.SetData(imageData.Data, imageData.Width * imageData.Height * 4);
+					imageCommandList.CopyToImage(image, stagingBuffer, 0);
+
+					if (shouldBlit)
+					{
+						blittedImage = Image(context, 1024, 1024, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
+						imageCommandList.TransitionImage(blittedImage, ImageLayout::ShaderReadOnly);
+						imageCommandList.BlitImage(blittedImage, image);
+					}
+
+					imageCommandList.End();
+					queue.SubmitCommandLists({ imageCommandList }, {}, { fence });
+					
+					fence.Wait();
+
+					context->Destroy(fence);
+					context->Destroy(commandPool);
+
+					if (shouldBlit)
+					{
+						context->Destroy(image);
+						image = blittedImage;
+					}
+
+					stbi_image_free(imageData.Data);
+
+					mesh.Textures[i] = image;
 				}
 
-				context->CommandListEnd(imageCommandList);
-				context->QueueSubmitCommandLists(queue, { imageCommandList }, {}, { fence });
-				context->FenceWait(fence);
-				context->Destroy(fence);
-				context->Destroy(commandPool);
-
-				if (shouldBlit)
-				{
-					context->Destroy(image);
-					image = blittedImage;
-				}
-
-				stbi_image_free(imageData.Data);
-
-				mesh.Textures[i] = image;
 				LogInfo("Done uploading textures!");
-			}
-		};
-		imageUploadJob.AddSignal(&instanceCreateBarrier);
-		imageUploadBarrier.Pending.push_back(&imageUploadJob);
-		m_JobSystem.Schedule(&imageLoadJob);
-#else
-		auto[barrierIndex0, imageUploadBarrier] = m_Barriers.EmplaceBack();
-		auto[imageUploadIndex, imageUploadJob] = m_LoadJobs.EmplaceBack();
-		imageUploadJob.Task = [context = m_Context, &meshData, &mesh, stagingBuffer = m_ImageStagingBuffer](size_t InThreadID) mutable
-		{
-			LogInfo("Uploading textures");
-			for (size_t i = 0; i < meshData.Images.size(); i++)
-			{
-				Fence fence{context};
-
-				const auto& imageData = meshData.Images[i];
-				bool shouldBlit = imageData.Width > 1024 && imageData.Height > 1024;
-				Queue queue = { shouldBlit ? context->GetGraphicsQueue(1) : context->GetTransferQueue(), context };
-
-				auto commandPool = CommandPool(context, queue);
-				auto imageCommandList = commandPool.CreateCommandList();
-				imageCommandList.Begin();
-
-				Image blittedImage{};
-				Image image{context, imageData.Width, imageData.Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination};
-				imageCommandList.TransitionImage(image, ImageLayout::ShaderReadOnly);
-				stagingBuffer.SetData(imageData.Data, imageData.Width * imageData.Height * 4);
-				imageCommandList.CopyToImage(image, stagingBuffer, 0);
-
-				if (shouldBlit)
-				{
-					blittedImage = Image(context, 1024, 1024, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
-					imageCommandList.TransitionImage(blittedImage, ImageLayout::ShaderReadOnly);
-					imageCommandList.BlitImage(blittedImage, image);
-				}
-
-				imageCommandList.End();
-				queue.SubmitCommandLists({ imageCommandList }, {}, { fence });
-				
-				fence.Wait();
-
-				context->Destroy(fence);
-				context->Destroy(commandPool);
-
-				if (shouldBlit)
-				{
-					context->Destroy(image);
-					image = blittedImage;
-				}
-
-				stbi_image_free(imageData.Data);
-
-				mesh.Textures[i] = image;
-			}
-
-			LogInfo("Done uploading textures!");
-		};
-		imageUploadJob.AddSignal(&instanceCreateBarrier);
-		imageUploadBarrier.Pending.push_back(&imageUploadJob);
-
-		for (size_t i = 0; i < assetPtr->textures.size(); i++)
-		{
-			auto[index, imageLoadJob] = m_LoadJobs.EmplaceBack();
-			imageLoadJob.Task = [asset = assetPtr, textureIndex = i, &mesh, &meshData, basePath = InFilePath.parent_path()](size_t InThreadID)
-			{
-				LogInfo("Reading Texture");
-				auto& textureInfo = asset->textures[textureIndex];
-
-				YUKI_VERIFY(textureInfo.imageIndex.has_value());
-				auto& imageInfo = asset->images[textureInfo.imageIndex.value()];
-
-				int width, height;
-				stbi_uc* imageData = nullptr;
-				std::visit(ImageVisitor
-				{
-					[&](fastgltf::sources::URI& InURI)
-					{
-						ScopedTimer t("URI");
-						imageData = stbi_load(fmt::format("{}/{}", basePath.string(), InURI.uri.path()).c_str(), &width, &height, nullptr, STBI_rgb_alpha);
-					},
-					[&](fastgltf::sources::Vector& InVector)
-					{
-						ScopedTimer t("Vector");
-						imageData = stbi_load_from_memory(InVector.bytes.data(), uint32_t(InVector.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
-					},
-					[&](fastgltf::sources::ByteView& InByteView)
-					{
-						ScopedTimer t("ByteView");
-						imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(InByteView.bytes.data()), uint32_t(InByteView.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
-					},
-					[&](fastgltf::sources::BufferView& InBufferView)
-					{
-						ScopedTimer t("BufferView");
-						auto& view = asset->bufferViews[InBufferView.bufferViewIndex];
-						auto& buffer = asset->buffers[view.bufferIndex];
-						auto* bytes = fastgltf::DefaultBufferDataAdapter{}(buffer) + view.byteOffset;
-						imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(bytes), uint32_t(view.byteLength), &width, &height, nullptr, STBI_rgb_alpha);
-					},
-					[&](auto&) {}
-				}, imageInfo.data);
-
-				YUKI_VERIFY(imageData);
-
-				auto& image = meshData.Images[textureIndex];
-				image.Width = uint32_t(width);
-				image.Height = uint32_t(height);
-				image.Data = reinterpret_cast<std::byte*>(imageData);
-				LogInfo("Done reading texture");
 			};
+			imageUploadJob.AddSignal(&instanceCreateBarrier);
+			imageUploadBarrier.Pending.push_back(&imageUploadJob);
 
-			imageLoadJob.AddSignal(&imageUploadBarrier);
-			m_JobSystem.Schedule(&imageLoadJob);
+			for (size_t i = 0; i < assetPtr->textures.size(); i++)
+			{
+				auto[index, imageLoadJob] = m_LoadJobs.EmplaceBack();
+				imageLoadJob.Task = [asset = assetPtr, textureIndex = i, &mesh, &meshData, basePath = InFilePath.parent_path()](size_t InThreadID)
+				{
+					LogInfo("Reading Texture");
+					auto& textureInfo = asset->textures[textureIndex];
+
+					YUKI_VERIFY(textureInfo.imageIndex.has_value());
+					auto& imageInfo = asset->images[textureInfo.imageIndex.value()];
+
+					int width, height;
+					stbi_uc* imageData = nullptr;
+					std::visit(ImageVisitor
+					{
+						[&](fastgltf::sources::URI& InURI)
+						{
+							ScopedTimer t("URI");
+							imageData = stbi_load(fmt::format("{}/{}", basePath.string(), InURI.uri.path()).c_str(), &width, &height, nullptr, STBI_rgb_alpha);
+						},
+						[&](fastgltf::sources::Vector& InVector)
+						{
+							ScopedTimer t("Vector");
+							imageData = stbi_load_from_memory(InVector.bytes.data(), uint32_t(InVector.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
+						},
+						[&](fastgltf::sources::ByteView& InByteView)
+						{
+							ScopedTimer t("ByteView");
+							imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(InByteView.bytes.data()), uint32_t(InByteView.bytes.size()), &width, &height, nullptr, STBI_rgb_alpha);
+						},
+						[&](fastgltf::sources::BufferView& InBufferView)
+						{
+							ScopedTimer t("BufferView");
+							auto& view = asset->bufferViews[InBufferView.bufferViewIndex];
+							auto& buffer = asset->buffers[view.bufferIndex];
+							auto* bytes = fastgltf::DefaultBufferDataAdapter{}(buffer) + view.byteOffset;
+							imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(bytes), uint32_t(view.byteLength), &width, &height, nullptr, STBI_rgb_alpha);
+						},
+						[&](auto&) {}
+					}, imageInfo.data);
+
+					YUKI_VERIFY(imageData);
+
+					auto& image = meshData.Images[textureIndex];
+					image.Width = uint32_t(width);
+					image.Height = uint32_t(height);
+					image.Data = reinterpret_cast<std::byte*>(imageData);
+					LogInfo("Done reading texture");
+				};
+
+				imageLoadJob.AddSignal(&imageUploadBarrier);
+				m_JobSystem.Schedule(&imageLoadJob);
+			}
 		}
 		
-#endif
 		auto[materialJobIndex, materialLoadJob] = m_LoadJobs.EmplaceBack();
+		auto[materialBarrierIndex, materialBarrier] = m_Barriers.EmplaceBack();
 		materialLoadJob.Task = [asset = assetPtr, &mesh, &meshData, basePath = InFilePath.parent_path()](size_t InThreadID)
 		{
 			LogInfo("Reading Materials");
@@ -353,10 +257,40 @@ namespace Yuki {
 					continue;
 
 				auto& colorTexture = pbrData.baseColorTexture.value();
-				meshMaterial.AlbedoTextureIndex = uint32_t(colorTexture.textureIndex);
+				meshMaterial.AlbedoTextureIndex = int32_t(colorTexture.textureIndex);
+				LogInfo("Texture Index: {}", meshMaterial.AlbedoTextureIndex);
 			}
 			LogInfo("Done reading materials");
 		};
+		materialLoadJob.AddSignal(&materialBarrier);
+
+		auto[materialUploadJobIndex, materialUploadJob] = m_LoadJobs.EmplaceBack();
+		materialUploadJob.Task = [context = m_Context, stagingBuffer = m_MaterialStagingBuffer, &mesh, &meshData, basePath = InFilePath.parent_path()](size_t InThreadID) mutable
+		{
+			LogInfo("Uploading Materials");
+			uint32_t materialSize = uint32_t(mesh.Materials.size()) * sizeof(MeshMaterial);
+			mesh.MaterialStorageBuffer = Buffer(context, {
+				.Type = BufferType::StorageBuffer,
+				.Size = materialSize
+			});
+
+			stagingBuffer.SetData(mesh.Materials.data(), materialSize);
+
+			Queue graphicsQueue{ context->GetGraphicsQueue(3), context };
+			CommandPool commandPool{context,  graphicsQueue};
+
+			auto commandList = commandPool.CreateCommandList();
+			commandList.Begin();
+			commandList.CopyToBuffer(mesh.MaterialStorageBuffer, 0, stagingBuffer, 0, materialSize);
+			commandList.End();
+			graphicsQueue.SubmitCommandLists({ commandList }, {}, {});
+			graphicsQueue.WaitIdle();
+
+			context->Destroy(commandPool);
+
+			LogInfo("Done uploading materials");
+		};
+		materialBarrier.Pending.push_back(&materialUploadJob);
 		m_JobSystem.Schedule(&materialLoadJob);
 
 		auto[barrierIndex1, vertexUploadBarrier] = m_Barriers.EmplaceBack();
@@ -513,7 +447,7 @@ namespace Yuki {
 		auto[instanceCreateJobIndex, instanceCreateJob] = m_LoadJobs.EmplaceBack();
 		instanceCreateJob.Task = [asset = assetPtr, scene, &mesh, &meshData, this](size_t InThreadID) mutable
 		{
-			LogInfo("Creating Instances");
+			LogInfo("Creating Instances, {} root indices", scene->nodeIndices.size());
 			Math::Mat4 transform;
 			transform.SetIdentity();
 
@@ -525,6 +459,7 @@ namespace Yuki {
 			LogInfo("Done creating instances");
 		};
 		instanceCreateBarrier.Pending.push_back(&instanceCreateJob);
+
+		LogInfo("{}", instanceCreateBarrier.Counter.load());
 	}
 }
-
