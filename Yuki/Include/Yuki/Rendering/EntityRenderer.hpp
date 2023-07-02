@@ -15,7 +15,7 @@ namespace Yuki {
 	class EntityRenderer
 	{
 	public:
-		EntityRenderer(RenderContext* InContext, SwapchainHandle InSwapchain, flecs::world& InWorld);
+		EntityRenderer(RenderContext* InContext, flecs::world& InWorld);
 
 		MeshHandle SubmitForUpload(Mesh InMesh);
 
@@ -24,6 +24,11 @@ namespace Yuki {
 		void BeginFrame(const Math::Mat4& InViewProjection);
 		void RenderEntities();
 		void EndFrame();
+
+		void SetViewportSize(uint32_t InWidth, uint32_t InHeight);
+
+		Image GetFinalImage() { return m_ColorImage; }
+		Fence GetFence() { return m_Fence; }
 
 	public:
 		flecs::entity PreRenderPhase;
@@ -37,12 +42,14 @@ namespace Yuki {
 		flecs::system m_RenderSystem{};
 		flecs::system m_PostRenderSystem{};
 
-		SwapchainHandle m_Swapchain;
+		Image m_ColorImage{};
+		Image m_DepthImage{};
 
 		Queue m_GraphicsQueue{};
 
 		Shader m_Shader{};
 		Pipeline m_Pipeline{};
+		Pipeline m_WireframePipeline{};
 
 		DescriptorPool m_DescriptorPool{};
 		DescriptorSetLayout m_DescriptorSetLayout{};
@@ -70,6 +77,7 @@ namespace Yuki {
 		{
 			uint64_t VertexVA;
 			uint64_t MaterialVA;
+			uint32_t BaseTextureOffset;
 		};
 
 		Buffer m_ObjectStorageBuffer{};
@@ -80,6 +88,9 @@ namespace Yuki {
 		uint32_t m_TextureCount = 0;
 
 		uint32_t m_LastInstanceID = 0;
+
+		uint32_t m_ViewportWidth = 0;
+		uint32_t m_ViewportHeight = 0;
 	};
 
 }

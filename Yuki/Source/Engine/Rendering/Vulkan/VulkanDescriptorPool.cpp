@@ -101,7 +101,7 @@ namespace Yuki {
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
 			.pNext = nullptr,
-			.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
+			.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT | VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
 			.maxSets = 1000,
 			.poolSizeCount = uint32_t(descriptorSizes.size()),
 			.pPoolSizes = descriptorSizes.data(),

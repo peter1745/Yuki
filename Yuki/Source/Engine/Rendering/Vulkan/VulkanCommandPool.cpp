@@ -294,6 +294,22 @@ namespace Yuki {
 		vkCmdBindDescriptorSets(commandList.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Layout, 0, 1, &set.Handle, 0, nullptr);
 	}
 
+	void VulkanRenderContext::CommandListSetViewport(CommandListHandle InCommandList, Viewport InViewport)
+	{
+		auto& commandList = m_CommandLists.Get(InCommandList);
+		VkViewport viewport =
+		{
+			.x = InViewport.X,
+			.y = InViewport.Y,
+			.width = InViewport.Width,
+			.height = InViewport.Height,
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
+		};
+
+		vkCmdSetViewport(commandList.CommandBuffer, 0, 1, &viewport);
+	}
+
 	void VulkanRenderContext::CommandListSetScissor(CommandListHandle InCommandList, Scissor InScissor)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);

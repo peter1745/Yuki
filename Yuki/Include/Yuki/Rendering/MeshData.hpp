@@ -18,6 +18,7 @@ namespace Yuki {
 	struct MeshMaterial
 	{
 		int32_t AlbedoTextureIndex = -1;
+		Math::Vec4 AlbedoColor{1.0f, 1.0f, 1.0f, 1.0f};
 	};
 
 	struct MeshSource
@@ -40,6 +41,7 @@ namespace Yuki {
 		DynamicArray<ImageHandle> Textures;
 		DynamicArray<MeshMaterial> Materials;
 		Buffer MaterialStorageBuffer{};
+		uint32_t TextureOffset = 0;
 	};
 
 }

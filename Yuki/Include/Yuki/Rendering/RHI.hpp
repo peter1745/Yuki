@@ -121,6 +121,12 @@ namespace Yuki {
 		uint32_t Count;
 	};
 
+	struct Viewport
+	{
+		float X, Y;
+		float Width, Height;
+	};
+
 	struct Scissor
 	{
 		float X, Y;

@@ -71,6 +71,7 @@ namespace Yuki {
 		void CommandListBindBuffer(CommandListHandle InCommandList, BufferHandle InBuffer) override;
 		void CommandListBindIndexBuffer(CommandListHandle InCommandList, BufferHandle InBuffer, uint32_t InOffset, bool InUse32Bit = true) override;
 		void CommandListBindDescriptorSet(CommandListHandle InCommandList, PipelineHandle InPipeline, DescriptorSetHandle InSet) override;
+		void CommandListSetViewport(CommandListHandle InCommandList, Viewport InViewport) override;
 		void CommandListSetScissor(CommandListHandle InCommandList, Scissor InScissor) override;
 		void CommandListPushConstants(CommandListHandle InCommandList, PipelineHandle InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) override;
 		void CommandListTransitionImage(CommandListHandle InCommandList, ImageHandle InImage, ImageLayout InNewLayout) override;
@@ -83,6 +84,8 @@ namespace Yuki {
 
 		ImageHandle CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
 		void Destroy(ImageHandle InImage) override;
+		void ImageResize(ImageHandle InImage, uint32_t InWidth, uint32_t InHeight) override;
+
 		ImageViewHandle CreateImageView(ImageHandle InImage) override;
 		void Destroy(ImageViewHandle InImageView) override;
 

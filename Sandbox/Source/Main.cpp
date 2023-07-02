@@ -56,7 +56,7 @@ private:
 
 		m_Fence = Yuki::Fence(GetRenderContext());
 
-		m_Renderer = new Yuki::EntityRenderer(GetRenderContext(), m_Windows[0]->GetSwapchain(), m_World);
+		m_Renderer = new Yuki::EntityRenderer(GetRenderContext(), m_World);
 
 		m_MeshLoader = Yuki::Unique<Yuki::MeshLoader>::Create(GetRenderContext(), [this](Yuki::Mesh InMesh)
 		{
@@ -68,7 +68,7 @@ private:
 		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
 		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
 		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/Small_City_LVL/Small_City_LVL.gltf");
-		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/powerplant/powerplant.gltf");
+		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/powerplant/powerplant.gltf");
 
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
 
@@ -95,6 +95,8 @@ private:
 
 		auto& style = ImGui::GetStyle();
 		style.FramePadding = ImVec2(6.0f, 6.0f);
+
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 	}
 
 	void OnRunLoop(float InDeltaTime) override
@@ -118,8 +120,13 @@ private:
 
 		GetRenderContext()->GetTransferScheduler().Execute();
 
-		const auto& windowAttribs = m_Windows[0]->GetAttributes();
-		m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)windowAttribs.Width / windowAttribs.Height, 0.05f) * m_Camera->GetViewMatrix());
+		if (m_ViewportWidth != m_LastViewportWidth || m_ViewportHeight != m_LastViewportHeight)
+		{
+			m_Renderer->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
+			m_ImGuiRenderContext->RecreateImage(m_Renderer->GetFinalImage());
+		}
+
+		m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)m_ViewportWidth / m_ViewportHeight, 0.05f) * m_Camera->GetViewMatrix());
 		m_Renderer->RenderEntities();
 		m_Renderer->EndFrame();
 
@@ -144,8 +151,39 @@ private:
 		m_GraphicsQueue.Present(swapchains, { m_Fence });
 	}
 
+	void BeginMainDockspace()
+	{
+		ImGuiViewport* mainViewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(mainViewport->Pos);
+		ImGui::SetNextWindowSize(mainViewport->Size);
+		ImGui::SetNextWindowViewport(mainViewport->ID);
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+		ImGuiWindowFlags flags =
+			ImGuiWindowFlags_NoDocking |
+			ImGuiWindowFlags_NoMove |
+			ImGuiWindowFlags_NoTitleBar |
+			ImGuiWindowFlags_NoCollapse |
+			ImGuiWindowFlags_NoResize |
+			ImGuiWindowFlags_NoBringToFrontOnFocus |
+			ImGuiWindowFlags_NoNavFocus;
+
+		ImGui::Begin("MainDockspaceWindow", nullptr, flags);
+		ImGui::DockSpace(ImGui::GetID("MainDockspace"));
+
+		ImGui::PopStyleVar();
+	}
+
+	void EndMainDockspace()
+	{
+		ImGui::End();
+	}
+
 	void DrawUI()
 	{
+		BeginMainDockspace();
+
 		if (ImGui::Begin("Settings"))
 		{
 			ImGui::DragFloat("Camera Speed", &m_Camera->GetMovementSpeed());
@@ -162,6 +200,27 @@ private:
 			}
 		}
 		ImGui::End();
+
+		ImVec2 viewportSize{0.0f, 0.0f};
+		m_LastViewportWidth = m_ViewportWidth;
+		m_LastViewportHeight = m_ViewportHeight;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		if (ImGui::Begin("Viewport"))
+		{
+			viewportSize = ImGui::GetContentRegionAvail();
+			m_ImGuiRenderContext->DrawImage(m_Renderer->GetFinalImage(), viewportSize);
+		}
+		ImGui::End();
+		ImGui::PopStyleVar();
+
+		if (uint32_t(viewportSize.x) > 0 && uint32_t(viewportSize.y) > 0)
+		{
+			m_ViewportWidth = uint32_t(viewportSize.x);
+			m_ViewportHeight = uint32_t(viewportSize.y);
+		}
+
+		EndMainDockspace();
 	}
 
 	void OnDestroy() override
@@ -189,6 +248,11 @@ private:
 
 	flecs::world m_World;
 	flecs::entity m_CameraEntity;
+
+	uint32_t m_ViewportWidth = 0;
+	uint32_t m_ViewportHeight = 0;
+	uint32_t m_LastViewportWidth = 0;
+	uint32_t m_LastViewportHeight = 0;
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

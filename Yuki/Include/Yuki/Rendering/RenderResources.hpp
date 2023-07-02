@@ -80,6 +80,11 @@ namespace Yuki {
 			Context->CommandListBindDescriptorSet(Handle, InPipeline, InSet);
 		}
 
+		void SetViewport(Viewport InViewport)
+		{
+			Context->CommandListSetViewport(Handle, InViewport);
+		}
+
 		void SetScissor(Scissor InScissor)
 		{
 			Context->CommandListSetScissor(Handle, InScissor);
@@ -164,6 +169,11 @@ namespace Yuki {
 		{
 			Context = InContext;
 			Handle = InContext->CreateImage(InWidth, InHeight, InFormat, InUsage);
+		}
+
+		void Resize(uint32_t InWidth, uint32_t InHeight)
+		{
+			Context->ImageResize(Handle, InWidth, InHeight);
 		}
 
 		operator ImageHandle() const { return Handle; }

@@ -73,7 +73,7 @@ namespace Yuki {
 
 		m_MaterialStagingBuffer = Buffer(m_Context, {
 			.Type = BufferType::StagingBuffer,
-			.Size = 10 * 1024 * 1024
+			.Size = 100 * 1024 * 1024
 		});
 	}
 
@@ -141,6 +141,7 @@ namespace Yuki {
 
 					const auto& imageData = meshData.Images[i];
 					bool shouldBlit = imageData.Width > 1024 && imageData.Height > 1024;
+					
 					Queue queue = { shouldBlit ? context->GetGraphicsQueue(1) : context->GetTransferQueue(), context };
 
 					auto commandPool = CommandPool(context, queue);
@@ -253,6 +254,13 @@ namespace Yuki {
 
 				auto& pbrData = material.pbrData.value();
 
+				meshMaterial.AlbedoColor = {
+					pbrData.baseColorFactor[0],
+					pbrData.baseColorFactor[1],
+					pbrData.baseColorFactor[2],
+					pbrData.baseColorFactor[3]
+				};
+				
 				if (!pbrData.baseColorTexture.has_value())
 					continue;
 

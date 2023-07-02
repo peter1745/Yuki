@@ -5,8 +5,8 @@
 
 namespace Yuki {
 
-	EntityRenderer::EntityRenderer(RenderContext* InContext, SwapchainHandle InSwapchain, flecs::world& InWorld)
-		: m_Context(InContext), m_World(InWorld), m_Swapchain(InSwapchain)
+	EntityRenderer::EntityRenderer(RenderContext* InContext, flecs::world& InWorld)
+		: m_Context(InContext), m_World(InWorld)
 	{
 		m_GraphicsQueue = { m_Context->GetGraphicsQueue(), m_Context };
 
@@ -27,7 +27,8 @@ namespace Yuki {
 					GPUObject gpuObject =
 					{
 						.VertexVA = mesh.Sources[meshInstance.SourceIndex].VertexData.GetDeviceAddress(),
-						.MaterialVA = mesh.MaterialStorageBuffer.GetDeviceAddress()
+						.MaterialVA = mesh.MaterialStorageBuffer.GetDeviceAddress(),
+						.BaseTextureOffset = mesh.TextureOffset
 					};
 
 					m_ObjectStagingBuffer.SetData(&gpuObject, sizeof(GPUObject), m_LastInstanceID * sizeof(GPUObject));
@@ -45,9 +46,7 @@ namespace Yuki {
 					m_Meshes.MarkReady(handle);
 				}, {}, {});
 
-				//m_GraphicsQueue.SubmitCommandLists({ commandList }, { m_Fence }, { m_Fence });
 			});
-
 
 		m_CommandPool = CommandPool(m_Context, m_GraphicsQueue);
 
@@ -88,15 +87,30 @@ namespace Yuki {
 
 		m_Shader = Shader(m_Context, std::filesystem::path("Resources/Shaders/Geometry.glsl"));
 		
-		m_Pipeline = Yuki::PipelineBuilder(m_Context)
+		m_Pipeline = PipelineBuilder(m_Context)
 			.WithShader(m_Shader)
 			.PushConstant(sizeof(PushConstants))
 			.AddDescriptorSetLayout(m_DescriptorSetLayout)
-			.ColorAttachment(Yuki::ImageFormat::BGRA8UNorm)
+			.ColorAttachment(ImageFormat::RGBA8UNorm)
 			.DepthAttachment()
 			.Build();
 
+		m_WireframePipeline = PipelineBuilder(m_Context)
+			.WithShader(m_Shader)
+			.PushConstant(sizeof(PushConstants))
+			.AddDescriptorSetLayout(m_DescriptorSetLayout)
+			.ColorAttachment(ImageFormat::RGBA8UNorm)
+			.DepthAttachment()
+			.SetPolygonMode(PolygonModeType::Line)
+			.Build();
+
 		m_Fence = Fence(m_Context);
+
+		m_ColorImage = Image(InContext, 1920, 1080, ImageFormat::RGBA8UNorm, ImageUsage::ColorAttachment | ImageUsage::Sampled);
+		m_DepthImage = Image(InContext, 1920, 1080, ImageFormat::Depth32SFloat, ImageUsage::DepthAttachment | ImageUsage::Sampled);
+
+		m_ViewportWidth = 1920;
+		m_ViewportHeight = 1080;
 	}
 
 	MeshHandle EntityRenderer::SubmitForUpload(Mesh InMesh)
@@ -123,6 +137,13 @@ namespace Yuki {
 		{
 			auto& mesh = m_Meshes.Get(m_MeshUploadQueue.back());
 
+			if (mesh.Textures.empty())
+			{
+				m_MeshUploadQueue.pop_back();
+				continue;
+			}
+
+			mesh.TextureOffset = m_TextureCount;
 			m_MaterialSet.Write(0, mesh.Textures, m_Sampler, m_TextureCount);
 			m_TextureCount += uint32_t(mesh.Textures.size());
 
@@ -144,7 +165,28 @@ namespace Yuki {
 		m_CommandList.BindPipeline(m_Pipeline);
 		m_CommandList.BindDescriptorSet(m_Pipeline, m_MaterialSet);
 		m_CommandList.PushConstants(m_Pipeline, &m_PushConstants, sizeof(m_PushConstants));
-		m_CommandList.BeginRendering(m_Swapchain);
+
+		m_CommandList.SetViewport({
+			.X = 0.0f,
+			.Y = 0.0f,
+			.Width = float(m_ViewportWidth),
+			.Height = float(m_ViewportHeight),
+		});
+
+		m_CommandList.SetScissor({
+			.X = 0.0f,
+			.Y = 0.0f,
+			.Width = float(m_ViewportWidth),
+			.Height = float(m_ViewportHeight),
+		});
+
+		m_CommandList.TransitionImage(m_ColorImage, ImageLayout::Attachment);
+		m_CommandList.TransitionImage(m_DepthImage, ImageLayout::Attachment);
+
+		RenderTargetInfo renderInfo = {};
+		renderInfo.ColorAttachments.push_back({ .ImageHandle = m_ColorImage });
+		renderInfo.DepthAttachment.ImageHandle = m_DepthImage;
+		m_CommandList.BeginRendering(renderInfo);
 	}
 
 	void EntityRenderer::RenderEntities()
@@ -172,8 +214,21 @@ namespace Yuki {
 	void EntityRenderer::EndFrame()
 	{
 		m_CommandList.EndRendering();
+
+		m_CommandList.TransitionImage(m_ColorImage, ImageLayout::ShaderReadOnly);
+		m_CommandList.TransitionImage(m_DepthImage, ImageLayout::ShaderReadOnly);
+
 		m_CommandList.End();
 		m_GraphicsQueue.SubmitCommandLists({ m_CommandList }, { m_Fence }, { m_Fence });
+	}
+
+	void EntityRenderer::SetViewportSize(uint32_t InWidth, uint32_t InHeight)
+	{
+		m_ViewportWidth = InWidth;
+		m_ViewportHeight = InHeight;
+
+		m_ColorImage.Resize(InWidth, InHeight);
+		m_DepthImage.Resize(InWidth, InHeight);
 	}
 
 }

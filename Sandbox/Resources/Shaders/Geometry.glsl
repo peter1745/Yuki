@@ -27,6 +27,7 @@ struct Object
 {
 	uint64_t VertexVA;
 	uint64_t MaterialVA;
+	uint BaseTextureOffset;
 };
 
 layout(buffer_reference, scalar) buffer ObjectData
@@ -44,7 +45,8 @@ layout(push_constant, scalar) uniform PushConstants
 layout(location = 0) out vec3 OutNormal;
 layout(location = 1) out vec2 OutUV;
 layout(location = 2) out flat uint OutMaterialIndex;
-layout(location = 3) out flat uint64_t OutMaterialVA;
+layout(location = 3) out flat uint OutBaseTextureOffset;
+layout(location = 4) out flat uint64_t OutMaterialVA;
 
 void main()
 {
@@ -56,6 +58,7 @@ void main()
 	OutNormal = v.Normal;
 	OutUV = v.UV;
 	OutMaterialIndex = v.MaterialIndex;
+	OutBaseTextureOffset = object.BaseTextureOffset;
 	OutMaterialVA = object.MaterialVA;
 }
 
@@ -70,11 +73,13 @@ void main()
 layout(location = 0) in vec3 InNormal;
 layout(location = 1) in vec2 InUV;
 layout(location = 2) in flat uint InMaterialIndex;
-layout(location = 3) in flat uint64_t InMaterialVA;
+layout(location = 3) in flat uint InBaseTextureOffset;
+layout(location = 4) in flat uint64_t InMaterialVA;
 
 struct Material
 {
-    int AlbedoTextureIndex;
+	int AlbedoTextureIndex;
+	vec4 AlbedoColor;
 };
 
 layout(buffer_reference, scalar) buffer MaterialData
@@ -95,10 +100,10 @@ void main()
 
 	if (material.AlbedoTextureIndex == -1)
 	{
-		OutColor = vec4(InNormal * 0.5 + 0.5, 1.0);
+		OutColor = material.AlbedoColor;
 	}
 	else
 	{
-		OutColor = texture(InAlbedoTextures[nonuniformEXT(material.AlbedoTextureIndex)], InUV);
+		OutColor = texture(InAlbedoTextures[nonuniformEXT(InBaseTextureOffset + material.AlbedoTextureIndex)], InUV) * material.AlbedoColor;
 	}
 }
