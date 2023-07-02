@@ -40,7 +40,9 @@ namespace Yuki {
 		void SynchronizeGPUTransform(flecs::entity InEntity);
 
 		Image GetFinalImage() { return m_ColorImage; }
-		Fence GetFence() { return m_Fence; }
+		
+		Mesh& GetMesh(MeshHandle InHandle) { return m_Meshes.Get(InHandle); }
+		const Mesh& GetMesh(MeshHandle InHandle) const { return m_Meshes.Get(InHandle); }
 
 	public:
 		flecs::entity PreRenderPhase;

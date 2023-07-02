@@ -112,6 +112,7 @@ namespace Yuki {
 		auto[meshIndex, mesh] = m_MeshQueue.EmplaceBack();
 
 		auto[meshDataIndex, meshData] = m_ProcessingQueue.EmplaceBack();
+		mesh.FilePath = InFilePath;
 		mesh.Sources.resize(assetPtr->meshes.size());
 		meshData.SourceData.resize(assetPtr->meshes.size());
 		meshData.Images.resize(assetPtr->textures.size());

@@ -5,6 +5,8 @@
 
 #include "RenderResources.hpp"
 
+#include <filesystem>
+
 namespace Yuki {
 
 	struct Vertex
@@ -36,6 +38,7 @@ namespace Yuki {
 
 	struct Mesh
 	{
+		std::filesystem::path FilePath;
 		DynamicArray<MeshSource> Sources;
 		DynamicArray<MeshInstance> Instances;
 		DynamicArray<ImageHandle> Textures;

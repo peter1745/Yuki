@@ -26,6 +26,8 @@
 #include <Yuki/ImGui/ImGuiWindowContext.hpp>
 #include <Yuki/ImGui/ImGuiRenderContext.hpp>
 
+#include <nfd.hpp>
+
 #include <imgui/imgui.h>
 #include <flecs/flecs.h>
 
@@ -66,18 +68,11 @@ private:
 			m_LoadedMeshes.push_back(handle);
 		});
 
-		m_MeshLoader->LoadGLTFMesh("Resources/Meshes/deccer-cubes/SM_Deccer_Cubes_Textured_Complex.gltf");
-		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/NewSponza_Main_glTF_002.gltf");
-		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/Small_City_LVL/Small_City_LVL.gltf");
-		//m_MeshLoader->LoadGLTFMesh("Resources/Meshes/powerplant/powerplant.gltf");
-
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
 
 		m_CameraEntity = CreateEntity("Camera Entity").add<Yuki::Entities::CameraComponent>();
 
-		Yuki::Math::Vec3 euler(0.0f, Yuki::Math::Radians(50.0f), 0.0f);
-		auto rot = Yuki::Math::Quat(euler);
-		auto newEuler = rot.EulerAngles();
+		NFD::Init();
 
 		InitializeImGui();
 	}
@@ -108,20 +103,20 @@ private:
 	{
 		m_Camera->Update(InDeltaTime);
 
-		// Collect Swapchains
-		auto swapchains = GetRenderContext()->GetSwapchains();
+		m_World.progress();
 
-		if (swapchains.empty())
+		const auto& windowAttribs = m_Windows[0]->GetAttributes();
+		if (windowAttribs.Width == 0 || windowAttribs.Height == 0)
 			return;
 
 		m_Fence.Wait();
+		RenderWorld();
+		RenderImGui();
+	}
 
-		// Acquire Images for all Viewports
-		m_GraphicsQueue.AcquireImages(swapchains, { m_Fence });
-
+	void RenderWorld()
+	{
 		m_Renderer->Reset();
-
-		m_World.progress();
 
 		GetRenderContext()->GetTransferScheduler().Execute();
 
@@ -134,6 +129,17 @@ private:
 		m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)m_ViewportWidth / m_ViewportHeight, 0.05f) * m_Camera->GetViewMatrix());
 		m_Renderer->RenderEntities();
 		m_Renderer->EndFrame();
+	}
+
+	void RenderImGui()
+	{
+		auto swapchains = GetRenderContext()->GetSwapchains();
+
+		if (swapchains.empty())
+			return;
+
+		// Acquire Images for all Viewports
+		m_GraphicsQueue.AcquireImages(swapchains, { m_Fence });
 
 		m_CommandPool.Reset();
 
@@ -187,9 +193,40 @@ private:
 			ImGuiWindowFlags_NoCollapse |
 			ImGuiWindowFlags_NoResize |
 			ImGuiWindowFlags_NoBringToFrontOnFocus |
-			ImGuiWindowFlags_NoNavFocus;
+			ImGuiWindowFlags_NoNavFocus |
+			ImGuiWindowFlags_MenuBar;
 
 		ImGui::Begin("MainDockspaceWindow", nullptr, flags);
+
+		if (ImGui::BeginMainMenuBar())
+		{
+			if (ImGui::BeginMenu("File"))
+			{
+				if (ImGui::MenuItem("Import..."))
+				{
+					NFD::UniquePathSet filePaths;
+					nfdresult_t result = NFD::OpenDialogMultiple(filePaths, static_cast<const nfdnfilteritem_t*>(nullptr));
+
+					if (result == NFD_OKAY)
+					{
+						nfdpathsetsize_t pathCount;
+        				NFD::PathSet::Count(filePaths, pathCount);
+
+						for (uint32_t i = 0; i < pathCount; i++)
+						{
+							NFD::UniquePathSetPath path;
+            				NFD::PathSet::GetPath(filePaths, i, path);
+							m_MeshLoader->LoadGLTFMesh(path.get());
+						}
+					}
+				}
+
+				ImGui::EndMenu();
+			}
+
+			ImGui::EndMainMenuBar();
+		}
+
 		ImGui::DockSpace(ImGui::GetID("MainDockspace"));
 
 		ImGui::PopStyleVar();
@@ -207,24 +244,38 @@ private:
 		if (ImGui::Begin("Settings"))
 		{
 			ImGui::DragFloat("Camera Speed", &m_Camera->GetMovementSpeed());
-
-			std::scoped_lock lock(m_Mutex);
-			for (auto handle : m_LoadedMeshes)
-			{
-				auto label = fmt::format("Mesh {}", static_cast<int32_t>(handle));
-				if (ImGui::Button(label.c_str()))
-				{
-					CreateEntity("Mesh").set<Yuki::Entities::MeshComponent>({ handle });
-				}
-			}
 		}
 		ImGui::End();
 
 		DrawViewport();
 		DrawEntityList();
 		DrawEntityData();
+		DrawContentBrowser();
 
 		EndMainDockspace();
+	}
+
+	void DrawContentBrowser()
+	{
+		YUKI_SCOPE_EXIT_GUARD(){ ImGui::End(); };
+
+		if (!ImGui::Begin("Content Browser"))
+			return;
+
+		for (auto meshHandle : m_LoadedMeshes)
+		{
+			const auto& mesh = m_Renderer->GetMesh(meshHandle);
+			auto name = mesh.FilePath.filename().string();
+			auto label = fmt::format("Create {}", name);
+			if (ImGui::Button(label.c_str()))
+			{
+				CreateEntity(name)
+					.set([meshHandle](Yuki::Entities::MeshComponent& InMeshComp)
+					{
+						InMeshComp.Value = meshHandle;
+					});
+			}
+		}
 	}
 
 	void DrawViewport()

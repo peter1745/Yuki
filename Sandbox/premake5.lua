@@ -14,6 +14,7 @@ project "Sandbox"
         
         "../ThirdParty/spdlog/include/",
         "../ThirdParty/ankerl/include/",
+        "../ThirdParty/NFD-Extended/src/include/",
 
         "../ThirdParty/",
     }
@@ -30,6 +31,8 @@ project "Sandbox"
         "stb_image",
         "DearImGui",
 		"flecs",
+		"JoltPhysics",
+		"NFD-Extended"
     }
 
     filter { "configurations:Debug" }

@@ -32,6 +32,7 @@ project "Yuki"
         "../ThirdParty/fastgltf/include/",
         "../ThirdParty/stb_image/include/",
         "../ThirdParty/imgui/",
+        "../ThirdParty/JoltPhysics/",
         "../ThirdParty/",
 
         VulkanSDKPath,

@@ -90,3 +90,26 @@ project "flecs"
 	files {
 		"flecs/flecs.c",
 	}
+
+project "JoltPhysics"
+	kind "StaticLib"
+	
+	files {
+		"JoltPhysics/Jolt/**.cpp",
+	}
+
+	includedirs {
+		"JoltPhysics/"
+	}
+
+project "NFD-Extended"
+	kind "StaticLib"
+
+	includedirs {
+		"NFD-Extended/src/include/"
+	}
+
+	filter { "system:windows" }
+		files {
+			"NFD-Extended/src/nfd_win.cpp"
+		}
