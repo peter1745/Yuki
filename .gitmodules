@@ -22,3 +22,4 @@
 [submodule "ThirdParty/flecs"]
 	path = ThirdParty/flecs
 	url = https://github.com/SanderMertens/flecs
+	shallow = true
