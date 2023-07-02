@@ -9,6 +9,8 @@
 #include <Yuki/Core/Application.hpp>
 #include <Yuki/Core/Logging.hpp>
 #include <Yuki/Core/Timer.hpp>
+#include <Yuki/Core/ResourceRegistry.hpp>
+#include <Yuki/Core/ScopeExitGuard.hpp>
 #include <Yuki/Math/Math.hpp>
 #include <Yuki/Math/Mat4.hpp>
 #include <Yuki/EventSystem/ApplicationEvents.hpp>
@@ -17,7 +19,6 @@
 #include <Yuki/Rendering/SceneRenderer.hpp>
 #include <Yuki/Rendering/EntityRenderer.hpp>
 #include <Yuki/IO/MeshLoader.hpp>
-#include <Yuki/Core/ResourceRegistry.hpp>
 
 #include <Yuki/Entities/TransformComponents.hpp>
 #include <Yuki/Entities/RenderingComponents.hpp>
@@ -72,7 +73,11 @@ private:
 
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
 
-		m_CameraEntity = m_World.entity("Camera Entity").add<Yuki::Entities::CameraComponent>();
+		m_CameraEntity = CreateEntity("Camera Entity").add<Yuki::Entities::CameraComponent>();
+
+		Yuki::Math::Vec3 euler(0.0f, Yuki::Math::Radians(50.0f), 0.0f);
+		auto rot = Yuki::Math::Quat(euler);
+		auto newEuler = rot.EulerAngles();
 
 		InitializeImGui();
 	}
@@ -151,6 +156,21 @@ private:
 		m_GraphicsQueue.Present(swapchains, { m_Fence });
 	}
 
+	flecs::entity CreateEntity(std::string_view InName)
+	{
+		auto entity = m_World.entity(InName.data())
+			.set([](Yuki::Entities::Translation& InTranslation, Yuki::Entities::Rotation& InRotation, Yuki::Entities::Scale& InScale)
+			{
+				InTranslation.Value = { 0.0f, 0.0f, 0.0f };
+				InRotation.Value.Value = { 0.0f, 0.0f, 0.0f, 1.0f };
+				InScale.Value = 1.0f;
+			});
+
+		m_Entities.push_back(entity);
+		m_EntityExpandState[entity] = false;
+		return entity;
+	}
+
 	void BeginMainDockspace()
 	{
 		ImGuiViewport* mainViewport = ImGui::GetMainViewport();
@@ -194,13 +214,21 @@ private:
 				auto label = fmt::format("Mesh {}", static_cast<int32_t>(handle));
 				if (ImGui::Button(label.c_str()))
 				{
-					m_World.entity()
-						.set<Yuki::Entities::MeshComponent>({ handle });
+					CreateEntity("Mesh").set<Yuki::Entities::MeshComponent>({ handle });
 				}
 			}
 		}
 		ImGui::End();
 
+		DrawViewport();
+		DrawEntityList();
+		DrawEntityData();
+
+		EndMainDockspace();
+	}
+
+	void DrawViewport()
+	{
 		ImVec2 viewportSize{0.0f, 0.0f};
 		m_LastViewportWidth = m_ViewportWidth;
 		m_LastViewportHeight = m_ViewportHeight;
@@ -219,8 +247,86 @@ private:
 			m_ViewportWidth = uint32_t(viewportSize.x);
 			m_ViewportHeight = uint32_t(viewportSize.y);
 		}
+	}
 
-		EndMainDockspace();
+	void DrawEntityData()
+	{
+		YUKI_SCOPE_EXIT_GUARD(){ ImGui::End(); };
+
+		if (!ImGui::Begin("Entity Data"))
+			return;
+
+		if (m_SelectedEntity == flecs::entity::null())
+			return;
+
+		ImGui::Text("Name: %s", m_SelectedEntity.name().c_str());
+
+		auto* translation = m_SelectedEntity.get_mut<Yuki::Entities::Translation>();
+		auto* rotation = m_SelectedEntity.get_mut<Yuki::Entities::Rotation>();
+		auto* scale = m_SelectedEntity.get_mut<Yuki::Entities::Scale>();
+
+		bool changed = false;
+
+		auto& eulerAngles = m_EulerCache[m_SelectedEntity];
+
+		changed |= ImGui::DragFloat3("Translation", &translation->Value[0], 0.5f);
+		
+		if (ImGui::DragFloat3("Rotation", &eulerAngles[0], 0.5f))
+		{
+			Yuki::Math::Vec3 radians;
+			radians.X = Yuki::Math::Radians(eulerAngles.X);
+			radians.Y = Yuki::Math::Radians(eulerAngles.Y);
+			radians.Z = Yuki::Math::Radians(eulerAngles.Z);
+			rotation->Value = Yuki::Math::Quat(radians);
+
+			changed = true;
+		}
+
+		changed |= ImGui::DragFloat("Scale", &scale->Value, 0.5f);
+
+		if (changed)
+		{
+			m_Renderer->SynchronizeGPUTransform(m_SelectedEntity);
+		}
+	}
+
+	void DrawEntityListItem(flecs::entity InEntity)
+	{
+		auto label = fmt::format("{}", InEntity.name().c_str());
+		ImGui::ArrowButton("##ArrowButton", m_EntityExpandState[InEntity] ? ImGuiDir_Down : ImGuiDir_Right);
+
+		if (ImGui::IsItemClicked())
+			m_EntityExpandState[InEntity] = !m_EntityExpandState[InEntity];
+
+		ImGui::SameLine();
+		ImGui::Selectable(label.c_str(), false, ImGuiSelectableFlags_AllowItemOverlap);
+
+		if (ImGui::IsItemClicked())
+			m_SelectedEntity = InEntity;
+	}
+
+	void DrawEntityList()
+	{
+		YUKI_SCOPE_EXIT_GUARD(){ ImGui::End(); };
+		if (!ImGui::Begin("Entities"))
+			return;
+
+		if (ImGui::Button("New Entity"))
+		{
+			auto entity = CreateEntity("New Entity");
+			YUKI_UNUSED(entity);
+		}
+
+		ImGui::Separator();
+
+		ImGuiListClipper clipper;
+		clipper.Begin(int32_t(m_Entities.size()));
+
+		while (clipper.Step())
+		{
+			for (int32_t i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+				DrawEntityListItem(m_Entities[size_t(i)]);
+		}
 	}
 
 	void OnDestroy() override
@@ -253,6 +359,13 @@ private:
 	uint32_t m_ViewportHeight = 0;
 	uint32_t m_LastViewportWidth = 0;
 	uint32_t m_LastViewportHeight = 0;
+
+	Yuki::DynamicArray<flecs::entity> m_Entities;
+	Yuki::Map<flecs::entity, bool, Yuki::FlecsEntityHash> m_EntityExpandState;
+
+	flecs::entity m_SelectedEntity = flecs::entity::null();
+
+	Yuki::Map<flecs::entity, Yuki::Math::Vec3, Yuki::FlecsEntityHash> m_EulerCache;
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

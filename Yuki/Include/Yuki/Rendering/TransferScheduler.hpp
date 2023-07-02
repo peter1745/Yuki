@@ -32,6 +32,8 @@ namespace Yuki {
 		std::shared_mutex m_Mutex;
 		DynamicArray<Job*> m_ActiveJobs;
 
+		Barrier m_Barrier{};
+
 		FenceHandle m_Fence{};
 
 	};

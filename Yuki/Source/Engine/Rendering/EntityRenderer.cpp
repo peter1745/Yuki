@@ -20,7 +20,9 @@ namespace Yuki {
 			{
 				auto& mesh = m_Meshes.Get(InMesh.Value);
 
-				uint32_t bufferIndex = m_LastInstanceID;
+				uint32_t baseInstanceIndex = m_LastInstanceID;
+
+				m_EntityInstanceMap[InIter.entity(InEntityIndex)] = baseInstanceIndex;
 
 				for (auto& meshInstance : mesh.Instances)
 				{
@@ -36,11 +38,11 @@ namespace Yuki {
 					m_LastInstanceID++;
 				}
 
-				m_Context->GetTransferScheduler().Schedule([this, startIndex = bufferIndex, handle = InMesh.Value, &mesh](CommandListHandle InCommandList)
+				m_Context->GetTransferScheduler().Schedule([this, baseIndex = baseInstanceIndex, handle = InMesh.Value, &mesh](CommandListHandle InCommandList)
 				{
 					CommandList commandList{InCommandList, m_Context};
-					commandList.CopyToBuffer(m_ObjectStorageBuffer, startIndex * sizeof(GPUObject), m_ObjectStagingBuffer, startIndex * sizeof(GPUObject), uint32_t(mesh.Instances.size()) * sizeof(GPUObject));
-					commandList.CopyToBuffer(m_TransformStorageBuffer, startIndex * sizeof(Math::Mat4), m_TransformStagingBuffer, startIndex * sizeof(Math::Mat4), uint32_t(mesh.Instances.size()) * sizeof(Math::Mat4));
+					commandList.CopyToBuffer(m_ObjectStorageBuffer, baseIndex * sizeof(GPUObject), m_ObjectStagingBuffer, baseIndex * sizeof(GPUObject), uint32_t(mesh.Instances.size()) * sizeof(GPUObject));
+					commandList.CopyToBuffer(m_TransformStorageBuffer, baseIndex * sizeof(Math::Mat4), m_TransformStagingBuffer, baseIndex * sizeof(Math::Mat4), uint32_t(mesh.Instances.size()) * sizeof(Math::Mat4));
 				}, [this, handle = InMesh.Value]()
 				{
 					m_Meshes.MarkReady(handle);
@@ -229,6 +231,35 @@ namespace Yuki {
 
 		m_ColorImage.Resize(InWidth, InHeight);
 		m_DepthImage.Resize(InWidth, InHeight);
+	}
+
+	void EntityRenderer::SynchronizeGPUTransform(flecs::entity InEntity)
+	{
+		if (!m_EntityInstanceMap.contains(InEntity))
+			return;
+
+		uint32_t baseTransformIndex = m_EntityInstanceMap[InEntity];
+
+		const auto* meshComp = InEntity.get<Entities::MeshComponent>();
+		const auto& mesh = m_Meshes.Get(meshComp->Value);
+		
+		const auto& translation = InEntity.get<Entities::Translation>()->Value;
+		const auto& rotation = InEntity.get<Entities::Rotation>()->Value;
+		const auto& scale = InEntity.get<Entities::Scale>()->Value;
+
+		Math::Mat4 entityTransform = Math::Mat4::Translation(translation) * Math::Mat4::Rotation(rotation) * Math::Mat4::Scale({ scale, scale, scale });
+		for (uint32_t i = 0; i < uint32_t(mesh.Instances.size()); i++)
+		{
+			const auto& meshInstance = mesh.Instances[i];
+			Math::Mat4 transform = entityTransform * meshInstance.Transform;
+			m_TransformStagingBuffer.SetData(&transform, sizeof(Math::Mat4), (baseTransformIndex + i) * sizeof(Math::Mat4));
+		}
+
+		m_Context->GetTransferScheduler().Schedule([context = m_Context, storageBuffer = m_TransformStorageBuffer, stagingBuffer = m_TransformStagingBuffer, baseIndex = baseTransformIndex, &mesh](CommandListHandle InCommandList)
+		{
+			CommandList commandList{InCommandList, context};
+			commandList.CopyToBuffer(storageBuffer, baseIndex * sizeof(Math::Mat4), stagingBuffer, baseIndex * sizeof(Math::Mat4), uint32_t(mesh.Instances.size()) * sizeof(Math::Mat4));
+		}, [](){}, {}, {});
 	}
 
 }

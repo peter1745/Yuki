@@ -26,7 +26,7 @@ namespace Yuki {
 			jobFunc(commandList);
 			m_Context->CommandListEnd(commandList);
 
-			//waits.emplace_back(m_Fence);
+			waits.emplace_back(m_Fence);
 			signals.emplace_back(m_Fence);
 
 			Queue(m_Context->GetTransferQueue(InThreadID), m_Context).SubmitCommandLists({ commandList }, waits, signals);
@@ -45,6 +45,8 @@ namespace Yuki {
 
 	void TransferScheduler::Execute()
 	{
+		m_Barrier.Wait();
+
 		m_Context->FenceWait(m_Fence);
 
 		m_Context->CommandPoolReset(m_CommandPools[0]);
@@ -52,7 +54,10 @@ namespace Yuki {
 
 		std::scoped_lock lock(m_Mutex);
 		for (auto* job : m_ActiveJobs)
+		{
+			job->AddSignal(&m_Barrier);
 			m_JobSystem.Schedule(job);
+		}
 	}
 
 }

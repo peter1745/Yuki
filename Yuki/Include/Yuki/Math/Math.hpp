@@ -8,9 +8,15 @@ namespace Yuki::Math {
 	constexpr T PI() { return T(3.1415926535897932384); }
 
 	template<typename T>
-	constexpr T Radians(T InValue)
+	constexpr T Radians(T InDegrees)
 	{
-		return InValue * T(PI<T>() / 180.0);
+		return InDegrees * (PI<T>() / T(180.0));
+	}
+
+	template<typename T>
+	constexpr T Degrees(T InRadians)
+	{
+		return InRadians * (T(180.0) / PI<T>());
 	}
 
 	template<typename T>
@@ -24,6 +30,9 @@ namespace Yuki::Math {
 
 	template<typename T>
 	constexpr T Max(T InValue, T InOtherValue) { return InValue > InOtherValue ? InValue : InOtherValue; }
+
+	template<typename T>
+	constexpr T Atan2(T InY, T InX) { return static_cast<T>(std::atan2(static_cast<double>(InY), static_cast<double>(InX))); }
 
 	template<typename T>
 	constexpr T Clamp(T InValue, T InMin, T InMax)

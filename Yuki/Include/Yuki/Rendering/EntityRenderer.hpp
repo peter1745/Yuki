@@ -12,6 +12,16 @@ namespace Yuki {
 
 	class RenderContext;
 
+	struct FlecsEntityHash
+	{
+		using is_avalanching = void;
+
+		uint64_t operator()(const flecs::entity& InEntity) const noexcept
+		{
+			return ankerl::unordered_dense::detail::wyhash::hash(&InEntity, sizeof(flecs::entity));
+		}
+	};
+
 	class EntityRenderer
 	{
 	public:
@@ -26,6 +36,8 @@ namespace Yuki {
 		void EndFrame();
 
 		void SetViewportSize(uint32_t InWidth, uint32_t InHeight);
+
+		void SynchronizeGPUTransform(flecs::entity InEntity);
 
 		Image GetFinalImage() { return m_ColorImage; }
 		Fence GetFence() { return m_Fence; }
@@ -91,6 +103,8 @@ namespace Yuki {
 
 		uint32_t m_ViewportWidth = 0;
 		uint32_t m_ViewportHeight = 0;
+
+		Map<flecs::entity, uint32_t, FlecsEntityHash> m_EntityInstanceMap;
 	};
 
 }
