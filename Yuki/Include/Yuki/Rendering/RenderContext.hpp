@@ -3,6 +3,7 @@
 #include "RenderAPI.hpp"
 #include "RHI.hpp"
 #include "PipelineBuilder.hpp"
+#include "TransferScheduler.hpp"
 
 #include "Yuki/Core/InitializerList.hpp"
 #include "Yuki/Memory/Unique.hpp"
@@ -28,9 +29,11 @@ namespace Yuki {
 
 		virtual DynamicArray<SwapchainHandle> GetSwapchains() const = 0;
 
+		virtual TransferScheduler& GetTransferScheduler() = 0;
+
 	public:
 		virtual void QueueWaitIdle(QueueHandle InQueue) = 0;
-		virtual void QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const InitializerList<FenceHandle> InWaits, const InitializerList<FenceHandle> InSignals) = 0;
+		virtual void QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const DynamicArray<FenceHandle> InWaits, const DynamicArray<FenceHandle> InSignals) = 0;
 		virtual void QueueAcquireImages(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) = 0;
 		virtual void QueuePresent(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) = 0;
 
@@ -55,6 +58,7 @@ namespace Yuki {
 		virtual void CommandListBindBuffer(CommandListHandle InCommandList, BufferHandle InBuffer) = 0;
 		virtual void CommandListBindIndexBuffer(CommandListHandle InCommandList, BufferHandle InBuffer, uint32_t InOffset, bool InUse32Bit = true) = 0;
 		virtual void CommandListBindDescriptorSet(CommandListHandle InCommandList, PipelineHandle InPipeline, DescriptorSetHandle InSet) = 0;
+		virtual void CommandListSetViewport(CommandListHandle InCommandList, Viewport InViewport) = 0;
 		virtual void CommandListSetScissor(CommandListHandle InCommandList, Scissor InScissor) = 0;
 		virtual void CommandListPushConstants(CommandListHandle InCommandList, PipelineHandle InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) = 0;
 		virtual void CommandListTransitionImage(CommandListHandle InCommandList, ImageHandle InImage, ImageLayout InNewLayout) = 0;
@@ -62,11 +66,13 @@ namespace Yuki {
 		virtual void CommandListCopyToImage(CommandListHandle InCommandList, ImageHandle InDstImage, BufferHandle InSrcBuffer, uint32_t InSrcOffset) = 0;
 		virtual void CommandListBlitImage(CommandListHandle InCommandList, ImageHandle InDstImage, ImageHandle InSrcImage) = 0;
 		virtual void CommandListDraw(CommandListHandle InCommandList, uint32_t InVertexCount) = 0;
-		virtual void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset = 0) = 0;
+		virtual void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset = 0, uint32_t InInstanceIndex = 0) = 0;
 		virtual void CommandListPrepareSwapchainPresent(CommandListHandle InCommandList, SwapchainHandle InSwapchain) = 0;
 
 		virtual ImageHandle CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;
 		virtual void Destroy(ImageHandle InImage) = 0;
+		virtual void ImageResize(ImageHandle InImage, uint32_t InWidth, uint32_t InHeight) = 0;
+
 		virtual ImageViewHandle CreateImageView(ImageHandle InImage) = 0;
 		virtual void Destroy(ImageViewHandle InImageView) = 0;
 

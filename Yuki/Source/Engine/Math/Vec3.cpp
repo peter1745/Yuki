@@ -3,6 +3,18 @@
 
 namespace Yuki::Math {
 
+	Vec3::Vec3()
+		: X(0.0f), Y(0.0f), Z(0.0f)
+	{}
+
+	Vec3::Vec3(float InX, float InY, float InZ)
+		: X(InX), Y(InY), Z(InZ)
+	{}
+
+	Vec3::Vec3(std::array<float, 3> InValues)
+		: Values(InValues)
+	{}
+
 	float Vec3::Dot(const Vec3& InOther) const
 	{
 		return X * InOther.X + Y * InOther.Y + Z * InOther.Z;
@@ -28,7 +40,7 @@ namespace Yuki::Math {
         return result;
     }
 
-    Vec3 Vec3::Cross(const Vec3 &InOther) const
+    Vec3 Vec3::Cross(const Vec3& InOther) const
     {
         Vec3 result;
 		result.X = Y * InOther.Z - Z * InOther.Y;

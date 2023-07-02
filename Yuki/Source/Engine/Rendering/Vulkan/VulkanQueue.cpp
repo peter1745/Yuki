@@ -9,7 +9,7 @@ namespace Yuki {
 		vkQueueWaitIdle(queue.Queue);
 	}
 
-	void VulkanRenderContext::QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const InitializerList<FenceHandle> InWaits, const InitializerList<FenceHandle> InSignals)
+	void VulkanRenderContext::QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const DynamicArray<FenceHandle> InWaits, const DynamicArray<FenceHandle> InSignals)
 	{
 		auto& queue = m_Queues.Get(InQueue);
 
@@ -22,8 +22,8 @@ namespace Yuki {
 		}
 
 		std::vector<VkSemaphoreSubmitInfo> waitSemaphores;
-		waitSemaphores.resize(InWaits.Size());
-		for (size_t i = 0; i < InWaits.Size(); i++)
+		waitSemaphores.resize(InWaits.size());
+		for (size_t i = 0; i < InWaits.size(); i++)
 		{
 			auto& fence = m_Fences.Get(InWaits[i]);
 			waitSemaphores[i] =
@@ -36,8 +36,8 @@ namespace Yuki {
 		}
 
 		std::vector<VkSemaphoreSubmitInfo> signalSemaphores;
-		signalSemaphores.resize(InSignals.Size());
-		for (size_t i = 0; i < InSignals.Size(); i++)
+		signalSemaphores.resize(InSignals.size());
+		for (size_t i = 0; i < InSignals.size(); i++)
 		{
 			auto& fence = m_Fences.Get(InSignals[i]);
 
@@ -61,7 +61,12 @@ namespace Yuki {
 			.pSignalSemaphoreInfos = signalSemaphores.data(),
 		};
 
-		YUKI_VERIFY(vkQueueSubmit2(queue.Queue, 1, &submitInfo, VK_NULL_HANDLE) == VK_SUCCESS);
+		VkResult result = vkQueueSubmit2(queue.Queue, 1, &submitInfo, VK_NULL_HANDLE);
+		if (result != VK_SUCCESS)
+		{
+			LogInfo("{}", result);
+			YUKI_VERIFY(false);
+		}
 	}
 
 	static VkResult AcquireNextImage(VkDevice InLogicalDevice, VulkanSwapchain& InSwapchain)

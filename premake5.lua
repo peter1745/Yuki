@@ -55,6 +55,14 @@ workspace "Yuki"
 			"/Zc:preprocessor"
 		}
 
+	defines {
+		"flecs_STATIC",
+		"FLECS_CUSTOM_BUILD",
+		"FLECS_SYSTEM",
+		"FLECS_PIPELINE",
+		"FLECS_CPP",
+	}
+
 group "ThirdParty"
 include "ThirdParty/"
 group ""

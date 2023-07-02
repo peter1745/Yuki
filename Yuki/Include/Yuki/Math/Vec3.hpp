@@ -12,6 +12,10 @@ namespace Yuki::Math {
 			struct { float X, Y, Z; };
 		};
 
+		Vec3();
+		Vec3(float InX, float InY, float InZ);
+		Vec3(std::array<float, 3> InValues);
+
 		float Dot(const Vec3& InOther) const;
 		float Length() const;
 

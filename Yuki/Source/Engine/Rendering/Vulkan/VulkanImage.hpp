@@ -13,6 +13,7 @@ namespace Yuki {
 		uint32_t Width = 0;
 		uint32_t Height = 0;
 		VkFormat Format = VK_FORMAT_UNDEFINED;
+		VkImageUsageFlags Usage = VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
 		VkImageAspectFlags AspectFlags = VK_IMAGE_ASPECT_NONE;
 		VkImageLayout Layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		VkPipelineStageFlags2 PipelineStage = VK_PIPELINE_STAGE_2_NONE;

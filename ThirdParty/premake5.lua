@@ -82,3 +82,11 @@ project "DearImGui"
 			"imgui/backends/imgui_impl_win32.cpp"
 		}
 
+project "flecs"
+	kind "StaticLib"
+	language "C"
+	cdialect "C17"
+
+	files {
+		"flecs/flecs.c",
+	}

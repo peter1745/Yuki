@@ -114,6 +114,16 @@ namespace Yuki {
 			ImGui_ImplVulkan_DestroyFontUploadObjects();
 		}
 
+		VkSamplerCreateInfo samplerInfo = {};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		vkCreateSampler(context->m_LogicalDevice, &samplerInfo, nullptr, &m_ImageSampler);
+
 		m_Swapchain = &swapchain;
 		m_Context = InContext;
 	}
@@ -191,5 +201,38 @@ namespace Yuki {
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), context->m_CommandLists.Get(commandList).CommandBuffer);
 		vkCmdEndRenderPass(context->m_CommandLists.Get(commandList).CommandBuffer);
 	}
+
+	void ImGuiVulkanRenderContext::DrawImage(ImageHandle InImageHandle, ImVec2 InSize)
+	{
+		auto* context = static_cast<VulkanRenderContext*>(m_Context);
+
+		if (!m_ImageDescriptorSets.contains(InImageHandle))
+		{
+			auto& image = context->m_Images.Get(InImageHandle);
+			auto& imageView = context->m_ImageViews.Get(image.DefaultImageView);
+			m_ImageDescriptorSets[InImageHandle] = ImGui_ImplVulkan_AddTexture(m_ImageSampler, imageView.ImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			m_ImageSizes[InImageHandle] = { image.Width, image.Height };
+		}
+
+		ImGui::Image(m_ImageDescriptorSets[InImageHandle], InSize);
+	}
+
+	void ImGuiVulkanRenderContext::RecreateImage(ImageHandle InImageHandle)
+	{
+		auto* context = static_cast<VulkanRenderContext*>(m_Context);
+		auto& image = context->m_Images.Get(InImageHandle);
+
+		if (!m_ImageDescriptorSets.contains(InImageHandle) || !m_ImageSizes.contains(InImageHandle))
+			return;
+
+		auto& imageSize = m_ImageSizes[InImageHandle];
+
+		if (imageSize.Width == image.Width && imageSize.Height == image.Height)
+			return;
+
+		ImGui_ImplVulkan_RemoveTexture(m_ImageDescriptorSets[InImageHandle]);
+		m_ImageDescriptorSets.erase(InImageHandle);
+	}
+
 
 }

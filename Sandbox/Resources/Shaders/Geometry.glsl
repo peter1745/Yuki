@@ -18,29 +18,48 @@ layout(buffer_reference, scalar) buffer VertexData
 	Vertex Data[];
 };
 
+layout(buffer_reference, scalar) buffer TransformData
+{
+	mat4 Data[];
+};
+
+struct Object
+{
+	uint64_t VertexVA;
+	uint64_t MaterialVA;
+	uint BaseTextureOffset;
+};
+
+layout(buffer_reference, scalar) buffer ObjectData
+{
+	Object Data[];
+};
+
 layout(push_constant, scalar) uniform PushConstants
 {
 	mat4 ViewProjection;
-	mat4 Transform;
-	uint64_t VertexVA;
-	uint64_t MaterialVA;
-    uint MaterialOffset;
+	uint64_t ObjectVA;
+	uint64_t TransformVA;
 } InPushConstants;
 
 layout(location = 0) out vec3 OutNormal;
 layout(location = 1) out vec2 OutUV;
 layout(location = 2) out flat uint OutMaterialIndex;
-layout(location = 3) out flat uint64_t OutMaterialVA;
+layout(location = 3) out flat uint OutBaseTextureOffset;
+layout(location = 4) out flat uint64_t OutMaterialVA;
 
 void main()
 {
-	Vertex v = VertexData(InPushConstants.VertexVA).Data[gl_VertexIndex];
+	Object object = ObjectData(InPushConstants.ObjectVA).Data[gl_InstanceIndex];
+	Vertex v = VertexData(object.VertexVA).Data[gl_VertexIndex];
+	mat4 transform = TransformData(InPushConstants.TransformVA).Data[gl_InstanceIndex];
 
-    gl_Position = InPushConstants.ViewProjection * InPushConstants.Transform * vec4(v.Position, 1.0);
-    OutNormal = v.Normal;
-    OutUV = v.UV;
-    OutMaterialIndex = v.MaterialIndex + InPushConstants.MaterialOffset;
-	OutMaterialVA = InPushConstants.MaterialVA;
+	gl_Position = InPushConstants.ViewProjection * transform * vec4(v.Position, 1.0);
+	OutNormal = v.Normal;
+	OutUV = v.UV;
+	OutMaterialIndex = v.MaterialIndex;
+	OutBaseTextureOffset = object.BaseTextureOffset;
+	OutMaterialVA = object.MaterialVA;
 }
 
 #stage : fragment
@@ -54,11 +73,13 @@ void main()
 layout(location = 0) in vec3 InNormal;
 layout(location = 1) in vec2 InUV;
 layout(location = 2) in flat uint InMaterialIndex;
-layout(location = 3) in flat uint64_t InMaterialVA;
+layout(location = 3) in flat uint InBaseTextureOffset;
+layout(location = 4) in flat uint64_t InMaterialVA;
 
 struct Material
 {
-    uint AlbedoTextureIndex;
+	int AlbedoTextureIndex;
+	vec4 AlbedoColor;
 };
 
 layout(buffer_reference, scalar) buffer MaterialData
@@ -66,6 +87,7 @@ layout(buffer_reference, scalar) buffer MaterialData
 	Material Data[];
 };
 
+// TODO(Peter): Consider an alternative approach to passing textures (could this be done with a buffer_reference like materials?)
 layout(set = 0, binding = 0) uniform sampler2D InAlbedoTextures[];
 
 layout(location = 0) out vec4 OutColor;
@@ -73,8 +95,15 @@ layout(location = 0) out vec4 OutColor;
 void main()
 {
 	OutColor = vec4(InUV, 0.0, 1.0);
-	OutColor = vec4(InNormal * 0.5 + 0.5, 1.0);
 	
-    Material material = MaterialData(InMaterialVA).Data[InMaterialIndex];
-    OutColor = texture(InAlbedoTextures[nonuniformEXT(material.AlbedoTextureIndex)], InUV);
+	Material material = MaterialData(InMaterialVA).Data[InMaterialIndex];
+
+	if (material.AlbedoTextureIndex == -1)
+	{
+		OutColor = material.AlbedoColor;
+	}
+	else
+	{
+		OutColor = texture(InAlbedoTextures[nonuniformEXT(InBaseTextureOffset + material.AlbedoTextureIndex)], InUV) * material.AlbedoColor;
+	}
 }

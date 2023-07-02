@@ -8,9 +8,12 @@ namespace Yuki::Math {
 	{
 		Vec4 Value;
 
-		Quat(const Vec4& InValue)
-			: Value(InValue) {}
+		Quat();
+		Quat(const Vec3& InEulerAngles);
+		Quat(const Vec4& InValue);
 		Quat(float InAngle, const Vec3& InAxis);
+
+		Vec3 EulerAngles() const;
 	};
 
 }

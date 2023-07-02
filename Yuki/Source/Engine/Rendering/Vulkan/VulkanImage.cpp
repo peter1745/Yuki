@@ -49,6 +49,7 @@ namespace Yuki {
 		image.Width = InWidth;
 		image.Height = InHeight;
 		image.Format = imageCreateInfo.format;
+		image.Usage = imageCreateInfo.usage;
 		image.AspectFlags = IsDepthFormat(InFormat) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 		image.Layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		image.PipelineStage = VK_PIPELINE_STAGE_2_NONE;
@@ -66,6 +67,65 @@ namespace Yuki {
 		if (image.Allocation != nullptr)
 			vmaDestroyImage(m_Allocator, image.Image, image.Allocation);
 		m_Images.Return(InImage);
+	}
+
+	void VulkanRenderContext::ImageResize(ImageHandle InImage, uint32_t InWidth, uint32_t InHeight)
+	{
+		auto& image = m_Images.Get(InImage);
+		auto& defaultImageView = m_ImageViews.Get(image.DefaultImageView);
+		
+		vkDestroyImageView(m_LogicalDevice, defaultImageView.ImageView, nullptr);
+		vmaDestroyImage(m_Allocator, image.Image, image.Allocation);
+
+		auto& queue = m_Queues.Get(GetGraphicsQueue());
+
+		VmaAllocationCreateInfo allocationInfo = { .usage = VMA_MEMORY_USAGE_AUTO };
+
+		VkImageCreateInfo imageCreateInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.imageType = VK_IMAGE_TYPE_2D,
+			.format = image.Format,
+			.extent = { InWidth, InHeight, 1 },
+			.mipLevels = 1,
+			.arrayLayers = 1,
+			.samples = VK_SAMPLE_COUNT_1_BIT,
+			.tiling = VK_IMAGE_TILING_OPTIMAL,
+			.usage = image.Usage,
+			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+			.queueFamilyIndexCount = 1,
+			.pQueueFamilyIndices = &queue.FamilyIndex,
+			.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		};
+
+		vmaCreateImage(m_Allocator, &imageCreateInfo, &allocationInfo, &image.Image, &image.Allocation, nullptr);
+
+		image.Width = InWidth;
+		image.Height = InHeight;
+		image.Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		image.PipelineStage = VK_PIPELINE_STAGE_2_NONE;
+		image.AccessFlags = VK_ACCESS_2_NONE;
+
+		VkImageViewCreateInfo imageViewCreateInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.image = image.Image,
+			.viewType = VK_IMAGE_VIEW_TYPE_2D,
+			.format = image.Format,
+			.subresourceRange = {
+				.aspectMask = image.AspectFlags,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+		};
+
+		vkCreateImageView(m_LogicalDevice, &imageViewCreateInfo, nullptr, &defaultImageView.ImageView);
 	}
 
 	ImageViewHandle VulkanRenderContext::CreateImageView(ImageHandle InImage)

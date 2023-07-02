@@ -46,8 +46,6 @@ namespace Yuki {
 		}
 		}
 
-		//const auto& queue = m_Queues.Get(m_GraphicsQueue);
-
 		VkBufferCreateInfo bufferCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -55,9 +53,9 @@ namespace Yuki {
 			.flags = 0,
 			.size = buffer.Size,
 			.usage = buffer.UsageFlags,
-			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-			//.queueFamilyIndexCount = 1,
-			//.pQueueFamilyIndices = &queue.FamilyIndex,
+			.sharingMode = VK_SHARING_MODE_CONCURRENT,
+			.queueFamilyIndexCount = uint32_t(m_QueueFamilies.size()),
+			.pQueueFamilyIndices = m_QueueFamilies.data(),
 		};
 
 		vmaCreateBuffer(m_Allocator, &bufferCreateInfo, &allocationInfo, &buffer.Handle, &buffer.Allocation, nullptr);

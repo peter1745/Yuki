@@ -41,9 +41,11 @@ namespace Yuki {
 
 		DynamicArray<SwapchainHandle> GetSwapchains() const override;
 
+		TransferScheduler& GetTransferScheduler() override { return *m_TransferScheduler; }
+
 	public:
 		void QueueWaitIdle(QueueHandle InQueue) override;
-		void QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const InitializerList<FenceHandle> InWaits, const InitializerList<FenceHandle> InSignals) override;
+		void QueueSubmitCommandLists(QueueHandle InQueue, const InitializerList<CommandListHandle>& InCommandLists, const DynamicArray<FenceHandle> InWaits, const DynamicArray<FenceHandle> InSignals) override;
 		void QueueAcquireImages(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) override;
 		void QueuePresent(QueueHandle InQueue, std::span<SwapchainHandle> InSwapchains, const InitializerList<FenceHandle>& InFences) override;
 
@@ -69,6 +71,7 @@ namespace Yuki {
 		void CommandListBindBuffer(CommandListHandle InCommandList, BufferHandle InBuffer) override;
 		void CommandListBindIndexBuffer(CommandListHandle InCommandList, BufferHandle InBuffer, uint32_t InOffset, bool InUse32Bit = true) override;
 		void CommandListBindDescriptorSet(CommandListHandle InCommandList, PipelineHandle InPipeline, DescriptorSetHandle InSet) override;
+		void CommandListSetViewport(CommandListHandle InCommandList, Viewport InViewport) override;
 		void CommandListSetScissor(CommandListHandle InCommandList, Scissor InScissor) override;
 		void CommandListPushConstants(CommandListHandle InCommandList, PipelineHandle InPipeline, const void* InData, uint32_t InDataSize, uint32_t InOffset = 0) override;
 		void CommandListTransitionImage(CommandListHandle InCommandList, ImageHandle InImage, ImageLayout InNewLayout) override;
@@ -76,11 +79,13 @@ namespace Yuki {
 		void CommandListCopyToImage(CommandListHandle InCommandList, ImageHandle InDstImage, BufferHandle InSrcBuffer, uint32_t InSrcOffset) override;
 		void CommandListBlitImage(CommandListHandle InCommandList, ImageHandle InDstImage, ImageHandle InSrcImage) override;
 		void CommandListDraw(CommandListHandle InCommandList, uint32_t InVertexCount) override;
-		void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset = 0) override;
+		void CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset = 0, uint32_t InInstanceIndex = 0) override;
 		void CommandListPrepareSwapchainPresent(CommandListHandle InCommandList, SwapchainHandle InSwapchain) override;
 
 		ImageHandle CreateImage(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
 		void Destroy(ImageHandle InImage) override;
+		void ImageResize(ImageHandle InImage, uint32_t InWidth, uint32_t InHeight) override;
+
 		ImageViewHandle CreateImageView(ImageHandle InImage) override;
 		void Destroy(ImageViewHandle InImageView) override;
 
@@ -134,7 +139,7 @@ namespace Yuki {
 		mutable std::shared_mutex m_Mutex1;
 		DynamicArray<QueueHandle> m_GraphicsQueues;
 		DynamicArray<QueueHandle> m_TransferQueues;
-		DynamicArray<QueueHandle> m_DeviceQueues;
+		DynamicArray<uint32_t> m_QueueFamilies;
 
 		VmaAllocator m_Allocator{};
 
@@ -152,6 +157,8 @@ namespace Yuki {
 		ResourceRegistry<DescriptorSetLayoutHandle, VulkanDescriptorSetLayout> m_DescriptorSetLayouts;
 		ResourceRegistry<DescriptorPoolHandle, VulkanDescriptorPool> m_DescriptorPools;
 		ResourceRegistry<DescriptorSetHandle, VulkanDescriptorSet> m_DescriptorSets;
+
+		Unique<TransferScheduler> m_TransferScheduler;
 
 	private:
 		friend class RenderContext;

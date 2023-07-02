@@ -10,7 +10,7 @@ namespace Yuki {
 		RenderContext* Context{};
 
 		void WaitIdle() { Context->QueueWaitIdle(Handle); }
-		void SubmitCommandLists(const InitializerList<CommandListHandle>& InCommandLists, const InitializerList<FenceHandle> InWaits, const InitializerList<FenceHandle> InSignals)
+		void SubmitCommandLists(const InitializerList<CommandListHandle>& InCommandLists, const DynamicArray<FenceHandle> InWaits, const DynamicArray<FenceHandle> InSignals)
 		{
 			Context->QueueSubmitCommandLists(Handle, InCommandLists, InWaits, InSignals);
 		}
@@ -80,6 +80,11 @@ namespace Yuki {
 			Context->CommandListBindDescriptorSet(Handle, InPipeline, InSet);
 		}
 
+		void SetViewport(Viewport InViewport)
+		{
+			Context->CommandListSetViewport(Handle, InViewport);
+		}
+
 		void SetScissor(Scissor InScissor)
 		{
 			Context->CommandListSetScissor(Handle, InScissor);
@@ -115,9 +120,9 @@ namespace Yuki {
 			Context->CommandListDraw(Handle, InVertexCount);
 		}
 
-		void DrawIndexed(uint32_t InIndexCount, uint32_t InIndexOffset = 0)
+		void DrawIndexed(uint32_t InIndexCount, uint32_t InIndexOffset = 0, uint32_t InInstanceIndex = 0)
 		{
-			Context->CommandListDrawIndexed(Handle, InIndexCount, InIndexOffset);
+			Context->CommandListDrawIndexed(Handle, InIndexCount, InIndexOffset, InInstanceIndex);
 		}
 
 		void PrepareSwapchainPresent(SwapchainHandle InSwapchain)
@@ -164,6 +169,11 @@ namespace Yuki {
 		{
 			Context = InContext;
 			Handle = InContext->CreateImage(InWidth, InHeight, InFormat, InUsage);
+		}
+
+		void Resize(uint32_t InWidth, uint32_t InHeight)
+		{
+			Context->ImageResize(Handle, InWidth, InHeight);
 		}
 
 		operator ImageHandle() const { return Handle; }

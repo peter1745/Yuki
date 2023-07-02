@@ -294,6 +294,22 @@ namespace Yuki {
 		vkCmdBindDescriptorSets(commandList.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Layout, 0, 1, &set.Handle, 0, nullptr);
 	}
 
+	void VulkanRenderContext::CommandListSetViewport(CommandListHandle InCommandList, Viewport InViewport)
+	{
+		auto& commandList = m_CommandLists.Get(InCommandList);
+		VkViewport viewport =
+		{
+			.x = InViewport.X,
+			.y = InViewport.Y,
+			.width = InViewport.Width,
+			.height = InViewport.Height,
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
+		};
+
+		vkCmdSetViewport(commandList.CommandBuffer, 0, 1, &viewport);
+	}
+
 	void VulkanRenderContext::CommandListSetScissor(CommandListHandle InCommandList, Scissor InScissor)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
@@ -491,10 +507,10 @@ namespace Yuki {
 		vkCmdDraw(commandList.CommandBuffer, InVertexCount, 1, 0, 0);
 	}
 
-	void VulkanRenderContext::CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset)
+	void VulkanRenderContext::CommandListDrawIndexed(CommandListHandle InCommandList, uint32_t InIndexCount, uint32_t InIndexOffset, uint32_t InInstanceIndex)
 	{
 		auto& commandList = m_CommandLists.Get(InCommandList);
-		vkCmdDrawIndexed(commandList.CommandBuffer, InIndexCount, 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandList.CommandBuffer, InIndexCount, 1, 0, 0, InInstanceIndex);
 	}
 
 	void VulkanRenderContext::CommandListPrepareSwapchainPresent(CommandListHandle InCommandList, SwapchainHandle InSwapchain)
