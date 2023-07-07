@@ -5,50 +5,10 @@
 
 namespace Yuki {
 
-	EntityRenderer::EntityRenderer(RenderContext* InContext, flecs::world& InWorld)
+	WorldRenderer::WorldRenderer(RenderContext* InContext, World& InWorld)
 		: m_Context(InContext), m_World(InWorld)
 	{
 		m_GraphicsQueue = { m_Context->GetGraphicsQueue(), m_Context };
-
-		PreRenderPhase = m_World.entity().add(flecs::Phase).depends_on(flecs::PostUpdate);
-		RenderPhase = m_World.entity().add(flecs::Phase).depends_on(PreRenderPhase);
-		PostRenderPhase = m_World.entity().add(flecs::Phase).depends_on(RenderPhase);
-
-		m_World.observer<Entities::MeshComponent>()
-			.event(flecs::OnSet)
-			.each([this](flecs::iter& InIter, size_t InEntityIndex, Entities::MeshComponent& InMesh)
-			{
-				auto& mesh = m_Meshes.Get(InMesh.Value);
-
-				uint32_t baseInstanceIndex = m_LastInstanceID;
-
-				m_EntityInstanceMap[InIter.entity(InEntityIndex)] = baseInstanceIndex;
-
-				for (auto& meshInstance : mesh.Instances)
-				{
-					GPUObject gpuObject =
-					{
-						.VertexVA = mesh.Sources[meshInstance.SourceIndex].VertexData.GetDeviceAddress(),
-						.MaterialVA = mesh.MaterialStorageBuffer.GetDeviceAddress(),
-						.BaseTextureOffset = mesh.TextureOffset
-					};
-
-					m_ObjectStagingBuffer.SetData(&gpuObject, sizeof(GPUObject), m_LastInstanceID * sizeof(GPUObject));
-					m_TransformStagingBuffer.SetData(&meshInstance.Transform, sizeof(Math::Mat4), m_LastInstanceID * sizeof(Math::Mat4));
-					m_LastInstanceID++;
-				}
-
-				m_Context->GetTransferScheduler().Schedule([this, baseIndex = baseInstanceIndex, handle = InMesh.Value, &mesh](CommandListHandle InCommandList)
-				{
-					CommandList commandList{InCommandList, m_Context};
-					commandList.CopyToBuffer(m_ObjectStorageBuffer, baseIndex * sizeof(GPUObject), m_ObjectStagingBuffer, baseIndex * sizeof(GPUObject), uint32_t(mesh.Instances.size()) * sizeof(GPUObject));
-					commandList.CopyToBuffer(m_TransformStorageBuffer, baseIndex * sizeof(Math::Mat4), m_TransformStagingBuffer, baseIndex * sizeof(Math::Mat4), uint32_t(mesh.Instances.size()) * sizeof(Math::Mat4));
-				}, [this, handle = InMesh.Value]()
-				{
-					m_Meshes.MarkReady(handle);
-				}, {}, {});
-
-			});
 
 		m_CommandPool = CommandPool(m_Context, m_GraphicsQueue);
 
@@ -115,7 +75,45 @@ namespace Yuki {
 		m_ViewportHeight = 1080;
 	}
 
-	MeshHandle EntityRenderer::SubmitForUpload(Mesh InMesh)
+	void WorldRenderer::CreateGPUObject(flecs::entity InEntity)
+	{
+		/*const auto* meshComponent = InEntity.get<Entities::MeshComponent>();
+		const auto& mesh = m_Meshes.Get(meshComponent->Value);
+
+		m_EntityInstanceMap[InEntity] = m_LastInstanceID;
+
+		for (size_t i = 0; i < mesh.Instances.size(); i++)
+		{
+			const auto& meshInstance = mesh.Instances[i];
+
+			auto& cpuInstance = m_CPUObjects.emplace_back();
+			cpuInstance.Mesh = meshComponent->Value;
+			cpuInstance.InstanceIndex = i;
+
+			GPUObject gpuObject =
+			{
+				.VertexVA = mesh.Sources[meshInstance.SourceIndex].VertexData.GetDeviceAddress(),
+				.MaterialVA = mesh.MaterialStorageBuffer.GetDeviceAddress(),
+				.BaseTextureOffset = mesh.TextureOffset
+			};
+
+			m_ObjectStagingBuffer.SetData(&gpuObject, sizeof(GPUObject), m_LastInstanceID * sizeof(GPUObject));
+			m_TransformStagingBuffer.SetData(&meshInstance.Transform, sizeof(Math::Mat4), m_LastInstanceID * sizeof(Math::Mat4));
+			m_LastInstanceID++;
+		}
+
+		m_Context->GetTransferScheduler().Schedule([this, baseIndex = m_EntityInstanceMap[InEntity], &mesh](CommandListHandle InCommandList)
+		{
+			CommandList commandList{InCommandList, m_Context};
+			commandList.CopyToBuffer(m_ObjectStorageBuffer, baseIndex * sizeof(GPUObject), m_ObjectStagingBuffer, baseIndex * sizeof(GPUObject), uint32_t(mesh.Instances.size()) * sizeof(GPUObject));
+			commandList.CopyToBuffer(m_TransformStorageBuffer, baseIndex * sizeof(Math::Mat4), m_TransformStagingBuffer, baseIndex * sizeof(Math::Mat4), uint32_t(mesh.Instances.size()) * sizeof(Math::Mat4));
+		}, [this, handle = meshComponent->Value]()
+		{
+			m_Meshes.MarkReady(handle);
+		}, {}, {});*/
+	}
+
+	/*MeshHandle WorldRenderer::SubmitForUpload(Mesh InMesh)
 	{
 		auto[handle, mesh] = m_Meshes.Insert(InMesh);
 		
@@ -124,20 +122,21 @@ namespace Yuki {
 		YUKI_UNUSED(mesh);
 
 		return handle;
-	}
+	}*/
 
-	void EntityRenderer::Reset()
+	void WorldRenderer::Reset()
 	{
 		m_CommandPool.Reset();
 	}
 
-	void EntityRenderer::PrepareFrame()
+	void WorldRenderer::PrepareFrame()
 	{
-		std::scoped_lock lock(m_MeshUploadMutex);
+		/*std::scoped_lock lock(m_MeshUploadMutex);
 
 		while (!m_MeshUploadQueue.empty())
 		{
-			auto& mesh = m_Meshes.Get(m_MeshUploadQueue.back());
+			auto meshHandle = m_MeshUploadQueue.back();
+			auto& mesh = m_Meshes.Get(meshHandle);
 
 			if (mesh.Textures.empty())
 			{
@@ -150,10 +149,10 @@ namespace Yuki {
 			m_TextureCount += uint32_t(mesh.Textures.size());
 
 			m_MeshUploadQueue.pop_back();
-		}
+		}*/
 	}
 
-	void EntityRenderer::BeginFrame(const Math::Mat4& InViewProjection)
+	void WorldRenderer::BeginFrame(const Math::Mat4& InViewProjection)
 	{
 		PrepareFrame();
 
@@ -191,29 +190,26 @@ namespace Yuki {
 		m_CommandList.BeginRendering(renderInfo);
 	}
 
-	void EntityRenderer::RenderEntities()
+	void WorldRenderer::RenderEntities()
 	{
-		uint32_t instanceIndex = 0;
+		/*uint32_t instanceIndex = 0;
 
-		auto filter = m_World.filter<const Entities::MeshComponent>();
-		filter.each([&](const Entities::MeshComponent& InMesh)
+		for (const auto& instance : m_CPUObjects)
 		{
-			if (!m_Meshes.IsValid(InMesh.Value))
+			if (!m_Meshes.IsValid(instance.Mesh))
 				return;
 
-			const auto& mesh = m_Meshes.Get(InMesh.Value);
+			const auto& mesh = m_Meshes.Get(instance.Mesh);
+			const auto& meshInstance = mesh.Instances[instance.InstanceIndex];
+			const auto& meshData = mesh.Sources[meshInstance.SourceIndex];
 
-			for (const auto& meshInstance : mesh.Instances)
-			{
-				const auto& meshData = mesh.Sources[meshInstance.SourceIndex];
-				m_CommandList.BindIndexBuffer(meshData.IndexBuffer, 0);
-				m_CommandList.DrawIndexed(meshData.IndexCount, 0, instanceIndex);
-				instanceIndex++;
-			}
-		});
+			m_CommandList.BindIndexBuffer(meshData.IndexBuffer, 0);
+			m_CommandList.DrawIndexed(meshData.IndexCount, 0, instanceIndex);
+			instanceIndex++;
+		}*/
 	}
 
-	void EntityRenderer::EndFrame()
+	void WorldRenderer::EndFrame()
 	{
 		m_CommandList.EndRendering();
 
@@ -224,7 +220,7 @@ namespace Yuki {
 		m_GraphicsQueue.SubmitCommandLists({ m_CommandList }, { m_Fence }, { m_Fence });
 	}
 
-	void EntityRenderer::SetViewportSize(uint32_t InWidth, uint32_t InHeight)
+	void WorldRenderer::SetViewportSize(uint32_t InWidth, uint32_t InHeight)
 	{
 		m_ViewportWidth = InWidth;
 		m_ViewportHeight = InHeight;
@@ -233,9 +229,9 @@ namespace Yuki {
 		m_DepthImage.Resize(InWidth, InHeight);
 	}
 
-	void EntityRenderer::SynchronizeGPUTransform(flecs::entity InEntity)
+	void WorldRenderer::SynchronizeGPUTransform(flecs::entity InEntity)
 	{
-		if (!m_EntityInstanceMap.contains(InEntity))
+		/*if (!m_EntityInstanceMap.contains(InEntity))
 			return;
 
 		uint32_t baseTransformIndex = m_EntityInstanceMap[InEntity];
@@ -259,7 +255,7 @@ namespace Yuki {
 		{
 			CommandList commandList{InCommandList, context};
 			commandList.CopyToBuffer(storageBuffer, baseIndex * sizeof(Math::Mat4), stagingBuffer, baseIndex * sizeof(Math::Mat4), uint32_t(mesh.Instances.size()) * sizeof(Math::Mat4));
-		}, [](){}, {}, {});
+		}, [](){}, {}, {});*/
 	}
 
 }

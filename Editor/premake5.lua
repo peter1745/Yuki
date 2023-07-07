@@ -1,6 +1,6 @@
 local VulkanSDKPath = os.getenv("VULKAN_SDK")
 
-project "Sandbox"
+project "Editor"
     kind "ConsoleApp"
 
     files { "Source/**.cpp" }
@@ -14,6 +14,7 @@ project "Sandbox"
         
         "../ThirdParty/spdlog/include/",
         "../ThirdParty/ankerl/include/",
+        "../ThirdParty/NFD-Extended/src/include/",
 
         "../ThirdParty/",
     }
@@ -30,6 +31,8 @@ project "Sandbox"
         "stb_image",
         "DearImGui",
 		"flecs",
+		"JoltPhysics",
+		"NFD-Extended"
     }
 
     filter { "configurations:Debug" }

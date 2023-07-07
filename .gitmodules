@@ -23,3 +23,9 @@
 	path = ThirdParty/flecs
 	url = https://github.com/SanderMertens/flecs
 	shallow = true
+[submodule "ThirdParty/JoltPhysics"]
+	path = ThirdParty/JoltPhysics
+	url = https://github.com/jrouwe/JoltPhysics
+[submodule "ThirdParty/NFD-Extended"]
+	path = ThirdParty/NFD-Extended
+	url = https://github.com/btzy/nativefiledialog-extended

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <vector>
+#include <chrono>
 #include <ankerl/unordered_dense.h>
 
 namespace Yuki {
@@ -38,5 +39,8 @@ namespace Yuki {
 #endif
 
 	#define YUKI_UNUSED(x) (void)x
+
+	using namespace std::literals;
+	using namespace std::chrono;
 
 }

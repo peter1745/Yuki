@@ -10,6 +10,7 @@ namespace Yuki::Math {
 		{
 			std::array<float, 4> Values;
 			struct { float X, Y, Z, W; };
+			struct { float R, G, B, A; };
 		};
 
 		Vec4()

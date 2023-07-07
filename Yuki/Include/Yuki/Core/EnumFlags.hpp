@@ -34,7 +34,6 @@
 
 namespace Yuki {
 
-	template<typename TEnum>
 	struct EnumFlagsBase {};
 
 	template<typename TEnum>
@@ -48,55 +47,55 @@ namespace Yuki {
 		std::is_default_constructible_v<EnumFlags<TEnum>> &&
 		std::is_constructible_v<EnumFlags<TEnum>> &&
 		(IsScopedEnumV<TEnum> || std::is_enum_v<TEnum>) &&
-		std::is_base_of_v<EnumFlagsBase<TEnum>, EnumFlags<TEnum>>;
+		std::is_base_of_v<EnumFlagsBase, EnumFlags<TEnum>>;
 
 }
 
 template<typename TEnum>
 requires Yuki::IsEnumFlags<TEnum>
-constexpr TEnum operator|(const TEnum InLHS, const TEnum InRHS) noexcept
+constexpr TEnum operator|(TEnum InLHS, TEnum InRHS) noexcept
 {
 	return static_cast<TEnum>(static_cast<std::underlying_type_t<TEnum>>(InLHS) | static_cast<std::underlying_type_t<TEnum>>(InRHS));
 }
 
 template <typename TEnum>
 requires Yuki::IsEnumFlags<TEnum>
-constexpr TEnum operator&(const TEnum InLHS, const TEnum InRHS) noexcept
+constexpr TEnum operator&(TEnum InLHS, TEnum InRHS) noexcept
 {
 	return static_cast<TEnum>(static_cast<std::underlying_type_t<TEnum>>(InLHS) & static_cast<std::underlying_type_t<TEnum>>(InRHS));
 }
 
 template <typename TEnum>
 requires Yuki::IsEnumFlags<TEnum>
-constexpr bool operator!=(const TEnum InLHS, const std::underlying_type_t<TEnum> InRHS) noexcept
+constexpr bool operator!=(TEnum InLHS, std::underlying_type_t<TEnum> InRHS) noexcept
 {
 	return static_cast<std::underlying_type_t<TEnum>>(InLHS) != InRHS;
 }
 
 template<typename TEnum>
 requires Yuki::IsEnumFlags<TEnum>
-constexpr bool operator==(const TEnum InLHS, const std::underlying_type_t<TEnum> InRHS) noexcept
+constexpr bool operator==(TEnum InLHS, std::underlying_type_t<TEnum> InRHS) noexcept
 {
 	return static_cast<std::underlying_type_t<TEnum>>(InLHS) == InRHS;
 }
 
 template <typename TEnum>
 requires Yuki::IsEnumFlags<TEnum>
-constexpr TEnum operator^(const TEnum InLHS, const TEnum InRHS) noexcept
+constexpr TEnum operator^(TEnum InLHS, TEnum InRHS) noexcept
 {
 	return static_cast<TEnum>(static_cast<std::underlying_type_t<TEnum>>(InLHS) ^ static_cast<std::underlying_type_t<TEnum>>(InRHS));
 }
 
 template <typename TEnum>
 requires Yuki::IsEnumFlags<TEnum>
-constexpr TEnum operator~(const TEnum InValue) noexcept
+constexpr TEnum operator~(TEnum InValue) noexcept
 {
 	return static_cast<TEnum>(~static_cast<std::underlying_type_t<TEnum>>(InValue));
 }
 
 template <typename TEnum>
 requires Yuki::IsEnumFlags<TEnum>
-constexpr bool operator!(const TEnum InValue) noexcept
+constexpr bool operator!(TEnum InValue) noexcept
 {
 	return !static_cast<std::underlying_type_t<TEnum>>(InValue);
 }

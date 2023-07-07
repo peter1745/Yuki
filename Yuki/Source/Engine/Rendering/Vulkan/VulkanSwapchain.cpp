@@ -58,7 +58,7 @@ namespace Yuki {
 
 			if (InSwapchain.Width == std::numeric_limits<uint32_t>::max())
 			{
-				const auto& windowAttributes = InSwapchain.Window->GetAttributes();
+		const auto& windowAttributes = InSwapchain.Window->GetAttributes();
 				InSwapchain.Width = Math::Clamp(windowAttributes.Width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
 				InSwapchain.Height = Math::Clamp(windowAttributes.Height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 			}

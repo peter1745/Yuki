@@ -2,7 +2,6 @@
 
 #include "Yuki/Core/JobSystem.hpp"
 #include "Yuki/Core/StableDynamicArray.hpp"
-#include "Yuki/Rendering/MeshData.hpp"
 #include "Yuki/Rendering/RenderResources.hpp"
 
 namespace fastgltf {
@@ -21,22 +20,22 @@ namespace Yuki {
 	class MeshLoader
 	{
 	public:
-		using PushMeshCallback = std::function<void(Mesh)>;
+		//using PushMeshCallback = std::function<void(Mesh)>;
 
-		MeshLoader(RenderContext* InContext, PushMeshCallback InCallback);
+		//MeshLoader(RenderContext* InContext, PushMeshCallback InCallback);
 
 		void LoadGLTFMesh(const std::filesystem::path& InFilePath);
 
 	private:
-		struct MeshSourceData
+		/*struct MeshSourceData
 		{
 			DynamicArray<Vertex> Vertices;
 			DynamicArray<uint32_t> Indices;
-		};
+		};*/
 
 		struct MeshData
 		{
-			DynamicArray<MeshSourceData> SourceData;
+			//DynamicArray<MeshSourceData> SourceData;
 
 			struct ImageData
 			{
@@ -53,10 +52,10 @@ namespace Yuki {
 		Buffer m_ImageStagingBuffer{};
 		Buffer m_MaterialStagingBuffer{};
 
-		PushMeshCallback m_Callback;
+		//PushMeshCallback m_Callback;
 
 		StableDynamicArray<MeshData, 100> m_ProcessingQueue;
-		StableDynamicArray<Mesh, 100> m_MeshQueue;
+		//StableDynamicArray<Mesh, 100> m_MeshQueue;
 
 		JobSystem m_JobSystem;
 

@@ -1,6 +1,7 @@
 #include "IO/MeshLoader.hpp"
 #include "Core/Timer.hpp"
 
+#if 0
 #include <fastgltf/parser.hpp>
 #include <fastgltf/types.hpp>
 #include <fastgltf/tools.hpp>
@@ -18,11 +19,13 @@ namespace fastgltf {
 	{};
 
 }
+#endif
 
 namespace Yuki {
 
 	static constexpr uint32_t s_StagingBufferSize = 100 * 1024 * 1024;
 
+#if 0
 	void ProcessNodeHierarchy(fastgltf::Asset* InAsset, Mesh& InMesh, size_t InNodeIndex, const Math::Mat4& InParentTransform)
 	{
 		auto& node = InAsset->nodes[InNodeIndex];
@@ -55,11 +58,12 @@ namespace Yuki {
 		InContext->CommandPoolReset(InCommandPool);
 		InContext->CommandListBegin(InCommandList);
 	}
+#endif
 
-	MeshLoader::MeshLoader(RenderContext* InContext, PushMeshCallback InCallback)
+	/*MeshLoader::MeshLoader(RenderContext* InContext, PushMeshCallback InCallback)
 		: m_Context(InContext), m_Callback(std::move(InCallback))
 	{
-		m_JobSystem.Init(8);
+		m_JobSystem.Init(4);
 
 		m_MeshStagingBuffer = Buffer(m_Context, {
 			.Type = BufferType::StagingBuffer,
@@ -75,10 +79,11 @@ namespace Yuki {
 			.Type = BufferType::StagingBuffer,
 			.Size = 100 * 1024 * 1024
 		});
-	}
+	}*/
 
 	void MeshLoader::LoadGLTFMesh(const std::filesystem::path& InFilePath)
 	{
+	#if 0
 		fastgltf::Parser parser;
 		fastgltf::GltfDataBuffer dataBuffer;
 		dataBuffer.loadFromFile(InFilePath);
@@ -112,6 +117,7 @@ namespace Yuki {
 		auto[meshIndex, mesh] = m_MeshQueue.EmplaceBack();
 
 		auto[meshDataIndex, meshData] = m_ProcessingQueue.EmplaceBack();
+		mesh.FilePath = InFilePath;
 		mesh.Sources.resize(assetPtr->meshes.size());
 		meshData.SourceData.resize(assetPtr->meshes.size());
 		meshData.Images.resize(assetPtr->textures.size());
@@ -469,5 +475,6 @@ namespace Yuki {
 		instanceCreateBarrier.Pending.push_back(&instanceCreateJob);
 
 		LogInfo("{}", instanceCreateBarrier.Counter.load());
+	#endif
 	}
 }
