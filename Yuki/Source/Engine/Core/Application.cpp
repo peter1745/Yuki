@@ -5,23 +5,21 @@
 
 namespace Yuki {
 
-	Application::Application(const std::string& InName, RenderAPI InRenderAPI)
-		: m_Name(InName), m_RenderingAPI(InRenderAPI)
+	Application::Application(const std::string& InName)
+		: m_Name(InName)
 	{
 	}
 
-	GenericWindow* Application::NewWindow(WindowAttributes InWindowAttributes)
+	GenericWindow* Application::NewWindow(RenderContext* InContext, WindowAttributes InWindowAttributes)
 	{
 		InWindowAttributes.EventCallback = [this](Event* InEvent) { m_EventSystem->PostEvent(InEvent); };
-		Unique<GenericWindow> window = GenericWindow::New(m_RenderContext, InWindowAttributes);
+		Unique<GenericWindow> window = GenericWindow::New(InContext, InWindowAttributes);
 		window->Create();
 		return m_Windows.emplace_back(std::move(window)).GetPtr();
 	}
 
 	void Application::Initialize()
 	{
-		m_RenderContext = RenderContext::New(m_RenderingAPI);
-
 		m_EventSystem = Unique<EventSystem>::Create();
 		m_EventSystem->AddListener(this, &Application::OnWindowClose);
 

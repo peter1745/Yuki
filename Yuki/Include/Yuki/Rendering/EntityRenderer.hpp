@@ -2,32 +2,22 @@
 
 #include "Yuki/Core/ResourceRegistry.hpp"
 #include "Yuki/Math/Mat4.hpp"
+#include "Yuki/World/World.hpp"
 #include "Yuki/Entities/RenderingComponents.hpp"
 
-#include "MeshData.hpp"
-
-#include <flecs/flecs.h>
+#include "RenderResources.hpp"
 
 namespace Yuki {
 
 	class RenderContext;
 
-	struct FlecsEntityHash
-	{
-		using is_avalanching = void;
-
-		uint64_t operator()(const flecs::entity& InEntity) const noexcept
-		{
-			return ankerl::unordered_dense::detail::wyhash::hash(&InEntity, sizeof(flecs::entity));
-		}
-	};
-
-	class EntityRenderer
+	class WorldRenderer
 	{
 	public:
-		EntityRenderer(RenderContext* InContext, flecs::world& InWorld);
+		WorldRenderer(RenderContext* InContext, World& InWorld);
 
-		MeshHandle SubmitForUpload(Mesh InMesh);
+		void CreateGPUObject(flecs::entity InEntity);
+		//MeshHandle SubmitForUpload(Mesh InMesh);
 
 		void Reset();
 		void PrepareFrame();
@@ -41,8 +31,8 @@ namespace Yuki {
 
 		Image GetFinalImage() { return m_ColorImage; }
 		
-		Mesh& GetMesh(MeshHandle InHandle) { return m_Meshes.Get(InHandle); }
-		const Mesh& GetMesh(MeshHandle InHandle) const { return m_Meshes.Get(InHandle); }
+		//Mesh& GetMesh(MeshHandle InHandle) { return m_Meshes.Get(InHandle); }
+		//const Mesh& GetMesh(MeshHandle InHandle) const { return m_Meshes.Get(InHandle); }
 
 	public:
 		flecs::entity PreRenderPhase;
@@ -51,7 +41,7 @@ namespace Yuki {
 
 	private:
 		RenderContext* m_Context = nullptr;
-		flecs::world& m_World;
+		World& m_World;
 		flecs::system m_PreRenderSystem{};
 		flecs::system m_RenderSystem{};
 		flecs::system m_PostRenderSystem{};
@@ -76,9 +66,9 @@ namespace Yuki {
 
 		Fence m_Fence{};
 
-		ResourceRegistry<MeshHandle, Mesh> m_Meshes;
-		std::shared_mutex m_MeshUploadMutex;
-		DynamicArray<MeshHandle> m_MeshUploadQueue;
+		//ResourceRegistry<MeshHandle, Mesh> m_Meshes;
+		//std::shared_mutex m_MeshUploadMutex;
+		//DynamicArray<MeshHandle> m_MeshUploadQueue;
 
 		struct PushConstants
 		{
@@ -93,6 +83,14 @@ namespace Yuki {
 			uint64_t MaterialVA;
 			uint32_t BaseTextureOffset;
 		};
+
+		struct CPUObject
+		{
+			//MeshHandle Mesh;
+			size_t InstanceIndex;
+		};
+
+		DynamicArray<CPUObject> m_CPUObjects;
 
 		Buffer m_ObjectStorageBuffer{};
 		Buffer m_ObjectStagingBuffer{};

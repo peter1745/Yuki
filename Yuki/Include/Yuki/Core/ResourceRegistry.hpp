@@ -29,21 +29,21 @@ namespace Yuki {
 			entry.first = ElementFlag::Exists;
 		}
 
-		std::pair<TKey, TElement&> Acquire()
+		std::pair<TKey, TElement&> Acquire(bool InMarkReady = true)
 		{
 			std::scoped_lock lock(Mutex);
 
 			if (FreeList.empty())
 			{
 				auto[index, entry] = Elements.EmplaceBackNoLock();
-				entry.first = ElementFlag::Exists;
+				entry.first = InMarkReady ? ElementFlag::Exists : ElementFlag::Empty;
 				return { TKey(index), entry.second };
 			}
 
 			TKey key = FreeList.back();
 			FreeList.pop_back();
 			auto&[flag, element] = Elements[static_cast<std::underlying_type_t<TKey>>(key)];
-			flag = ElementFlag::Exists;
+			flag = InMarkReady ? ElementFlag::Exists : ElementFlag::Empty;
 			return { key, element };
 		}
 

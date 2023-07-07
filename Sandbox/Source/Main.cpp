@@ -16,10 +16,11 @@
 #include <Yuki/EventSystem/ApplicationEvents.hpp>
 #include <Yuki/Rendering/PipelineBuilder.hpp>
 #include <Yuki/Rendering/DescriptorSetBuilder.hpp>
-#include <Yuki/Rendering/SceneRenderer.hpp>
 #include <Yuki/Rendering/EntityRenderer.hpp>
 #include <Yuki/IO/MeshLoader.hpp>
+#include <Yuki/Asset/AssetConverters.hpp>
 
+#include <Yuki/World/World.hpp>
 #include <Yuki/Entities/TransformComponents.hpp>
 #include <Yuki/Entities/RenderingComponents.hpp>
 
@@ -29,48 +30,48 @@
 #include <nfd.hpp>
 
 #include <imgui/imgui.h>
-#include <flecs/flecs.h>
 
 class TestApplication : public Yuki::Application
 {
 public:
 	TestApplication()
-	    : Yuki::Application("Test Application")
+		: Yuki::Application("Test Application")
 	{
 	}
 
 private:
 	void CreateWindow(Yuki::WindowAttributes InWindowAttributes)
 	{
-		auto* window = NewWindow(std::move(InWindowAttributes));
+		auto* window = NewWindow(m_RenderContext, std::move(InWindowAttributes));
 		window->Show();
 		m_Windows.emplace_back(window);
 	}
 
 	void OnInitialize() override
 	{
+		m_RenderContext = Yuki::RenderContext::New(Yuki::RenderAPI::Vulkan);
+
 		CreateWindow({
 			.Title = "My Main Window",
 			.Width = 1920,
 			.Height = 1080
 		});
 
-		m_GraphicsQueue = { GetRenderContext()->GetGraphicsQueue(), GetRenderContext() };
+		m_GraphicsQueue = { m_RenderContext->GetGraphicsQueue(), m_RenderContext };
 
-		m_Fence = Yuki::Fence(GetRenderContext());
+		m_Fence = Yuki::Fence(m_RenderContext);
 
-		m_Renderer = new Yuki::EntityRenderer(GetRenderContext(), m_World);
+		m_Renderer = new Yuki::WorldRenderer(m_RenderContext, m_World);
+		m_World = Yuki::World(m_Renderer);
 
-		m_MeshLoader = Yuki::Unique<Yuki::MeshLoader>::Create(GetRenderContext(), [this](Yuki::Mesh InMesh)
+		/*m_MeshLoader = Yuki::Unique<Yuki::MeshLoader>::Create(m_RenderContext, [this](Yuki::Mesh InMesh)
 		{
 			auto handle = m_Renderer->SubmitForUpload(std::move(InMesh));
 			std::scoped_lock lock(m_Mutex);
 			m_LoadedMeshes.push_back(handle);
-		});
+		});*/
 
 		m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
-
-		m_CameraEntity = CreateEntity("Camera Entity").add<Yuki::Entities::CameraComponent>();
 
 		NFD::Init();
 
@@ -88,9 +89,9 @@ private:
 		ImGui::StyleColorsDark();
 
 		m_ImGuiWindowContext = Yuki::Unique<Yuki::ImGuiWindowContext>::Create(m_Windows[0]);
-		m_ImGuiRenderContext = Yuki::ImGuiRenderContext::New(m_Windows[0]->GetSwapchain(), GetRenderContext());
+		m_ImGuiRenderContext = Yuki::ImGuiRenderContext::New(m_Windows[0]->GetSwapchain(), m_RenderContext);
 
-		m_CommandPool = Yuki::CommandPool(GetRenderContext(), m_GraphicsQueue);
+		m_CommandPool = Yuki::CommandPool(m_RenderContext, m_GraphicsQueue);
 		m_ImGuiCommandList = m_CommandPool.CreateCommandList();
 
 		auto& style = ImGui::GetStyle();
@@ -101,15 +102,16 @@ private:
 
 	void OnRunLoop(float InDeltaTime) override
 	{
+		m_Fence.Wait();
+
 		m_Camera->Update(InDeltaTime);
 
-		m_World.progress();
+		m_World.Tick(InDeltaTime);
 
 		const auto& windowAttribs = m_Windows[0]->GetAttributes();
 		if (windowAttribs.Width == 0 || windowAttribs.Height == 0)
 			return;
 
-		m_Fence.Wait();
 		RenderWorld();
 		RenderImGui();
 	}
@@ -118,7 +120,7 @@ private:
 	{
 		m_Renderer->Reset();
 
-		GetRenderContext()->GetTransferScheduler().Execute();
+		m_RenderContext->GetTransferScheduler().Execute();
 
 		if (m_ViewportWidth != m_LastViewportWidth || m_ViewportHeight != m_LastViewportHeight)
 		{
@@ -133,7 +135,7 @@ private:
 
 	void RenderImGui()
 	{
-		auto swapchains = GetRenderContext()->GetSwapchains();
+		auto swapchains = m_RenderContext->GetSwapchains();
 
 		if (swapchains.empty())
 			return;
@@ -164,14 +166,7 @@ private:
 
 	flecs::entity CreateEntity(std::string_view InName)
 	{
-		auto entity = m_World.entity(InName.data())
-			.set([](Yuki::Entities::Translation& InTranslation, Yuki::Entities::Rotation& InRotation, Yuki::Entities::Scale& InScale)
-			{
-				InTranslation.Value = { 0.0f, 0.0f, 0.0f };
-				InRotation.Value.Value = { 0.0f, 0.0f, 0.0f, 1.0f };
-				InScale.Value = 1.0f;
-			});
-
+		auto entity = m_World.CreateEntity(InName);
 		m_Entities.push_back(entity);
 		m_EntityExpandState[entity] = false;
 		return entity;
@@ -216,7 +211,9 @@ private:
 						{
 							NFD::UniquePathSetPath path;
             				NFD::PathSet::GetPath(filePaths, i, path);
-							m_MeshLoader->LoadGLTFMesh(path.get());
+							//m_MeshLoader->LoadGLTFMesh(path.get());
+							Yuki::MeshConverter converter;
+							converter.Convert(path.get());
 						}
 					}
 				}
@@ -244,6 +241,9 @@ private:
 		if (ImGui::Begin("Settings"))
 		{
 			ImGui::DragFloat("Camera Speed", &m_Camera->GetMovementSpeed());
+
+			if (ImGui::Button("Start"))
+				m_World.StartSimulation();
 		}
 		ImGui::End();
 
@@ -262,20 +262,22 @@ private:
 		if (!ImGui::Begin("Content Browser"))
 			return;
 
-		for (auto meshHandle : m_LoadedMeshes)
+		/*for (auto meshHandle : m_LoadedMeshes)
 		{
 			const auto& mesh = m_Renderer->GetMesh(meshHandle);
 			auto name = mesh.FilePath.filename().string();
 			auto label = fmt::format("Create {}", name);
 			if (ImGui::Button(label.c_str()))
 			{
-				CreateEntity(name)
-					.set([meshHandle](Yuki::Entities::MeshComponent& InMeshComp)
-					{
-						InMeshComp.Value = meshHandle;
-					});
+				auto entity = CreateEntity(name);
+				entity.set([meshHandle](Yuki::Entities::MeshComponent& InMeshComp)
+				{
+					InMeshComp.Value = meshHandle;
+				});
+
+				m_Renderer->CreateGPUObject(entity);
 			}
-		}
+		}*/
 	}
 
 	void DrawViewport()
@@ -385,6 +387,8 @@ private:
 	}
 
 private:
+	Yuki::Unique<Yuki::RenderContext> m_RenderContext = nullptr;
+
 	std::vector<Yuki::GenericWindow*> m_Windows;
 	Yuki::Queue m_GraphicsQueue{};
 	Yuki::Fence m_Fence{};
@@ -392,7 +396,7 @@ private:
 	Yuki::Unique<FreeCamera> m_Camera = nullptr;
 	Yuki::Unique<Yuki::MeshLoader> m_MeshLoader = nullptr;
 
-	Yuki::EntityRenderer* m_Renderer;
+	Yuki::WorldRenderer* m_Renderer;
 
 	Yuki::Unique<Yuki::ImGuiWindowContext> m_ImGuiWindowContext;
 	Yuki::Unique<Yuki::ImGuiRenderContext> m_ImGuiRenderContext;
@@ -401,10 +405,10 @@ private:
 	Yuki::CommandList m_ImGuiCommandList{};
 
 	std::shared_mutex m_Mutex;
-	Yuki::DynamicArray<Yuki::MeshHandle> m_LoadedMeshes;
+	/*Yuki::DynamicArray<Yuki::MeshHandle> m_LoadedMeshes;
+	Yuki::ResourceRegistry<Yuki::MeshHandle, Yuki::Mesh> m_Meshes;*/
 
-	flecs::world m_World;
-	flecs::entity m_CameraEntity;
+	Yuki::World m_World;
 
 	uint32_t m_ViewportWidth = 0;
 	uint32_t m_ViewportHeight = 0;
@@ -417,6 +421,7 @@ private:
 	flecs::entity m_SelectedEntity = flecs::entity::null();
 
 	Yuki::Map<flecs::entity, Yuki::Math::Vec3, Yuki::FlecsEntityHash> m_EulerCache;
+
 };
 
 YUKI_DECLARE_APPLICATION(TestApplication)

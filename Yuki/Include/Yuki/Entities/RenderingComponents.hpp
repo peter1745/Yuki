@@ -1,12 +1,7 @@
 #pragma once
 
 #include "Yuki/Math/Mat4.hpp"
-
-namespace Yuki {
-
-	enum class MeshHandle{};
-
-}
+//#include "Yuki/Rendering/MeshData.hpp"
 
 namespace Yuki::Entities {
 
@@ -18,7 +13,7 @@ namespace Yuki::Entities {
 
 	struct MeshComponent
 	{
-		MeshHandle Value{};
+		//MeshHandle Value{};
 	};
 
 }
