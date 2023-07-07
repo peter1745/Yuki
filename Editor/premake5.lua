@@ -1,6 +1,6 @@
 local VulkanSDKPath = os.getenv("VULKAN_SDK")
 
-project "Sandbox"
+project "Editor"
     kind "ConsoleApp"
 
     files { "Source/**.cpp" }

@@ -68,5 +68,5 @@ include "ThirdParty/"
 group ""
 
 include "Yuki/"
-include "Sandbox/"
+include "Editor/"
 include "TestFramework/"
