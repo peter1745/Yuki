@@ -1,17 +1,13 @@
 #pragma once
 
+#include "Yuki/Rendering/Mesh.hpp"
+
 namespace Yuki {
 
-	class AssetConverter
+	class MeshConverter
 	{
 	public:
-		virtual void Convert(const std::filesystem::path& InFilePath) const = 0;
-	};
-
-	class MeshConverter : public AssetConverter
-	{
-	public:
-		void Convert(const std::filesystem::path& InFilePath) const override;
+		std::pair<std::filesystem::path, MeshScene> Convert(const std::filesystem::path& InFilePath) const;
 	};
 
 }

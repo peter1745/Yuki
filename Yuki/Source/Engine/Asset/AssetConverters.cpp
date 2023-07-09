@@ -1,8 +1,6 @@
 #include "Asset/AssetConverters.hpp"
 #include "Asset/AssetTypes.hpp"
 #include "Memory/Buffer.hpp"
-#include "Math/Mat4.hpp"
-#include "Math/Vec2.hpp"
 
 #include <fastgltf/parser.hpp>
 #include <fastgltf/types.hpp>
@@ -24,41 +22,6 @@ namespace fastgltf {
 
 namespace Yuki {
 
-	struct Vertex
-	{
-		Math::Vec3 Position;
-		Math::Vec3 Normal;
-		Math::Vec2 UV;
-		uint32_t MaterialIndex = 0; // TODO(Peter): Change to material handle?
-	};
-
-	struct MaterialData
-	{
-		int32_t AlbedoTextureIndex = -1;
-		uint32_t AlbedoColor = 0;
-	};
-
-	struct MeshSource
-	{
-		DynamicArray<Vertex> Vertices;
-		DynamicArray<uint32_t> Indices;
-	};
-
-	struct MeshNode
-	{
-		Math::Vec3 Translation;
-		Math::Quat Rotation;
-		Math::Vec3 Scale;
-		int32_t MeshIndex;
-	};
-
-	struct MeshScene
-	{
-		DynamicArray<MaterialData> Materials;
-		DynamicArray<MeshSource> Meshes;
-		DynamicArray<MeshNode> Nodes;
-	};
-
 	void ProcessNodeHierarchy(fastgltf::Asset* InAsset, MeshScene& InScene, size_t InNodeIndex)
 	{
 		const auto& gltfNode = InAsset->nodes[InNodeIndex];
@@ -74,7 +37,7 @@ namespace Yuki {
 			ProcessNodeHierarchy(InAsset, InScene, childNodeIndex);
 	}
 
-	void MeshConverter::Convert(const std::filesystem::path& InFilePath) const
+	std::pair<std::filesystem::path, MeshScene> MeshConverter::Convert(const std::filesystem::path& InFilePath) const
 	{
 		fastgltf::Parser parser;
 		fastgltf::GltfDataBuffer dataBuffer;
@@ -243,6 +206,8 @@ namespace Yuki {
 		stream.close();
 
 		delete parsedAsset;
+
+		return { filepath, meshScene };
 	}
 
 }

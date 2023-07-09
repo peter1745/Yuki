@@ -33,6 +33,9 @@ project "Yuki"
         "../ThirdParty/stb_image/include/",
         "../ThirdParty/imgui/",
         "../ThirdParty/JoltPhysics/",
+        "../ThirdParty/JoltPhysics/",
+        "../ThirdParty/nlohmann/json/single_include/",
+        "../ThirdParty/simdjson/include/",
         "../ThirdParty/",
 
         VulkanSDKPath,

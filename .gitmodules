@@ -29,3 +29,7 @@
 [submodule "ThirdParty/NFD-Extended"]
 	path = ThirdParty/NFD-Extended
 	url = https://github.com/btzy/nativefiledialog-extended
+[submodule "ThirdParty/nlohmann/json"]
+	path = ThirdParty/nlohmann/json
+	url = https://github.com/nlohmann/json
+	branch = master

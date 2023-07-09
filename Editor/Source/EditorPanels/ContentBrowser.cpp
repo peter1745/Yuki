@@ -1,14 +1,17 @@
 #include "ContentBrowser.hpp"
 
+#include <Yuki/Core/Core.hpp>
 #include <Yuki/Core/ScopeExitGuard.hpp>
 #include <Yuki/Asset/AssetConverters.hpp>
 
 #include <imgui/imgui.h>
 #include <nfd.hpp>
+#include <spdlog/fmt/fmt.h>
 
 namespace YukiEditor {
 
-	ContentBrowser::ContentBrowser()
+	ContentBrowser::ContentBrowser(Yuki::AssetRegistry& InAssetRegistry)
+		: m_AssetRegistry(InAssetRegistry)
 	{
 		m_CurrentDirectory = std::filesystem::current_path() / "Content";
 	}
@@ -30,8 +33,10 @@ namespace YukiEditor {
 
 				if (ImGui::MenuItem("Mesh"))
 				{
+					static const Yuki::Array<nfdfilteritem_t, 1> MeshFilters{ { "glTF", "gltf,glb" } };
+
 					NFD::UniquePathSet filePaths;
-					nfdresult_t result = NFD::OpenDialogMultiple(filePaths, static_cast<const nfdnfilteritem_t*>(nullptr));
+					nfdresult_t result = NFD::OpenDialogMultiple(filePaths, MeshFilters.data(), uint32_t(MeshFilters.size()));
 
 					if (result == NFD_OKAY)
 					{
@@ -42,18 +47,26 @@ namespace YukiEditor {
 						{
 							NFD::UniquePathSetPath path;
 							NFD::PathSet::GetPath(filePaths, i, path);
-							Yuki::MeshConverter converter;
-							converter.Convert(path.get());
+
+							auto[assetFilePath, meshData] = Yuki::MeshConverter().Convert(path.get());
+							auto assetID = m_AssetRegistry.Register(Yuki::AssetType::Mesh, {
+								assetFilePath,
+								path.get()
+							});
+							m_AssetItems.push_back(assetID);
 						}
+
+						m_AssetRegistry.Serialize();
 					}
 				}
 			}
 		}
 
-		for (auto dir : std::filesystem::directory_iterator(m_CurrentDirectory))
+		m_AssetRegistry.ForEach([](auto InHandle, const auto& InMetadata)
 		{
-			ImGui::Button(dir.path().stem().string().c_str());
-		}
+			auto label = InMetadata.FilePath.stem().string();
+			ImGui::Button(label.c_str());
+		});
 	}
 
 }

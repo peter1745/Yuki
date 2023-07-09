@@ -68,6 +68,9 @@ namespace YukiEditor {
 			m_Renderer = new Yuki::WorldRenderer(m_RenderContext, m_World);
 			m_World = Yuki::World(m_Renderer);
 
+			m_AssetSystem = Yuki::Unique<Yuki::AssetSystem>::Create();
+			m_AssetRegistry = Yuki::Unique<Yuki::AssetRegistry>::Create("Content/AssetRegistry.json");
+
 			/*m_MeshLoader = Yuki::Unique<Yuki::MeshLoader>::Create(m_RenderContext, [this](Yuki::Mesh InMesh)
 			{
 				auto handle = m_Renderer->SubmitForUpload(std::move(InMesh));
@@ -85,7 +88,7 @@ namespace YukiEditor {
 
 		void InitializeEditorUI()
 		{
-			m_EditorPanels.emplace_back(std::make_unique<ContentBrowser>());
+			m_EditorPanels.emplace_back(std::make_unique<ContentBrowser>(*m_AssetRegistry));
 		}
 
 		void InitializeImGui()
@@ -205,33 +208,12 @@ namespace YukiEditor {
 
 			if (ImGui::BeginMainMenuBar())
 			{
+				YUKI_SCOPE_EXIT_GUARD() { ImGui::EndMainMenuBar(); };
+
 				if (ImGui::BeginMenu("File"))
 				{
-					if (ImGui::MenuItem("Import..."))
-					{
-						NFD::UniquePathSet filePaths;
-						nfdresult_t result = NFD::OpenDialogMultiple(filePaths, static_cast<const nfdnfilteritem_t*>(nullptr));
-
-						if (result == NFD_OKAY)
-						{
-							nfdpathsetsize_t pathCount;
-        					NFD::PathSet::Count(filePaths, pathCount);
-
-							for (uint32_t i = 0; i < pathCount; i++)
-							{
-								NFD::UniquePathSetPath path;
-            					NFD::PathSet::GetPath(filePaths, i, path);
-								//m_MeshLoader->LoadGLTFMesh(path.get());
-								Yuki::MeshConverter converter;
-								converter.Convert(path.get());
-							}
-						}
-					}
-
-					ImGui::EndMenu();
+					YUKI_SCOPE_EXIT_GUARD() { ImGui::EndMenu(); };
 				}
-
-				ImGui::EndMainMenuBar();
 			}
 
 			ImGui::DockSpace(ImGui::GetID("MainDockspace"));
@@ -239,13 +221,10 @@ namespace YukiEditor {
 			ImGui::PopStyleVar();
 		}
 
-		void EndMainDockspace()
-		{
-			ImGui::End();
-		}
-
 		void DrawUI()
 		{
+			YUKI_SCOPE_EXIT_GUARD() { ImGui::End(); };
+
 			BeginMainDockspace();
 
 			if (ImGui::Begin("Settings"))
@@ -263,8 +242,6 @@ namespace YukiEditor {
 
 			for (auto& panel : m_EditorPanels)
 				panel->Draw();
-
-			EndMainDockspace();
 		}
 
 		void DrawContentBrowser()
@@ -407,6 +384,8 @@ namespace YukiEditor {
 
 		Yuki::Unique<FreeCamera> m_Camera = nullptr;
 		Yuki::Unique<Yuki::MeshLoader> m_MeshLoader = nullptr;
+		Yuki::Unique<Yuki::AssetSystem> m_AssetSystem = nullptr;
+		Yuki::Unique<Yuki::AssetRegistry> m_AssetRegistry = nullptr;
 
 		Yuki::WorldRenderer* m_Renderer;
 

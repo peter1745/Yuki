@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Yuki/Rendering/Mesh.hpp"
+
 namespace Yuki {
 
 	enum class AssetType
@@ -27,5 +29,12 @@ namespace Yuki {
 		}
 
 	}
+
+	struct Asset {};
+
+	struct MeshAsset
+	{
+		MeshScene Scene;
+	};
 
 }

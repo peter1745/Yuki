@@ -47,13 +47,14 @@ namespace Yuki {
 			return { key, element };
 		}
 
-		std::pair<TKey, TElement&> Insert(const TElement& InElement)
+		std::pair<TKey, TElement&> Insert(const TElement& InElement, bool InMarkReady = false)
 		{
 			std::scoped_lock lock(Mutex);
 
 			if (FreeList.empty())
 			{
 				auto[index, entry] = Elements.EmplaceBackNoLock();
+				entry.first = InMarkReady ? ElementFlag::Exists : ElementFlag::Empty;
 				entry.second = InElement;
 				return { TKey(index), entry.second };
 			}
@@ -61,6 +62,7 @@ namespace Yuki {
 			TKey key = FreeList.back();
 			FreeList.pop_back();
 			auto&[flag, element] = Elements[static_cast<std::underlying_type_t<TKey>>(key)];
+			flag = InMarkReady ? ElementFlag::Exists : ElementFlag::Empty;
 			element = InElement;
 			return { key, element };
 		}
