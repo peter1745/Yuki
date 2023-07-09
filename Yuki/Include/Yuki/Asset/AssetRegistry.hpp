@@ -20,6 +20,8 @@ namespace Yuki {
 		AssetID Register(AssetType InType, const AssetMetadata& InMetadata);
 		void Serialize();
 
+		const AssetMetadata& operator[](AssetID InID) const { return m_Metadata.at(InID); }
+
 		template<typename TFunction>
 		void ForEach(TFunction&& InFunction)
 		{

@@ -4,6 +4,11 @@
 
 namespace Yuki {
 
+	/// <summary>
+	/// An opaque handle to an asset (loaded or unloaded)
+	/// Represented as a single 64-bit unsigned integer, with the asset type
+	/// stored in the 8 most signifigant bits
+	/// </summary>
 	class AssetID
 	{
 	private:

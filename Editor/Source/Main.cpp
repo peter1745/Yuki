@@ -20,7 +20,6 @@
 #include <Yuki/Rendering/DescriptorSetBuilder.hpp>
 #include <Yuki/Rendering/EntityRenderer.hpp>
 #include <Yuki/IO/MeshLoader.hpp>
-#include <Yuki/Asset/AssetConverters.hpp>
 
 #include <Yuki/World/World.hpp>
 #include <Yuki/Entities/TransformComponents.hpp>

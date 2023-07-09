@@ -28,6 +28,7 @@ namespace Yuki {
 
 	struct MeshNode
 	{
+		std::string Name;
 		Math::Vec3 Translation;
 		Math::Quat Rotation;
 		Math::Vec3 Scale;

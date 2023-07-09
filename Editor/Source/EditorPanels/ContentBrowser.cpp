@@ -2,7 +2,7 @@
 
 #include <Yuki/Core/Core.hpp>
 #include <Yuki/Core/ScopeExitGuard.hpp>
-#include <Yuki/Asset/AssetConverters.hpp>
+#include <Yuki/Asset/AssetImporter.hpp>
 
 #include <imgui/imgui.h>
 #include <nfd.hpp>
@@ -48,11 +48,7 @@ namespace YukiEditor {
 							NFD::UniquePathSetPath path;
 							NFD::PathSet::GetPath(filePaths, i, path);
 
-							auto[assetFilePath, meshData] = Yuki::MeshConverter().Convert(path.get());
-							auto assetID = m_AssetRegistry.Register(Yuki::AssetType::Mesh, {
-								assetFilePath,
-								path.get()
-							});
+							auto assetID = Yuki::AssetImporter<Yuki::MeshAsset>().Import(m_AssetRegistry, path.get());
 							m_AssetItems.push_back(assetID);
 						}
 
@@ -62,10 +58,11 @@ namespace YukiEditor {
 			}
 		}
 
-		m_AssetRegistry.ForEach([](auto InHandle, const auto& InMetadata)
+		m_AssetRegistry.ForEach([&](auto InHandle, const auto& InMetadata)
 		{
 			auto label = InMetadata.FilePath.stem().string();
-			ImGui::Button(label.c_str());
+			if (ImGui::Button(label.c_str()))
+				Yuki::AssetImporter<Yuki::MeshAsset>().Load(m_AssetRegistry, InHandle);
 		});
 	}
 
