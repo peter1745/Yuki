@@ -3,32 +3,36 @@
 
 #include <Yuki/Core/GenericWindow.hpp>
 
-class FreeCamera
-{
-public:
-    FreeCamera(Yuki::GenericWindow* InInputWindow);
+namespace YukiEditor {
 
-    void Update(float InDeltaTime);
+	class FreeCamera
+	{
+	public:
+		FreeCamera(Yuki::GenericWindow* InInputWindow);
 
-	const Yuki::Math::Mat4& GetViewMatrix() const { return m_ViewMatrix; }
+		void Update(float InDeltaTime);
 
-	float& GetMovementSpeed() { return m_MovementSpeed; }
+		const Yuki::Math::Mat4& GetViewMatrix() const { return m_ViewMatrix; }
 
-private:
-    void UpdateViewMatrix();
+		float& GetMovementSpeed() { return m_MovementSpeed; }
 
-private:
-	Yuki::GenericWindow* m_InputWindow = nullptr;
+	private:
+		void UpdateViewMatrix();
 
-	float m_MovementSpeed = 10.0f;
+	private:
+		Yuki::GenericWindow* m_InputWindow = nullptr;
 
-    Yuki::Math::Vec3 m_Position;
-    Yuki::Math::Vec3 m_Forward;
-    Yuki::Math::Vec3 m_Right;
-    Yuki::Math::Vec3 m_Up;
+		float m_MovementSpeed = 10.0f;
 
-    float m_Yaw;
-    float m_Pitch;
+		Yuki::Math::Vec3 m_Position;
+		Yuki::Math::Vec3 m_Forward;
+		Yuki::Math::Vec3 m_Right;
+		Yuki::Math::Vec3 m_Up;
 
-    Yuki::Math::Mat4 m_ViewMatrix;
-};
+		float m_Yaw;
+		float m_Pitch;
+
+		Yuki::Math::Mat4 m_ViewMatrix;
+	};
+
+}

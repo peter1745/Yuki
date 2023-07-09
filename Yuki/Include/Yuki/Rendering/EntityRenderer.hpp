@@ -14,7 +14,7 @@ namespace Yuki {
 	class WorldRenderer
 	{
 	public:
-		WorldRenderer(RenderContext* InContext, World& InWorld);
+		WorldRenderer(RenderContext* InContext);
 
 		void CreateGPUObject(flecs::entity InEntity);
 		//MeshHandle SubmitForUpload(Mesh InMesh);
@@ -41,7 +41,6 @@ namespace Yuki {
 
 	private:
 		RenderContext* m_Context = nullptr;
-		World& m_World;
 		flecs::system m_PreRenderSystem{};
 		flecs::system m_RenderSystem{};
 		flecs::system m_PostRenderSystem{};

@@ -1,6 +1,7 @@
 #include "FreeCamera.hpp"
 #include "EditorPanels/EditorPanel.hpp"
 #include "EditorPanels/ContentBrowser.hpp"
+#include "EditorPanels/EditorViewport.hpp"
 
 #include <iostream>
 #include <filesystem>
@@ -64,9 +65,6 @@ namespace YukiEditor {
 
 			m_Fence = Yuki::Fence(m_RenderContext);
 
-			m_Renderer = new Yuki::WorldRenderer(m_RenderContext, m_World);
-			m_World = Yuki::World(m_Renderer);
-
 			m_AssetSystem = Yuki::Unique<Yuki::AssetSystem>::Create();
 			m_AssetRegistry = Yuki::Unique<Yuki::AssetRegistry>::Create("Content/AssetRegistry.json");
 
@@ -88,6 +86,7 @@ namespace YukiEditor {
 		void InitializeEditorUI()
 		{
 			m_EditorPanels.emplace_back(std::make_unique<ContentBrowser>(*m_AssetRegistry));
+			m_EditorPanels.emplace_back(std::make_unique<EditorViewport>(m_Windows[0], m_RenderContext, m_ImGuiRenderContext));
 		}
 
 		void InitializeImGui()
@@ -124,25 +123,10 @@ namespace YukiEditor {
 			if (windowAttribs.Width == 0 || windowAttribs.Height == 0)
 				return;
 
-			RenderWorld();
+			for (auto& panel : m_EditorPanels)
+				panel->Update(InDeltaTime);
+
 			RenderImGui();
-		}
-
-		void RenderWorld()
-		{
-			m_Renderer->Reset();
-
-			m_RenderContext->GetTransferScheduler().Execute();
-
-			if (m_ViewportWidth != m_LastViewportWidth || m_ViewportHeight != m_LastViewportHeight)
-			{
-				m_Renderer->SetViewportSize(m_ViewportWidth, m_ViewportHeight);
-				m_ImGuiRenderContext->RecreateImage(m_Renderer->GetFinalImage());
-			}
-
-			m_Renderer->BeginFrame(Yuki::Math::Mat4::PerspectiveInfReversedZ(70.0f, (float)m_ViewportWidth / m_ViewportHeight, 0.05f) * m_Camera->GetViewMatrix());
-			m_Renderer->RenderEntities();
-			m_Renderer->EndFrame();
 		}
 
 		void RenderImGui()
@@ -235,7 +219,6 @@ namespace YukiEditor {
 			}
 			ImGui::End();
 
-			DrawViewport();
 			DrawEntityList();
 			DrawEntityData();
 
@@ -266,28 +249,6 @@ namespace YukiEditor {
 					m_Renderer->CreateGPUObject(entity);
 				}
 			}*/
-		}
-
-		void DrawViewport()
-		{
-			ImVec2 viewportSize{0.0f, 0.0f};
-			m_LastViewportWidth = m_ViewportWidth;
-			m_LastViewportHeight = m_ViewportHeight;
-
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-			if (ImGui::Begin("Viewport"))
-			{
-				viewportSize = ImGui::GetContentRegionAvail();
-				m_ImGuiRenderContext->DrawImage(m_Renderer->GetFinalImage(), viewportSize);
-			}
-			ImGui::End();
-			ImGui::PopStyleVar();
-
-			if (uint32_t(viewportSize.x) > 0 && uint32_t(viewportSize.y) > 0)
-			{
-				m_ViewportWidth = uint32_t(viewportSize.x);
-				m_ViewportHeight = uint32_t(viewportSize.y);
-			}
 		}
 
 		void DrawEntityData()
@@ -327,7 +288,7 @@ namespace YukiEditor {
 
 			if (changed)
 			{
-				m_Renderer->SynchronizeGPUTransform(m_SelectedEntity);
+				//m_Renderer->SynchronizeGPUTransform(m_SelectedEntity);
 			}
 		}
 
@@ -386,24 +347,13 @@ namespace YukiEditor {
 		Yuki::Unique<Yuki::AssetSystem> m_AssetSystem = nullptr;
 		Yuki::Unique<Yuki::AssetRegistry> m_AssetRegistry = nullptr;
 
-		Yuki::WorldRenderer* m_Renderer;
-
 		Yuki::Unique<Yuki::ImGuiWindowContext> m_ImGuiWindowContext;
 		Yuki::Unique<Yuki::ImGuiRenderContext> m_ImGuiRenderContext;
 
 		Yuki::CommandPool m_CommandPool{};
 		Yuki::CommandList m_ImGuiCommandList{};
 
-		std::shared_mutex m_Mutex;
-		/*Yuki::DynamicArray<Yuki::MeshHandle> m_LoadedMeshes;
-		Yuki::ResourceRegistry<Yuki::MeshHandle, Yuki::Mesh> m_Meshes;*/
-
 		Yuki::World m_World;
-
-		uint32_t m_ViewportWidth = 0;
-		uint32_t m_ViewportHeight = 0;
-		uint32_t m_LastViewportWidth = 0;
-		uint32_t m_LastViewportHeight = 0;
 
 		Yuki::DynamicArray<flecs::entity> m_Entities;
 		Yuki::Map<flecs::entity, bool, Yuki::FlecsEntityHash> m_EntityExpandState;

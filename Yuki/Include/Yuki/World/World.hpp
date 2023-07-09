@@ -29,8 +29,7 @@ namespace Yuki {
 	class World
 	{
 	public:
-		World() = default;
-		World(WorldRenderer* InRenderer);
+		World();
 
 		flecs::entity CreateEntity(std::string_view InName);
 
@@ -40,7 +39,6 @@ namespace Yuki {
 		void StopSimulation();
 
 	private:
-		WorldRenderer* m_Renderer = nullptr;
 		flecs::world m_EntityWorld;
 
 		Unique<JPH::TempAllocator> m_Allocator = nullptr;

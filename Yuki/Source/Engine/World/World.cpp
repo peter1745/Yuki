@@ -94,8 +94,7 @@ namespace Yuki {
 	static ObjectVsBroadPhaseLayerFilterImpl s_ObjectBroadPhaseLayerFitler;
 	static ObjectLayerPairFilterImpl s_ObjectVsObjectLayerFilter;
 
-	World::World(WorldRenderer* InRenderer)
-		: m_Renderer(InRenderer)
+	World::World()
 	{
 		JPH::RegisterDefaultAllocator();
 		JPH::Factory::sInstance = new JPH::Factory();
@@ -126,7 +125,7 @@ namespace Yuki {
 	{
 		m_EntityWorld.progress(InDeltaTime);
 
-		if (m_Simulating)
+		/*if (m_Simulating)
 		{
 			nanoseconds tickPeriod = duration_cast<std::chrono::nanoseconds>(1s) / 120;
 			float fixedTimeStep = duration_cast<std::chrono::duration<float>>(tickPeriod).count();
@@ -137,7 +136,7 @@ namespace Yuki {
 				m_SimulatedTime += tickPeriod;
 				m_PhysicsSystem->Update(fixedTimeStep, 1, m_Allocator, m_ThreadPool);
 			}
- 
+
 			for (const auto&[entity, body] : m_PhysicsBodies)
 			{
 				const auto& position = body->GetPosition();
@@ -148,7 +147,7 @@ namespace Yuki {
 
 				m_Renderer->SynchronizeGPUTransform(entity);
 			}
-		}
+		}*/
 	}
 
 	void World::StartSimulation()

@@ -5,8 +5,8 @@
 
 namespace Yuki {
 
-	WorldRenderer::WorldRenderer(RenderContext* InContext, World& InWorld)
-		: m_Context(InContext), m_World(InWorld)
+	WorldRenderer::WorldRenderer(RenderContext* InContext)
+		: m_Context(InContext)
 	{
 		m_GraphicsQueue = { m_Context->GetGraphicsQueue(), m_Context };
 
