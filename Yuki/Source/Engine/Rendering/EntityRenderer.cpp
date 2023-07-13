@@ -62,6 +62,8 @@ namespace Yuki {
 			.SetPolygonMode(PolygonModeType::Line)
 			.Build();
 
+		m_ActivePipeline = m_Pipeline;
+
 		m_Fence = Fence(m_Context);
 
 		m_ColorImage = Image(InContext, 1920, 1080, ImageFormat::RGBA8UNorm, ImageUsage::ColorAttachment | ImageUsage::Sampled);
@@ -235,10 +237,9 @@ namespace Yuki {
 		DynamicArray<const TextureAsset*> textures;
 		for (const auto& textureHandle : InMeshScene.Textures)
 		{
-			InAssetSystem.Request<TextureAsset>(textureHandle, [&textures](const auto& InTextureAsset)
-			{
-				textures.emplace_back(&InTextureAsset);
-			});
+			const auto* textureAsset = InAssetSystem.Request<TextureAsset>(textureHandle);
+			if (textureAsset)
+				textures.push_back(textureAsset);
 		}
 
 		gpuMeshScene.Textures.resize(textures.size(), Image{});
@@ -335,9 +336,9 @@ namespace Yuki {
 		m_CommandList = m_CommandPool.CreateCommandList();
 		m_CommandList.Begin();
 		
-		m_CommandList.BindPipeline(m_Pipeline);
+		m_CommandList.BindPipeline(m_ActivePipeline);
 		//m_CommandList.BindDescriptorSet(m_Pipeline, m_MaterialSet);
-		m_CommandList.PushConstants(m_Pipeline, &m_PushConstants, sizeof(m_PushConstants));
+		m_CommandList.PushConstants(m_ActivePipeline, &m_PushConstants, sizeof(m_PushConstants));
 
 		m_CommandList.SetViewport({
 			.X = 0.0f,
@@ -375,7 +376,7 @@ namespace Yuki {
 			if (!std::atomic_ref<bool>(mesh.IsReady))
 				return;
 
-			m_CommandList.BindDescriptorSet(m_Pipeline, meshScene.TextureSet);
+			m_CommandList.BindDescriptorSet(m_ActivePipeline, meshScene.TextureSet);
 			m_CommandList.BindIndexBuffer(mesh.IndexData, 0);
 			m_CommandList.DrawIndexed(mesh.IndexCount, 0, instanceIndex);
 			instanceIndex++;

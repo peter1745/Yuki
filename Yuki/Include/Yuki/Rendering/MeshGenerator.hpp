@@ -1,19 +1,14 @@
 #pragma once
 
-#include "Yuki/Core/ResourceRegistry.hpp"
-
-//#include "MeshData.hpp"
+#include "Mesh.hpp"
+#include "Yuki/Asset/AssetSystem.hpp"
 
 namespace Yuki {
 
 	class MeshGenerator
 	{
 	public:
-		//MeshGenerator(ResourceRegistry<MeshHandle, Mesh>& InMeshRegistry);
-		//MeshHandle GenerateCubeMesh(const Math::Vec3& InHalfSize);
-
-	private:
-		//ResourceRegistry<MeshHandle, Mesh>& m_MeshRegistry;
+		static AssetID GenerateCubeSphere(AssetSystem& InAssetSystem, float InRadius, uint32_t InSegments, float InUVMultiplier);
 	};
 
 }

@@ -66,12 +66,10 @@ namespace YukiEditor {
 
 				if (assetID.GetType() == Yuki::AssetType::Mesh)
 				{
-					m_AssetSystem.Request<Yuki::MeshAsset>(assetID, [this, assetID](const auto& InMeshAsset)
-					{
-						auto rootEntity = m_World->InstantiateMeshScene(assetID, InMeshAsset.Scene);
-						m_Renderer->SubmitForUpload(assetID, m_AssetSystem, InMeshAsset.Scene);
-						m_Renderer->CreateGPUInstance(rootEntity);
-					});
+					const auto* meshAsset = m_AssetSystem.Request<Yuki::MeshAsset>(assetID);
+					auto rootEntity = m_World->InstantiateMeshScene(assetID, meshAsset->Scene);
+					m_Renderer->SubmitForUpload(assetID, m_AssetSystem, meshAsset->Scene);
+					m_Renderer->CreateGPUInstance(rootEntity);
 				}
 			}
 		}

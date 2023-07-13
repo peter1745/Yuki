@@ -56,8 +56,6 @@ namespace YukiEditor {
 		m_Yaw += m_InputWindow->GetRawMouseDeltaX() * 0.001f;
 		m_Pitch += m_InputWindow->GetRawMouseDeltaY() * 0.001f;
 
-		Yuki::LogInfo("Yaw: {}, Pitch: {}", m_Yaw, m_Pitch);
-
 		if (m_Pitch > Yuki::Math::Radians(89.0f))
 			m_Pitch = Yuki::Math::Radians(89.0f);
 		else if (m_Pitch < Yuki::Math::Radians(-89.0f))

@@ -30,6 +30,8 @@ namespace Yuki {
 
 		Image GetFinalImage() { return m_ColorImage; }
 
+		void SetWireframe(bool InWireframe) { m_ActivePipeline = InWireframe ? m_WireframePipeline : m_Pipeline; }
+
 	private:
 		World& m_World;
 
@@ -41,6 +43,7 @@ namespace Yuki {
 		Shader m_Shader{};
 		Pipeline m_Pipeline{};
 		Pipeline m_WireframePipeline{};
+		Pipeline m_ActivePipeline{};
 
 		DescriptorPool m_DescriptorPool{};
 		DescriptorSetLayout m_DescriptorSetLayout{};

@@ -20,6 +20,7 @@
 #include <Yuki/Rendering/PipelineBuilder.hpp>
 #include <Yuki/Rendering/DescriptorSetBuilder.hpp>
 #include <Yuki/Rendering/EntityRenderer.hpp>
+#include <Yuki/Rendering/MeshGenerator.hpp>
 
 #include <Yuki/World/World.hpp>
 #include <Yuki/Entities/TransformComponents.hpp>
@@ -212,6 +213,15 @@ namespace YukiEditor {
 
 				if (ImGui::Button("Start"))
 					m_World.StartSimulation();
+
+				if (ImGui::Button("Cube Sphere"))
+				{
+					auto assetID = Yuki::MeshGenerator::GenerateCubeSphere(*m_AssetSystem, 10.0f, 16, 1.0f);
+					const auto* asset = m_AssetSystem->Request<Yuki::MeshAsset>(assetID);
+					flecs::entity entity = m_World.InstantiateMeshScene(assetID, asset->Scene);
+					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->SubmitForUpload(assetID, *m_AssetSystem, asset->Scene);
+					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->CreateGPUInstance(entity);
+				}
 			}
 			ImGui::End();
 

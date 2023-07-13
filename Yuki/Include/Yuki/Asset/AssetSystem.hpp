@@ -10,16 +10,23 @@ namespace Yuki {
 		AssetSystem(AssetRegistry& InRegistry);
 
 		template<std::derived_from<Asset> TAsset>
-		void Request(AssetID InID, std::function<void(const TAsset&)> InCallback)
+		const TAsset* Request(AssetID InID)
 		{
 			if (m_Assets.contains(InID))
-			{
-				InCallback(*static_cast<const TAsset*>(m_Assets[InID].get()));
-				return;
-			}
+				return static_cast<const TAsset*>(m_Assets[InID].get());
 
 			if (Load<TAsset>(InID))
-				InCallback(*static_cast<const TAsset*>(m_Assets.at(InID).get()));
+				return static_cast<const TAsset*>(m_Assets.at(InID).get());
+
+			return nullptr;
+		}
+
+		template<std::derived_from<Asset> TAsset>
+		AssetID AddAsset(AssetType InType, TAsset* InAsset)
+		{
+			AssetID assetID(InType);
+			m_Assets[assetID].reset(InAsset);
+			return assetID;
 		}
 
 	private:
