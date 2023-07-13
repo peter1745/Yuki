@@ -108,10 +108,11 @@ namespace Yuki {
 
 	flecs::entity World::CreateEntity(std::string_view InName)
 	{
-		auto entity = m_EntityWorld.entity(InName.data());
+		auto entity = m_EntityWorld.entity();
+		entity.emplace<Entities::Name>(InName);
 		entity.emplace<Entities::Translation>();
 		entity.emplace<Entities::Rotation>();
-		entity.emplace<Entities::Scale>(1.0f);
+		entity.emplace<Entities::Scale>(Math::Vec3{1.0f, 1.0f, 1.0f});
 		
 		JPH::BoxShapeSettings shapeSettings({ 0.5f, 0.5f, 0.5f });
 		auto shape = shapeSettings.Create();
@@ -134,9 +135,11 @@ namespace Yuki {
 
 		entity.get_mut<Entities::Translation>()->Value = node.Translation;
 		entity.get_mut<Entities::Rotation>()->Value = node.Rotation;
+		entity.get_mut<Entities::Scale>()->Value = node.Scale;
 
 		if (node.MeshIndex != -1)
 		{
+			entity.emplace<Entities::GPUTransform>(0U);
 			entity.set([InMeshID, meshIndex = node.MeshIndex](Entities::MeshComponent& InMeshComponent)
 			{
 				InMeshComponent.MeshID = InMeshID;

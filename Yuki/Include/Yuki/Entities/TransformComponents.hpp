@@ -18,7 +18,7 @@ namespace Yuki::Entities {
 
 	struct Scale
 	{
-		float Value;
+		Math::Vec3 Value;
 	};
 
 	struct LocalTransform
@@ -26,9 +26,14 @@ namespace Yuki::Entities {
 		Math::Mat4 Value;
 	};
 
-	struct GPULocalTransform
+	struct GPUTransform
 	{
 		uint32_t BufferIndex;
+	};
+
+	struct Name
+	{
+		std::string_view Value;
 	};
 
 }

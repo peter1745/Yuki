@@ -27,6 +27,8 @@ namespace YukiEditor {
 		void Update(float InDeltaTime) override;
 		void Draw() override;
 
+		Yuki::WorldRenderer* GetRenderer() const { return m_Renderer.GetPtr(); }
+
 	private:
 		Yuki::RenderContext* m_Context = nullptr;
 		Yuki::ImGuiRenderContext* m_ImGuiContext = nullptr;

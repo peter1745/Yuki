@@ -20,6 +20,9 @@ namespace Yuki {
 
 		GenericWindow* NewWindow(RenderContext* InContext, WindowAttributes InWindowAttributes);
 
+		float GetLastFrameTime() const { return m_LastFrameTime; }
+		float GetDeltaTime() const { return m_DeltaTime; }
+
 	private:
 		virtual void OnInitialize() {}
 		virtual void OnRunLoop(float InDeltaTime) {}

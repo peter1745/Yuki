@@ -75,15 +75,6 @@ namespace YukiEditor {
 			m_AssetRegistry = Yuki::Unique<Yuki::AssetRegistry>::Create("Content/AssetRegistry.json");
 			m_AssetSystem = Yuki::Unique<Yuki::AssetSystem>::Create(*m_AssetRegistry);
 
-			/*m_MeshLoader = Yuki::Unique<Yuki::MeshLoader>::Create(m_RenderContext, [this](Yuki::Mesh InMesh)
-			{
-				auto handle = m_Renderer->SubmitForUpload(std::move(InMesh));
-				std::scoped_lock lock(m_Mutex);
-				m_LoadedMeshes.push_back(handle);
-			});*/
-
-			m_Camera = Yuki::Unique<FreeCamera>::Create(m_Windows[0]);
-
 			m_World.SetOnEntityCreateCallback([this](flecs::entity InEntity)
 			{
 				m_RebuildSceneHierarchy = true;
@@ -128,8 +119,6 @@ namespace YukiEditor {
 		void OnRunLoop(float InDeltaTime) override
 		{
 			m_Fence.Wait();
-
-			m_Camera->Update(InDeltaTime);
 
 			m_World.Tick(InDeltaTime);
 
@@ -218,7 +207,10 @@ namespace YukiEditor {
 
 			if (ImGui::Begin("Settings"))
 			{
-				ImGui::DragFloat("Camera Speed", &m_Camera->GetMovementSpeed());
+				ImGui::Text("Delta Time: %.4f", GetDeltaTime());
+				ImGui::Text("Last Frame Time: %.4f", GetLastFrameTime());
+
+				//ImGui::DragFloat("Camera Speed", &m_Camera->GetMovementSpeed());
 
 				if (ImGui::Button("Start"))
 					m_World.StartSimulation();
@@ -242,7 +234,9 @@ namespace YukiEditor {
 			if (m_SelectedEntity == flecs::entity::null())
 				return;
 
-			ImGui::Text("Name: %s", m_SelectedEntity.name().c_str());
+			const auto* name = m_SelectedEntity.get_mut<Yuki::Entities::Name>();
+
+			ImGui::Text("Name: %s", name->Value.data());
 
 			auto* translation = m_SelectedEntity.get_mut<Yuki::Entities::Translation>();
 			auto* rotation = m_SelectedEntity.get_mut<Yuki::Entities::Rotation>();
@@ -265,11 +259,11 @@ namespace YukiEditor {
 				changed = true;
 			}
 
-			changed |= ImGui::DragFloat("Scale", &scale->Value, 0.5f);
+			changed |= ImGui::DragFloat3("Scale", &scale->Value[0], 0.5f);
 
 			if (changed)
 			{
-				//m_Renderer->SynchronizeGPUTransform(m_SelectedEntity);
+				static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->SynchronizeGPUTransform(m_SelectedEntity);
 			}
 		}
 
@@ -333,7 +327,7 @@ namespace YukiEditor {
 			for (; depth < InLastDepth; InLastDepth--)
 				ImGui::Unindent();
 
-			auto label = fmt::format("{}", InNode.Entity.name().c_str());
+			auto label = fmt::format("{}", InNode.Entity.get_mut<Yuki::Entities::Name>()->Value);
 			ImGui::ArrowButton("##ArrowButton", InNode.Expanded ? ImGuiDir_Down : ImGuiDir_Right);
 
 			if (ImGui::IsItemClicked())
@@ -399,7 +393,6 @@ namespace YukiEditor {
 		Yuki::Queue m_GraphicsQueue{};
 		Yuki::Fence m_Fence{};
 
-		Yuki::Unique<FreeCamera> m_Camera = nullptr;
 		Yuki::Unique<Yuki::MeshLoader> m_MeshLoader = nullptr;
 		Yuki::Unique<Yuki::AssetSystem> m_AssetSystem = nullptr;
 		Yuki::Unique<Yuki::AssetRegistry> m_AssetRegistry = nullptr;

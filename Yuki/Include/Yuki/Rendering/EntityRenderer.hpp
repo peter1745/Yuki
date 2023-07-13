@@ -85,14 +85,14 @@ namespace Yuki {
 		};
 		std::atomic<uint32_t> m_GPUObjectCount = 0;
 
+		std::shared_mutex m_RenderMutex;
+
 		Buffer m_ObjectStorageBuffer{};
 		Buffer m_ObjectStagingBuffer{};
 		Buffer m_TransformStorageBuffer{};
 		Buffer m_TransformStagingBuffer{};
 
 		uint32_t m_TextureCount = 0;
-
-		uint32_t m_LastInstanceID = 0;
 
 		uint32_t m_ViewportWidth = 0;
 		uint32_t m_ViewportHeight = 0;

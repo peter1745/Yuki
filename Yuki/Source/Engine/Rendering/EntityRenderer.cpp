@@ -80,7 +80,8 @@ namespace Yuki {
 	{
 		ScheduleTransfer([this, InRoot](Queue InQueue, CommandPool InPool, Buffer InStagingBuffer, Fence InFence)
 		{
-			uint32_t objectIndex = 0;
+			uint32_t baseObjectIndex = m_GPUObjectCount.load();
+			uint32_t objectIndex = baseObjectIndex;
 
 			m_World.IterateHierarchy(InRoot, [this, &objectIndex](flecs::entity InEntity)
 			{
@@ -89,8 +90,10 @@ namespace Yuki {
 
 				const auto* translation = InEntity.get<Entities::Translation>();
 				const auto* rotation = InEntity.get<Entities::Rotation>();
+				const auto* scale = InEntity.get<Entities::Scale>();
 				const auto* meshComponent = InEntity.get<Entities::MeshComponent>();
 				const auto& mesh = m_GPUMeshScenes.at(meshComponent->MeshID);
+				InEntity.get_mut<Entities::GPUTransform>()->BufferIndex = objectIndex;
 
 				mesh.UploadBarrier.Wait();
 
@@ -103,21 +106,21 @@ namespace Yuki {
 					.BaseTextureOffset = mesh.BaseTextureOffset
 				};
 
-				Math::Mat4 transform = Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value);
+				Math::Mat4 transform = Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value) * Math::Mat4::Scale(scale->Value);
 				m_ObjectStagingBuffer.SetData(&gpuObject, sizeof(GPUObject), objectIndex * sizeof(GPUObject));
 				m_TransformStagingBuffer.SetData(&transform, sizeof(Math::Mat4), objectIndex * sizeof(Math::Mat4));
 				objectIndex++;
 			});
 
-			uint32_t offset = m_GPUObjectCount.load();
-
 			auto commandList = InPool.CreateCommandList();
 			commandList.Begin();
-			commandList.CopyToBuffer(m_ObjectStorageBuffer, offset * sizeof(GPUObject), m_ObjectStagingBuffer, 0, objectIndex * sizeof(GPUObject));
-			commandList.CopyToBuffer(m_TransformStorageBuffer, offset * sizeof(Math::Mat4), m_TransformStagingBuffer, 0, objectIndex * sizeof(Math::Mat4));
+			commandList.CopyToBuffer(m_ObjectStorageBuffer, baseObjectIndex * sizeof(GPUObject), m_ObjectStagingBuffer, 0, objectIndex * sizeof(GPUObject));
+			commandList.CopyToBuffer(m_TransformStorageBuffer, baseObjectIndex * sizeof(Math::Mat4), m_TransformStagingBuffer, 0, objectIndex * sizeof(Math::Mat4));
 			commandList.End();
 
 			InQueue.SubmitCommandLists({ commandList }, { InFence }, { InFence });
+
+			m_GPUObjectCount += objectIndex;
 		});
 	}
 
@@ -300,9 +303,10 @@ namespace Yuki {
 
 	void WorldRenderer::RenderEntities()
 	{
+		std::scoped_lock lock(m_RenderMutex);
 		uint32_t instanceIndex = 0;
-		auto filter = m_World.GetEntityWorld().filter<Entities::MeshComponent>();
-		filter.each([this, &instanceIndex](flecs::entity InEntity, Entities::MeshComponent& InComponent)
+		auto filter = m_World.GetEntityWorld().filter<const Entities::MeshComponent>();
+		filter.each([this, &instanceIndex](flecs::entity InEntity, const Entities::MeshComponent& InComponent)
 		{
 			auto& meshScene = m_GPUMeshScenes.at(InComponent.MeshID);
 			auto& mesh = meshScene.Meshes[InComponent.MeshIndex];
@@ -338,31 +342,51 @@ namespace Yuki {
 
 	void WorldRenderer::SynchronizeGPUTransform(flecs::entity InEntity)
 	{
-		/*if (!m_EntityInstanceMap.contains(InEntity))
-			return;
-
-		uint32_t baseTransformIndex = m_EntityInstanceMap[InEntity];
-
-		const auto* meshComp = InEntity.get<Entities::MeshComponent>();
-		const auto& mesh = m_Meshes.Get(meshComp->Value);
-		
-		const auto& translation = InEntity.get<Entities::Translation>()->Value;
-		const auto& rotation = InEntity.get<Entities::Rotation>()->Value;
-		const auto& scale = InEntity.get<Entities::Scale>()->Value;
-
-		Math::Mat4 entityTransform = Math::Mat4::Translation(translation) * Math::Mat4::Rotation(rotation) * Math::Mat4::Scale({ scale, scale, scale });
-		for (uint32_t i = 0; i < uint32_t(mesh.Instances.size()); i++)
+		ScheduleTransfer([this, InEntity](Queue InQueue, CommandPool InPool, Buffer InStagingBuffer, Fence InFence)
 		{
-			const auto& meshInstance = mesh.Instances[i];
-			Math::Mat4 transform = entityTransform * meshInstance.Transform;
-			m_TransformStagingBuffer.SetData(&transform, sizeof(Math::Mat4), (baseTransformIndex + i) * sizeof(Math::Mat4));
-		}
+			// FIXME(Peter): Consider replacing this with a lockless solution
+			std::scoped_lock lock(m_RenderMutex);
+			uint32_t matrixCount = 0;
+			uint32_t bufferStart = std::numeric_limits<uint32_t>::max();
 
-		m_Context->GetTransferScheduler().Schedule([context = m_Context, storageBuffer = m_TransformStorageBuffer, stagingBuffer = m_TransformStagingBuffer, baseIndex = baseTransformIndex, &mesh](CommandListHandle InCommandList)
-		{
-			CommandList commandList{InCommandList, context};
-			commandList.CopyToBuffer(storageBuffer, baseIndex * sizeof(Math::Mat4), stagingBuffer, baseIndex * sizeof(Math::Mat4), uint32_t(mesh.Instances.size()) * sizeof(Math::Mat4));
-		}, [](){}, {}, {});*/
+			m_World.IterateHierarchy(InEntity, [this, &matrixCount, &bufferStart](flecs::entity InCurrent)
+			{
+				const auto* gpuTransform = InCurrent.get<Entities::GPUTransform>();
+
+				if (gpuTransform == nullptr)
+					return;
+
+				if (bufferStart == std::numeric_limits<uint32_t>::max())
+					bufferStart = gpuTransform->BufferIndex;
+
+				Math::Mat4 parentTransform;
+				parentTransform.SetIdentity();
+
+				flecs::entity entity = InCurrent;
+				while ((entity = entity.parent()) != flecs::entity::null())
+				{
+					const auto* translation = entity.get<Entities::Translation>();
+					const auto* rotation = entity.get<Entities::Rotation>();
+					const auto* scale = entity.get<Entities::Scale>();
+					parentTransform = (Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value) * Math::Mat4::Scale(scale->Value)) * parentTransform;
+				}
+
+				const auto* translation = InCurrent.get<Entities::Translation>();
+				const auto* rotation = InCurrent.get<Entities::Rotation>();
+				const auto* scale = InCurrent.get<Entities::Scale>();
+
+				Math::Mat4 transform = (Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value) * Math::Mat4::Scale(scale->Value)) * parentTransform;
+				m_TransformStagingBuffer.SetData(&transform, sizeof(Math::Mat4), gpuTransform->BufferIndex * sizeof(Math::Mat4));
+				matrixCount++;
+			});
+
+			auto commandList = InPool.CreateCommandList();
+			commandList.Begin();
+			commandList.CopyToBuffer(m_TransformStorageBuffer, bufferStart * sizeof(Math::Mat4), m_TransformStagingBuffer, bufferStart * sizeof(Math::Mat4), sizeof(Math::Mat4) * matrixCount);
+			commandList.End();
+
+			InQueue.SubmitCommandLists({ commandList }, { InFence }, { InFence });
+		});
 	}
 
 }
