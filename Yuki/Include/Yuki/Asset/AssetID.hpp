@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Yuki/Core/Core.hpp"
 #include "AssetTypes.hpp"
 
 namespace Yuki {

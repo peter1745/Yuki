@@ -4,6 +4,7 @@
 #include "Yuki/Math/Mat4.hpp"
 #include "Yuki/World/World.hpp"
 #include "Yuki/Entities/RenderingComponents.hpp"
+#include "Yuki/Asset/AssetSystem.hpp"
 
 #include "Renderer.hpp"
 
@@ -15,7 +16,7 @@ namespace Yuki {
 		WorldRenderer(World& InWorld, RenderContext* InContext);
 
 		void CreateGPUInstance(flecs::entity InRoot);
-		void SubmitForUpload(AssetID InAssetID, const MeshScene& InMeshScene);
+		void SubmitForUpload(AssetID InAssetID, AssetSystem& InAssetSystem, const MeshScene& InMeshScene);
 
 		void Reset();
 		void PrepareFrame();
@@ -66,9 +67,13 @@ namespace Yuki {
 			DynamicArray<GPUMesh> Meshes;
 			Buffer MaterialData;
 			uint32_t BaseTextureOffset;
+			DynamicArray<Image> Textures;
+			DescriptorSet TextureSet;
 			Barrier UploadBarrier;
 		};
 		Map<AssetID, GPUMeshScene, AssetIDHash> m_GPUMeshScenes;
+
+		StableDynamicArray<Job> m_UploadFinishedJobs;
 
 		struct PushConstants
 		{

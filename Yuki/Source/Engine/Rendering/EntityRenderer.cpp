@@ -38,10 +38,10 @@ namespace Yuki {
 
 		m_DescriptorSetLayout = DescriptorSetLayoutBuilder(m_Context)
 			.Stages(ShaderStage::Vertex | ShaderStage::Fragment)
-			.Binding(65536, DescriptorType::CombinedImageSampler)
+			.Binding(500, DescriptorType::CombinedImageSampler)
 			.Build();
 
-		m_MaterialSet = m_DescriptorPool.AllocateDescriptorSet(m_DescriptorSetLayout);
+		//m_MaterialSet = m_DescriptorPool.AllocateDescriptorSet(m_DescriptorSetLayout);
 
 		m_Shader = Shader(m_Context, std::filesystem::path("Resources/Shaders/Geometry.glsl"));
 		
@@ -75,6 +75,7 @@ namespace Yuki {
 	{
 		ScheduleTransfer([this, InRoot](Queue InQueue, CommandPool InPool, Buffer InStagingBuffer, Fence InFence)
 		{
+			std::scoped_lock lock(m_RenderMutex);
 			uint32_t baseObjectIndex = m_GPUObjectCount.load();
 			uint32_t objectIndex = baseObjectIndex;
 
@@ -109,17 +110,17 @@ namespace Yuki {
 
 			auto commandList = InPool.CreateCommandList();
 			commandList.Begin();
-			commandList.CopyToBuffer(m_ObjectStorageBuffer, baseObjectIndex * sizeof(GPUObject), m_ObjectStagingBuffer, baseObjectIndex * sizeof(GPUObject), objectIndex * sizeof(GPUObject));
-			commandList.CopyToBuffer(m_TransformStorageBuffer, baseObjectIndex * sizeof(Math::Mat4), InStagingBuffer, 0,  (objectIndex - baseObjectIndex) * sizeof(Math::Mat4));
+			commandList.CopyToBuffer(m_ObjectStorageBuffer, baseObjectIndex * sizeof(GPUObject), m_ObjectStagingBuffer, baseObjectIndex * sizeof(GPUObject), (objectIndex - baseObjectIndex) * sizeof(GPUObject));
+			commandList.CopyToBuffer(m_TransformStorageBuffer, baseObjectIndex * sizeof(Math::Mat4), InStagingBuffer, 0, (objectIndex - baseObjectIndex) * sizeof(Math::Mat4));
 			commandList.End();
 
 			InQueue.SubmitCommandLists({ commandList }, { InFence }, { InFence });
 
-			m_GPUObjectCount += objectIndex;
+			m_GPUObjectCount = objectIndex;
 		});
 	}
 
-	void WorldRenderer::SubmitForUpload(AssetID InAssetID, const MeshScene& InMeshScene)
+	void WorldRenderer::SubmitForUpload(AssetID InAssetID, AssetSystem& InAssetSystem, const MeshScene& InMeshScene)
 	{
 		static constexpr uint32_t CopyChunkSize = 100 * 1024 * 1024;
 
@@ -132,6 +133,14 @@ namespace Yuki {
 			.Type = BufferType::StorageBuffer,
 			.Size = uint32_t(InMeshScene.Materials.size() * sizeof(MaterialData))
 		});
+
+		auto [jobIndex, job] = m_UploadFinishedJobs.EmplaceBack();
+		job.Task = [&gpuMeshScene](size_t InThreadID)
+		{
+			for (auto& mesh : gpuMeshScene.Meshes)
+				std::atomic_ref<bool>(mesh.IsReady) = true;
+		};
+		gpuMeshScene.UploadBarrier.Pending.push_back(&job);
 
 		ScheduleTransfer([this, &gpuMeshScene, InMeshScene](Queue InQueue, CommandPool InPool, Buffer InStagingBuffer, Fence InFence)
 		{
@@ -216,9 +225,71 @@ namespace Yuki {
 						gpuMesh.IndexCount = uint32_t(mesh.Indices.size());
 					}
 				}
-
-				std::atomic_ref<bool>(gpuMesh.IsReady) = true;
 			}
+
+			m_Context->Destroy(fence);
+		}, &gpuMeshScene.UploadBarrier);
+
+		// NOTE(Peter): This isn't great. I'd rather not have the renderer engage the asset system at all
+		//				but for now it's a quick way of getting textures working, fix this later.
+		DynamicArray<const TextureAsset*> textures;
+		for (const auto& textureHandle : InMeshScene.Textures)
+		{
+			InAssetSystem.Request<TextureAsset>(textureHandle, [&textures](const auto& InTextureAsset)
+			{
+				textures.emplace_back(&InTextureAsset);
+			});
+		}
+
+		gpuMeshScene.Textures.resize(textures.size(), Image{});
+
+		ScheduleTransfer([this, &gpuMeshScene, InMeshScene, textures](Queue InQueue, CommandPool InPool, Buffer InStagingBuffer, Fence InFence)
+		{
+			Fence fence{ m_Context };
+
+			gpuMeshScene.TextureSet = m_DescriptorPool.AllocateDescriptorSet(m_DescriptorSetLayout);
+
+			for (size_t i = 0; i < textures.size(); i++)
+			{
+				const auto* imageData = textures[i];
+				//bool shouldBlit = imageData.Width > 1024 && imageData.Height > 1024;
+				//Queue queue = { shouldBlit ? context->GetGraphicsQueue(1) : context->GetTransferQueue(), context };
+
+				auto imageCommandList = InPool.CreateCommandList();
+				imageCommandList.Begin();
+
+				Image image{ m_Context, imageData->Width, imageData->Height, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferSource | Yuki::ImageUsage::TransferDestination };
+				imageCommandList.TransitionImage(image, ImageLayout::ShaderReadOnly);
+				InStagingBuffer.SetData(imageData->Data, imageData->Width * imageData->Height * 4);
+				imageCommandList.CopyToImage(image, InStagingBuffer, 0);
+
+				/*if (shouldBlit)
+				{
+					blittedImage = Image(context, 1024, 1024, ImageFormat::RGBA8UNorm, ImageUsage::Sampled | ImageUsage::TransferDestination);
+					imageCommandList.TransitionImage(blittedImage, ImageLayout::ShaderReadOnly);
+					imageCommandList.BlitImage(blittedImage, image);
+				}*/
+
+				imageCommandList.End();
+				InQueue.SubmitCommandLists({ imageCommandList }, { InFence }, { InFence, fence });
+
+				fence.Wait();
+
+				/*if (shouldBlit)
+				{
+					context->Destroy(image);
+					image = blittedImage;
+				}*/
+
+				//stbi_image_free(imageData.Data);
+
+				gpuMeshScene.Textures[i] = image;
+			}
+
+			DynamicArray<ImageHandle> imageHandles;
+			for (auto image : gpuMeshScene.Textures)
+				imageHandles.push_back(image);
+			gpuMeshScene.TextureSet.Write(0, imageHandles, m_Sampler);
 
 			m_Context->Destroy(fence);
 		}, &gpuMeshScene.UploadBarrier);
@@ -265,7 +336,7 @@ namespace Yuki {
 		m_CommandList.Begin();
 		
 		m_CommandList.BindPipeline(m_Pipeline);
-		m_CommandList.BindDescriptorSet(m_Pipeline, m_MaterialSet);
+		//m_CommandList.BindDescriptorSet(m_Pipeline, m_MaterialSet);
 		m_CommandList.PushConstants(m_Pipeline, &m_PushConstants, sizeof(m_PushConstants));
 
 		m_CommandList.SetViewport({
@@ -304,6 +375,7 @@ namespace Yuki {
 			if (!std::atomic_ref<bool>(mesh.IsReady))
 				return;
 
+			m_CommandList.BindDescriptorSet(m_Pipeline, meshScene.TextureSet);
 			m_CommandList.BindIndexBuffer(mesh.IndexData, 0);
 			m_CommandList.DrawIndexed(mesh.IndexCount, 0, instanceIndex);
 			instanceIndex++;

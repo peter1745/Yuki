@@ -3,6 +3,7 @@
 #include "Yuki/Core/Core.hpp"
 #include "Yuki/Math/Mat4.hpp"
 #include "Yuki/Math/Vec2.hpp"
+#include "Yuki/Asset/AssetID.hpp"
 
 namespace Yuki {
 
@@ -43,6 +44,7 @@ namespace Yuki {
 		DynamicArray<MeshSource> Meshes;
 		size_t RootNodeIndex;
 		DynamicArray<MeshNode> Nodes;
+		DynamicArray<AssetID> Textures;
 	};
 
 }

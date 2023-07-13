@@ -94,6 +94,39 @@ namespace Yuki {
 		meshScene.Materials.resize(parsedAsset->materials.size());
 		meshScene.Meshes.resize(parsedAsset->meshes.size());
 		meshScene.Nodes.resize(parsedAsset->nodes.size() + 1);
+		meshScene.Textures.resize(parsedAsset->textures.size());
+
+		auto basePath = InFilePath.parent_path();
+
+		for (size_t i = 0; i < parsedAsset->textures.size(); i++)
+		{
+			auto& textureInfo = parsedAsset->textures[i];
+			auto& imageInfo = parsedAsset->images[textureInfo.imageIndex.value()];
+
+			std::visit(ImageVisitor
+			{
+				[&](fastgltf::sources::URI& InURI)
+				{
+					meshScene.Textures[i] = AssetImporter<TextureAsset>().Import(InRegistry, fmt::format("{}/{}", basePath.string(), InURI.uri.path()));
+				},
+				[&](fastgltf::sources::Vector& InVector)
+				{
+					meshScene.Textures[i] = AssetImporter<TextureAsset>().Import(InRegistry, textureInfo.name, reinterpret_cast<const std::byte*>(InVector.bytes.data()), InVector.bytes.size());
+				},
+				[&](fastgltf::sources::ByteView& InByteView)
+				{
+					meshScene.Textures[i] = AssetImporter<TextureAsset>().Import(InRegistry, textureInfo.name, InByteView.bytes.data(), InByteView.bytes.size());
+				},
+				[&](fastgltf::sources::BufferView& InBufferView)
+				{
+					auto& view = parsedAsset->bufferViews[InBufferView.bufferViewIndex];
+					auto& buffer = parsedAsset->buffers[view.bufferIndex];
+					const auto* bytes = fastgltf::DefaultBufferDataAdapter{}(buffer) + view.byteOffset;
+					meshScene.Textures[i] = AssetImporter<TextureAsset>().Import(InRegistry, textureInfo.name, bytes, view.byteLength);
+				},
+				[&](auto&) {}
+			}, imageInfo.data);
+		}
 
 		for (size_t i = 0; i < parsedAsset->materials.size(); i++)
 		{
@@ -188,9 +221,10 @@ namespace Yuki {
 
 		auto meshTypeName = Utils::GetAssetTypeName(AssetType::Mesh);
 
-		size_t dataSize = 4 * sizeof(size_t);
+		size_t dataSize = 5 * sizeof(size_t);
 		dataSize += meshTypeName.size();
 		dataSize += meshScene.Materials.size() * sizeof(MaterialData);
+		dataSize += meshScene.Textures.size() * sizeof(AssetID);
 
 		dataSize += sizeof(size_t);
 
@@ -222,6 +256,9 @@ namespace Yuki {
 		buffer.Write(meshScene.Meshes.size());
 
 		buffer.WriteArray(meshScene.Materials);
+
+		buffer.Write(meshScene.Textures.size());
+		buffer.WriteArray(meshScene.Textures);
 
 		buffer.Write(meshScene.RootNodeIndex);
 
@@ -257,7 +294,8 @@ namespace Yuki {
 
 		return InRegistry.Register(AssetType::Mesh, {
 			.FilePath = filepath,
-			.SourceFilePath = InFilePath
+			.SourceFilePath = InFilePath,
+			.Dependencies = meshScene.Textures
 		});
 	}
 
@@ -283,6 +321,11 @@ namespace Yuki {
 		InAsset->Scene.Materials.resize(materialCount);
 		for (auto& material : InAsset->Scene.Materials)
 			stream.read(reinterpret_cast<char*>(&material), sizeof(MaterialData));
+
+		size_t textureCount;
+		stream.read(reinterpret_cast<char*>(&textureCount), sizeof(size_t));
+		InAsset->Scene.Textures.resize(textureCount);
+		stream.read(reinterpret_cast<char*>(InAsset->Scene.Textures.data()), textureCount * sizeof(AssetID));
 
 		stream.read(reinterpret_cast<char*>(&InAsset->Scene.RootNodeIndex), sizeof(size_t));
 

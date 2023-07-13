@@ -11,6 +11,7 @@ namespace Yuki {
 	{
 		std::filesystem::path FilePath = "";
 		std::filesystem::path SourceFilePath = "";
+		DynamicArray<AssetID> Dependencies;
 	};
 
 	class AssetRegistry
@@ -26,7 +27,7 @@ namespace Yuki {
 		template<typename TFunction>
 		void ForEach(TFunction&& InFunction)
 		{
-			for (const auto&[handle, metadata] : m_Metadata)
+			for (const auto& [handle, metadata] : m_Metadata)
 				InFunction(handle, metadata);
 		}
 

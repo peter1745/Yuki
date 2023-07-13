@@ -22,6 +22,9 @@ namespace Yuki {
 					.SourceFilePath = metadataJson["SourceFilePath"].get_string().value(),
 				};
 
+				for (auto dependency : metadataJson["Dependencies"].get_array())
+					metadata.Dependencies.push_back(dependency.get_uint64().value());
+
 				m_Metadata[handle] = std::move(metadata);
 			}
 		}
@@ -44,6 +47,12 @@ namespace Yuki {
 			metadataObject["Handle"] = static_cast<uint64_t>(handle);
 			metadataObject["FilePath"] = metadata.FilePath;
 			metadataObject["SourceFilePath"] = metadata.SourceFilePath;
+
+			nlohmann::json dependencies = nlohmann::json::array();
+			for (const auto& dependencyHandle : metadata.Dependencies)
+				dependencies.push_back(static_cast<uint64_t>(dependencyHandle));
+			metadataObject["Dependencies"] = dependencies;
+
 			json.push_back(metadataObject);
 		}
 

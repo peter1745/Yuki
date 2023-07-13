@@ -7,4 +7,18 @@ namespace Yuki {
 	{
 	}
 
+	bool AssetSystem::LoadFromID(AssetID InID)
+	{
+		switch (InID.GetType())
+		{
+		case AssetType::Unknown: return false;
+		case AssetType::Mesh: return Load<MeshAsset>(InID);
+		case AssetType::Texture: return Load<TextureAsset>(InID);
+		default:
+			break;
+		}
+
+		return false;
+	}
+
 }

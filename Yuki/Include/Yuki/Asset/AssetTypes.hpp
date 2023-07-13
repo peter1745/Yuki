@@ -1,13 +1,14 @@
 #pragma once
 
-#include "Yuki/Rendering/Mesh.hpp"
+#include <string_view>
 
 namespace Yuki {
 
 	enum class AssetType
 	{
 		Unknown = -1,
-		Mesh
+		Mesh,
+		Texture
 	};
 
 	namespace Utils {
@@ -29,12 +30,5 @@ namespace Yuki {
 		}
 
 	}
-
-	struct Asset {};
-
-	struct MeshAsset : public Asset
-	{
-		MeshScene Scene;
-	};
 
 }
