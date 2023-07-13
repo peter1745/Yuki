@@ -20,7 +20,6 @@ namespace Yuki {
 
 		GenericWindow* NewWindow(RenderContext* InContext, WindowAttributes InWindowAttributes);
 
-		float GetLastFrameTime() const { return m_LastFrameTime; }
 		float GetDeltaTime() const { return m_DeltaTime; }
 
 	private:
@@ -47,7 +46,6 @@ namespace Yuki {
 
 		DynamicArray<GenericWindow*> m_ClosedWindows;
 
-		float m_LastFrameTime = 0.0f;
 		float m_DeltaTime = 0.0f;
 
 	private:

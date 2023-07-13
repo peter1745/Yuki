@@ -208,7 +208,6 @@ namespace YukiEditor {
 			if (ImGui::Begin("Settings"))
 			{
 				ImGui::Text("Delta Time: %.4f", GetDeltaTime());
-				ImGui::Text("Last Frame Time: %.4f", GetLastFrameTime());
 
 				//ImGui::DragFloat("Camera Speed", &m_Camera->GetMovementSpeed());
 

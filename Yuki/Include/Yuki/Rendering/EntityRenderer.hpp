@@ -90,7 +90,6 @@ namespace Yuki {
 		Buffer m_ObjectStorageBuffer{};
 		Buffer m_ObjectStagingBuffer{};
 		Buffer m_TransformStorageBuffer{};
-		Buffer m_TransformStagingBuffer{};
 
 		uint32_t m_TextureCount = 0;
 

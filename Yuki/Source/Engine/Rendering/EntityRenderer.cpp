@@ -18,11 +18,6 @@ namespace Yuki {
 			.Size = 655360 * sizeof(Entities::LocalTransform)
 		});
 
-		m_TransformStagingBuffer = Buffer(m_Context, {
-			.Type = BufferType::StagingBuffer,
-			.Size = 100 * 1024 * 1024
-		});
-
 		m_ObjectStorageBuffer = Buffer(m_Context, {
 			.Type = BufferType::StorageBuffer,
 			.Size = 655360 * sizeof(GPUObject)
@@ -83,7 +78,7 @@ namespace Yuki {
 			uint32_t baseObjectIndex = m_GPUObjectCount.load();
 			uint32_t objectIndex = baseObjectIndex;
 
-			m_World.IterateHierarchy(InRoot, [this, &objectIndex](flecs::entity InEntity)
+			m_World.IterateHierarchy(InRoot, [this, &InStagingBuffer, &objectIndex, baseObjectIndex](flecs::entity InEntity)
 			{
 				if (!InEntity.has<Entities::MeshComponent>())
 					return;
@@ -108,14 +103,14 @@ namespace Yuki {
 
 				Math::Mat4 transform = Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value) * Math::Mat4::Scale(scale->Value);
 				m_ObjectStagingBuffer.SetData(&gpuObject, sizeof(GPUObject), objectIndex * sizeof(GPUObject));
-				m_TransformStagingBuffer.SetData(&transform, sizeof(Math::Mat4), objectIndex * sizeof(Math::Mat4));
+				InStagingBuffer.SetData(&transform, sizeof(Math::Mat4), (objectIndex - baseObjectIndex) * sizeof(Math::Mat4));
 				objectIndex++;
 			});
 
 			auto commandList = InPool.CreateCommandList();
 			commandList.Begin();
-			commandList.CopyToBuffer(m_ObjectStorageBuffer, baseObjectIndex * sizeof(GPUObject), m_ObjectStagingBuffer, 0, objectIndex * sizeof(GPUObject));
-			commandList.CopyToBuffer(m_TransformStorageBuffer, baseObjectIndex * sizeof(Math::Mat4), m_TransformStagingBuffer, 0, objectIndex * sizeof(Math::Mat4));
+			commandList.CopyToBuffer(m_ObjectStorageBuffer, baseObjectIndex * sizeof(GPUObject), m_ObjectStagingBuffer, baseObjectIndex * sizeof(GPUObject), objectIndex * sizeof(GPUObject));
+			commandList.CopyToBuffer(m_TransformStorageBuffer, baseObjectIndex * sizeof(Math::Mat4), InStagingBuffer, 0,  (objectIndex - baseObjectIndex) * sizeof(Math::Mat4));
 			commandList.End();
 
 			InQueue.SubmitCommandLists({ commandList }, { InFence }, { InFence });
@@ -140,25 +135,20 @@ namespace Yuki {
 
 		ScheduleTransfer([this, &gpuMeshScene, InMeshScene](Queue InQueue, CommandPool InPool, Buffer InStagingBuffer, Fence InFence)
 		{
-			auto stagingBuffer = Buffer(m_Context, {
-				.Type = BufferType::StagingBuffer,
-				.Size = uint32_t(InMeshScene.Materials.size() * sizeof(MaterialData))
-			});
-
 			Fence fence{m_Context};
 
-			for (size_t i = 0; i < InMeshScene.Materials.size(); i++)
-				stagingBuffer.SetData(&InMeshScene.Materials[i], sizeof(MaterialData), uint32_t(i * sizeof(MaterialData)));
+			uint32_t materialBufferSize = uint32_t(InMeshScene.Materials.size()) * sizeof(MaterialData);
+
+			InStagingBuffer.SetData(InMeshScene.Materials.data(), materialBufferSize, 0);
 
 			auto commandList = InPool.CreateCommandList();
 			commandList.Begin();
-			commandList.CopyToBuffer(gpuMeshScene.MaterialData, 0, stagingBuffer, 0, 0);
+			commandList.CopyToBuffer(gpuMeshScene.MaterialData, 0, InStagingBuffer, 0, materialBufferSize);
 			commandList.End();
 
 			InQueue.SubmitCommandLists({ commandList }, {}, { fence });
 			fence.Wait();
 
-			m_Context->Destroy(stagingBuffer);
 			m_Context->Destroy(fence);
 		}, &gpuMeshScene.UploadBarrier);
 
@@ -349,7 +339,7 @@ namespace Yuki {
 			uint32_t matrixCount = 0;
 			uint32_t bufferStart = std::numeric_limits<uint32_t>::max();
 
-			m_World.IterateHierarchy(InEntity, [this, &matrixCount, &bufferStart](flecs::entity InCurrent)
+			m_World.IterateHierarchy(InEntity, [this, &InStagingBuffer, &matrixCount, &bufferStart](flecs::entity InCurrent)
 			{
 				const auto* gpuTransform = InCurrent.get<Entities::GPUTransform>();
 
@@ -368,21 +358,21 @@ namespace Yuki {
 					const auto* translation = entity.get<Entities::Translation>();
 					const auto* rotation = entity.get<Entities::Rotation>();
 					const auto* scale = entity.get<Entities::Scale>();
-					parentTransform = (Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value) * Math::Mat4::Scale(scale->Value)) * parentTransform;
+					parentTransform = parentTransform * (Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value) * Math::Mat4::Scale(scale->Value));
 				}
 
 				const auto* translation = InCurrent.get<Entities::Translation>();
 				const auto* rotation = InCurrent.get<Entities::Rotation>();
 				const auto* scale = InCurrent.get<Entities::Scale>();
 
-				Math::Mat4 transform = (Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value) * Math::Mat4::Scale(scale->Value)) * parentTransform;
-				m_TransformStagingBuffer.SetData(&transform, sizeof(Math::Mat4), gpuTransform->BufferIndex * sizeof(Math::Mat4));
+				Math::Mat4 transform = parentTransform * (Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value) * Math::Mat4::Scale(scale->Value));
+				InStagingBuffer.SetData(&transform, sizeof(Math::Mat4), matrixCount * sizeof(Math::Mat4));
 				matrixCount++;
 			});
 
 			auto commandList = InPool.CreateCommandList();
 			commandList.Begin();
-			commandList.CopyToBuffer(m_TransformStorageBuffer, bufferStart * sizeof(Math::Mat4), m_TransformStagingBuffer, bufferStart * sizeof(Math::Mat4), sizeof(Math::Mat4) * matrixCount);
+			commandList.CopyToBuffer(m_TransformStorageBuffer, bufferStart * sizeof(Math::Mat4), InStagingBuffer, 0, sizeof(Math::Mat4) * matrixCount);
 			commandList.End();
 
 			InQueue.SubmitCommandLists({ commandList }, { InFence }, { InFence });
