@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Yuki/Asset/AssetID.hpp"
+#include "Yuki/Rendering/Mesh.hpp"
+
 #include <flecs/flecs.h>
 
 #include <chrono>
@@ -26,20 +29,46 @@ namespace Yuki {
 
 	class WorldRenderer;
 
+	using OnEntityCreateFn = std::function<void(flecs::entity)>;
+
 	class World
 	{
 	public:
 		World();
 
+		void SetOnEntityCreateCallback(OnEntityCreateFn&& InCallback)
+		{
+			m_EntityCreatedCallback = std::move(InCallback);
+		}
+
 		flecs::entity CreateEntity(std::string_view InName);
+		flecs::entity InstantiateMeshScene(AssetID InMeshID, const MeshScene& InScene);
 
 		void Tick(float InDeltaTime);
 
 		void StartSimulation();
 		void StopSimulation();
 
+		flecs::world& GetEntityWorld() { return m_EntityWorld; }
+
+		template<typename TFunc>
+		void IterateHierarchy(flecs::entity InEntity, TFunc&& InFunc)
+		{
+			InFunc(InEntity);
+
+			InEntity.children([this, &InFunc](flecs::entity InChild)
+			{
+				IterateHierarchy(InChild, InFunc);
+			});
+		}
+
+	private:
+		flecs::entity CreateMeshHierarchy(AssetID InMeshID, const MeshScene& InScene, size_t InNodeIndex, flecs::entity InParentEntity);
+
 	private:
 		flecs::world m_EntityWorld;
+
+		OnEntityCreateFn m_EntityCreatedCallback;
 
 		Unique<JPH::TempAllocator> m_Allocator = nullptr;
 		Unique<JPH::JobSystemThreadPool> m_ThreadPool = nullptr;

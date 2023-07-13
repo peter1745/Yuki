@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Yuki/Asset/AssetID.hpp"
 #include "Yuki/Math/Mat4.hpp"
-//#include "Yuki/Rendering/MeshData.hpp"
 
 namespace Yuki::Entities {
 
@@ -13,7 +13,8 @@ namespace Yuki::Entities {
 
 	struct MeshComponent
 	{
-		//MeshHandle Value{};
+		AssetID MeshID;
+		size_t MeshIndex;
 	};
 
 }

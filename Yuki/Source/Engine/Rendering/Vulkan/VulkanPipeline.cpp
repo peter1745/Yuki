@@ -110,7 +110,7 @@ namespace Yuki {
 			.depthClampEnable = VK_FALSE,
 			.rasterizerDiscardEnable = VK_FALSE,
 			.polygonMode = InPipelineInfo.PolygonMode == PolygonModeType::Fill ? VK_POLYGON_MODE_FILL : VK_POLYGON_MODE_LINE,
-			.cullMode = VK_CULL_MODE_NONE,
+			.cullMode = VK_CULL_MODE_BACK_BIT,
 			.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
 			.depthBiasEnable = VK_FALSE,
 			.depthBiasConstantFactor = 0.0f,

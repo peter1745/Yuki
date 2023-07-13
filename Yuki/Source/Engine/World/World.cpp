@@ -118,6 +118,38 @@ namespace Yuki {
 		JPH::BodyCreationSettings bodySettings(shape.Get(), { 0.0f, 0.0f, 0.0f }, JPH::QuatArg::sIdentity(), JPH::EMotionType::Dynamic, Layers::MOVING);
 		m_PhysicsBodies[entity] = m_PhysicsSystem->GetBodyInterface().CreateBody(bodySettings);
 
+		m_EntityCreatedCallback(entity);
+		return entity;
+	}
+
+	flecs::entity World::InstantiateMeshScene(AssetID InMeshID, const MeshScene& InScene)
+	{
+		return CreateMeshHierarchy(InMeshID, InScene, InScene.RootNodeIndex, flecs::entity::null());
+	}
+
+	flecs::entity World::CreateMeshHierarchy(AssetID InMeshID, const MeshScene& InScene, size_t InNodeIndex, flecs::entity InParentEntity)
+	{
+		const auto& node = InScene.Nodes[InNodeIndex];
+		auto entity = CreateEntity(node.Name);
+
+		entity.get_mut<Entities::Translation>()->Value = node.Translation;
+		entity.get_mut<Entities::Rotation>()->Value = node.Rotation;
+
+		if (node.MeshIndex != -1)
+		{
+			entity.set([InMeshID, meshIndex = node.MeshIndex](Entities::MeshComponent& InMeshComponent)
+			{
+				InMeshComponent.MeshID = InMeshID;
+				InMeshComponent.MeshIndex = meshIndex;
+			});
+		}
+
+		if (InParentEntity != flecs::entity::null())
+			entity.child_of(InParentEntity);
+
+		for (auto childNodeIndex : node.ChildNodes)
+			YUKI_UNUSED(CreateMeshHierarchy(InMeshID, InScene, childNodeIndex, entity));
+
 		return entity;
 	}
 

@@ -27,7 +27,7 @@ namespace Yuki {
 
 	static void ProcessNodeHierarchy(fastgltf::Asset* InAsset, MeshScene& InScene, size_t InNodeIndex)
 	{
-		const auto& gltfNode = InAsset->nodes[InNodeIndex];
+		const auto& gltfNode = InAsset->nodes[InNodeIndex - 1];
 		auto TRS = std::get<fastgltf::Node::TRS>(gltfNode.transform);
 
 		auto& node = InScene.Nodes[InNodeIndex];
@@ -38,7 +38,10 @@ namespace Yuki {
 		node.MeshIndex = gltfNode.meshIndex.has_value() ? static_cast<int32_t>(gltfNode.meshIndex.value()) : -1;
 
 		for (auto childNodeIndex : gltfNode.children)
-			ProcessNodeHierarchy(InAsset, InScene, childNodeIndex);
+		{
+			ProcessNodeHierarchy(InAsset, InScene, childNodeIndex + 1);
+			node.ChildNodes.push_back(childNodeIndex + 1);
+		}
 	}
 
 	AssetID AssetImporter<MeshAsset>::Import(AssetRegistry& InRegistry, const std::filesystem::path& InFilePath)
@@ -90,7 +93,7 @@ namespace Yuki {
 		MeshScene meshScene;
 		meshScene.Materials.resize(parsedAsset->materials.size());
 		meshScene.Meshes.resize(parsedAsset->meshes.size());
-		meshScene.Nodes.resize(parsedAsset->nodes.size());
+		meshScene.Nodes.resize(parsedAsset->nodes.size() + 1);
 
 		for (size_t i = 0; i < parsedAsset->materials.size(); i++)
 		{
@@ -102,11 +105,11 @@ namespace Yuki {
 
 			const auto& pbrData = gltfMaterial.pbrData.value();
 
-			uint32_t r = uint32_t(pbrData.baseColorFactor[0]) * 255;
-			uint32_t g = uint32_t(pbrData.baseColorFactor[1]) * 255;
-			uint32_t b = uint32_t(pbrData.baseColorFactor[2]) * 255;
-			uint32_t a = uint32_t(pbrData.baseColorFactor[3]) * 255;
-			material.AlbedoColor = (r << 24) | (g << 16) | (b << 8) | a;
+			uint8_t r = uint8_t(pbrData.baseColorFactor[0] * 255.0f);
+			uint8_t g = uint8_t(pbrData.baseColorFactor[1] * 255.0f);
+			uint8_t b = uint8_t(pbrData.baseColorFactor[2] * 255.0f);
+			uint8_t a = uint8_t(pbrData.baseColorFactor[3] * 255.0f);
+			material.AlbedoColor = (a << 24) | (b << 16) | (g << 8) | r;
 
 			if (pbrData.baseColorTexture.has_value())
 			{
@@ -169,14 +172,27 @@ namespace Yuki {
 			}
 		}
 
+		meshScene.RootNodeIndex = 0;
+		auto& rootNode = meshScene.Nodes[0];
+		rootNode.Name = InFilePath.stem().string();
+		rootNode.Translation = { 0.0f, 0.0f, 0.0f };
+		rootNode.Rotation = Math::Quat(0.0f, 0.0f, 0.0f, 1.0f);
+		rootNode.Scale = { 1.0f, 1.0f, 1.0f };
+		rootNode.MeshIndex = -1;
+
 		for (auto nodeIndex : scene->nodeIndices)
-			ProcessNodeHierarchy(parsedAsset, meshScene, nodeIndex);
+		{
+			ProcessNodeHierarchy(parsedAsset, meshScene, nodeIndex + 1);
+			rootNode.ChildNodes.push_back(nodeIndex + 1);
+		}
 
 		auto meshTypeName = Utils::GetAssetTypeName(AssetType::Mesh);
 
 		size_t dataSize = 4 * sizeof(size_t);
 		dataSize += meshTypeName.size();
 		dataSize += meshScene.Materials.size() * sizeof(MaterialData);
+
+		dataSize += sizeof(size_t);
 
 		for (const auto& node : meshScene.Nodes)
 		{
@@ -186,6 +202,8 @@ namespace Yuki {
 			dataSize += sizeof(Math::Quat);
 			dataSize += sizeof(Math::Vec3);
 			dataSize += sizeof(int32_t);
+			dataSize += sizeof(size_t);
+			dataSize += node.ChildNodes.size() * sizeof(size_t);
 		}
 
 		for (const auto& meshSource : meshScene.Meshes)
@@ -205,6 +223,8 @@ namespace Yuki {
 
 		buffer.WriteArray(meshScene.Materials);
 
+		buffer.Write(meshScene.RootNodeIndex);
+
 		for (const auto& node : meshScene.Nodes)
 		{
 			buffer.Write(node.Name.length());
@@ -213,6 +233,9 @@ namespace Yuki {
 			buffer.Write(node.Rotation);
 			buffer.Write(node.Scale);
 			buffer.Write(node.MeshIndex);
+
+			buffer.Write(node.ChildNodes.size());
+			buffer.WriteArray(node.ChildNodes);
 		}
 
 		for (const auto& meshSource : meshScene.Meshes)
@@ -238,11 +261,12 @@ namespace Yuki {
 		});
 	}
 
-	MeshAsset AssetImporter<MeshAsset>::Load(AssetRegistry& InRegistry, AssetID InID)
+	bool AssetImporter<MeshAsset>::Load(MeshAsset* InAsset, AssetRegistry& InRegistry, AssetID InID)
 	{
 		std::ifstream stream(InRegistry[InID].FilePath, std::ios::binary);
 
-		MeshScene scene;
+		if (!stream)
+			return false;
 
 		size_t typeStrLength;
 		stream.read(reinterpret_cast<char*>(&typeStrLength), sizeof(size_t));
@@ -256,12 +280,14 @@ namespace Yuki {
 		stream.read(reinterpret_cast<char*>(&nodeCount), sizeof(size_t));
 		stream.read(reinterpret_cast<char*>(&meshCount), sizeof(size_t));
 
-		scene.Materials.resize(materialCount);
-		for (auto& material : scene.Materials)
+		InAsset->Scene.Materials.resize(materialCount);
+		for (auto& material : InAsset->Scene.Materials)
 			stream.read(reinterpret_cast<char*>(&material), sizeof(MaterialData));
 
-		scene.Nodes.resize(nodeCount);
-		for (auto& node : scene.Nodes)
+		stream.read(reinterpret_cast<char*>(&InAsset->Scene.RootNodeIndex), sizeof(size_t));
+
+		InAsset->Scene.Nodes.resize(nodeCount);
+		for (auto& node : InAsset->Scene.Nodes)
 		{
 			size_t nameLength;
 			stream.read(reinterpret_cast<char*>(&nameLength), sizeof(size_t));
@@ -272,10 +298,15 @@ namespace Yuki {
 			stream.read(reinterpret_cast<char*>(&node.Rotation), sizeof(Math::Quat));
 			stream.read(reinterpret_cast<char*>(&node.Scale), sizeof(Math::Vec3));
 			stream.read(reinterpret_cast<char*>(&node.MeshIndex), sizeof(int32_t));
+
+			size_t childNodesCount;
+			stream.read(reinterpret_cast<char*>(&childNodesCount), sizeof(size_t));
+			node.ChildNodes.resize(childNodesCount);
+			stream.read(reinterpret_cast<char*>(node.ChildNodes.data()), childNodesCount * sizeof(size_t));
 		}
 
-		scene.Meshes.resize(meshCount);
-		for (auto& mesh : scene.Meshes)
+		InAsset->Scene.Meshes.resize(meshCount);
+		for (auto& mesh : InAsset->Scene.Meshes)
 		{
 			size_t vertexCount;
 			stream.read(reinterpret_cast<char*>(&vertexCount), sizeof(size_t));
@@ -288,7 +319,7 @@ namespace Yuki {
 			stream.read(reinterpret_cast<char*>(mesh.Indices.data()), indexCount * sizeof(uint32_t));
 		}
 
-		return { std::move(scene) };
+		return true;
 	}
 
 }

@@ -32,7 +32,7 @@ namespace Yuki {
 
 	struct Asset {};
 
-	struct MeshAsset
+	struct MeshAsset : public Asset
 	{
 		MeshScene Scene;
 	};

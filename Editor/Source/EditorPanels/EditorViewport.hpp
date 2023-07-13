@@ -3,6 +3,7 @@
 #include "EditorPanel.hpp"
 
 #include <Yuki/Memory/Unique.hpp>
+#include <Yuki/Asset/AssetSystem.hpp>
 
 namespace Yuki {
 	class RenderContext;
@@ -19,8 +20,10 @@ namespace YukiEditor {
 	class EditorViewport : public EditorPanel
 	{
 	public:
-		EditorViewport(Yuki::GenericWindow* InWindow, Yuki::RenderContext* InContext, Yuki::ImGuiRenderContext* InImGuiContext);
+		EditorViewport(Yuki::AssetSystem& InAssetSystem, Yuki::GenericWindow* InWindow, Yuki::RenderContext* InContext, Yuki::ImGuiRenderContext* InImGuiContext, Yuki::World* InWorld);
 		
+		void SetWorld(Yuki::World* InWorld) { m_World = InWorld; }
+
 		void Update(float InDeltaTime) override;
 		void Draw() override;
 
@@ -28,6 +31,8 @@ namespace YukiEditor {
 		Yuki::RenderContext* m_Context = nullptr;
 		Yuki::ImGuiRenderContext* m_ImGuiContext = nullptr;
 		Yuki::Unique<Yuki::WorldRenderer> m_Renderer = nullptr;
+
+		Yuki::AssetSystem& m_AssetSystem;
 
 		uint32_t m_ViewportWidth, m_ViewportHeight;
 		uint32_t m_LastViewportWidth, m_LastViewportHeight;

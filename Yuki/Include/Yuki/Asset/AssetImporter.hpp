@@ -11,7 +11,7 @@ namespace Yuki {
 	{
 	public:
 		AssetID Import(AssetRegistry& InRegistry, const std::filesystem::path& InFilePath);
-		TAsset Load(AssetRegistry& InRegistry, AssetID InID);
+		bool Load(TAsset* InAsset, AssetRegistry& InRegistry, AssetID InID);
 	};
 
 }

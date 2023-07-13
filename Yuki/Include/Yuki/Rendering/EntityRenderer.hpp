@@ -5,19 +5,17 @@
 #include "Yuki/World/World.hpp"
 #include "Yuki/Entities/RenderingComponents.hpp"
 
-#include "RenderResources.hpp"
+#include "Renderer.hpp"
 
 namespace Yuki {
 
-	class RenderContext;
-
-	class WorldRenderer
+	class WorldRenderer : public Renderer
 	{
 	public:
-		WorldRenderer(RenderContext* InContext);
+		WorldRenderer(World& InWorld, RenderContext* InContext);
 
-		void CreateGPUObject(flecs::entity InEntity);
-		//MeshHandle SubmitForUpload(Mesh InMesh);
+		void CreateGPUInstance(flecs::entity InRoot);
+		void SubmitForUpload(AssetID InAssetID, const MeshScene& InMeshScene);
 
 		void Reset();
 		void PrepareFrame();
@@ -30,20 +28,9 @@ namespace Yuki {
 		void SynchronizeGPUTransform(flecs::entity InEntity);
 
 		Image GetFinalImage() { return m_ColorImage; }
-		
-		//Mesh& GetMesh(MeshHandle InHandle) { return m_Meshes.Get(InHandle); }
-		//const Mesh& GetMesh(MeshHandle InHandle) const { return m_Meshes.Get(InHandle); }
-
-	public:
-		flecs::entity PreRenderPhase;
-		flecs::entity RenderPhase;
-		flecs::entity PostRenderPhase;
 
 	private:
-		RenderContext* m_Context = nullptr;
-		flecs::system m_PreRenderSystem{};
-		flecs::system m_RenderSystem{};
-		flecs::system m_PostRenderSystem{};
+		World& m_World;
 
 		Image m_ColorImage{};
 		Image m_DepthImage{};
@@ -65,9 +52,23 @@ namespace Yuki {
 
 		Fence m_Fence{};
 
-		//ResourceRegistry<MeshHandle, Mesh> m_Meshes;
-		//std::shared_mutex m_MeshUploadMutex;
-		//DynamicArray<MeshHandle> m_MeshUploadQueue;
+		struct GPUMesh
+		{
+			Buffer VertexData;
+			Buffer IndexData;
+			uint32_t IndexCount;
+			Math::Mat4 Transform;
+			bool IsReady = false;
+		};
+
+		struct GPUMeshScene
+		{
+			DynamicArray<GPUMesh> Meshes;
+			Buffer MaterialData;
+			uint32_t BaseTextureOffset;
+			Barrier UploadBarrier;
+		};
+		Map<AssetID, GPUMeshScene, AssetIDHash> m_GPUMeshScenes;
 
 		struct PushConstants
 		{
@@ -82,14 +83,7 @@ namespace Yuki {
 			uint64_t MaterialVA;
 			uint32_t BaseTextureOffset;
 		};
-
-		struct CPUObject
-		{
-			//MeshHandle Mesh;
-			size_t InstanceIndex;
-		};
-
-		DynamicArray<CPUObject> m_CPUObjects;
+		std::atomic<uint32_t> m_GPUObjectCount = 0;
 
 		Buffer m_ObjectStorageBuffer{};
 		Buffer m_ObjectStagingBuffer{};

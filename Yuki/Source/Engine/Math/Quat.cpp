@@ -6,6 +6,9 @@ namespace Yuki::Math {
 	Quat::Quat()
 			: Value(0.0f, 0.0f, 0.0f, 1.0f) {}
 
+	Quat::Quat(float InX, float InY, float InZ, float InW)
+		: Value(InX, InY, InZ, InW) {}
+
 	Quat::Quat(const Vec3& InEulerAngles)
 	{
 		float cosX = Math::Cos(InEulerAngles.X * 0.5f);

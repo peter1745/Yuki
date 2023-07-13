@@ -2,11 +2,12 @@
 #include "Rendering/RenderContext.hpp"
 #include "Rendering/DescriptorSetBuilder.hpp"
 #include "Entities/TransformComponents.hpp"
+#include "Math/Math.hpp"
 
 namespace Yuki {
 
-	WorldRenderer::WorldRenderer(RenderContext* InContext)
-		: m_Context(InContext)
+	WorldRenderer::WorldRenderer(World& InWorld, RenderContext* InContext)
+		: Renderer(InContext), m_World(InWorld)
 	{
 		m_GraphicsQueue = { m_Context->GetGraphicsQueue(), m_Context };
 
@@ -75,54 +76,160 @@ namespace Yuki {
 		m_ViewportHeight = 1080;
 	}
 
-	void WorldRenderer::CreateGPUObject(flecs::entity InEntity)
+	void WorldRenderer::CreateGPUInstance(flecs::entity InRoot)
 	{
-		/*const auto* meshComponent = InEntity.get<Entities::MeshComponent>();
-		const auto& mesh = m_Meshes.Get(meshComponent->Value);
-
-		m_EntityInstanceMap[InEntity] = m_LastInstanceID;
-
-		for (size_t i = 0; i < mesh.Instances.size(); i++)
+		ScheduleTransfer([this, InRoot](Queue InQueue, CommandPool InPool, Buffer InStagingBuffer, Fence InFence)
 		{
-			const auto& meshInstance = mesh.Instances[i];
+			uint32_t objectIndex = 0;
 
-			auto& cpuInstance = m_CPUObjects.emplace_back();
-			cpuInstance.Mesh = meshComponent->Value;
-			cpuInstance.InstanceIndex = i;
-
-			GPUObject gpuObject =
+			m_World.IterateHierarchy(InRoot, [this, &objectIndex](flecs::entity InEntity)
 			{
-				.VertexVA = mesh.Sources[meshInstance.SourceIndex].VertexData.GetDeviceAddress(),
-				.MaterialVA = mesh.MaterialStorageBuffer.GetDeviceAddress(),
-				.BaseTextureOffset = mesh.TextureOffset
-			};
+				if (!InEntity.has<Entities::MeshComponent>())
+					return;
 
-			m_ObjectStagingBuffer.SetData(&gpuObject, sizeof(GPUObject), m_LastInstanceID * sizeof(GPUObject));
-			m_TransformStagingBuffer.SetData(&meshInstance.Transform, sizeof(Math::Mat4), m_LastInstanceID * sizeof(Math::Mat4));
-			m_LastInstanceID++;
-		}
+				const auto* translation = InEntity.get<Entities::Translation>();
+				const auto* rotation = InEntity.get<Entities::Rotation>();
+				const auto* meshComponent = InEntity.get<Entities::MeshComponent>();
+				const auto& mesh = m_GPUMeshScenes.at(meshComponent->MeshID);
 
-		m_Context->GetTransferScheduler().Schedule([this, baseIndex = m_EntityInstanceMap[InEntity], &mesh](CommandListHandle InCommandList)
-		{
-			CommandList commandList{InCommandList, m_Context};
-			commandList.CopyToBuffer(m_ObjectStorageBuffer, baseIndex * sizeof(GPUObject), m_ObjectStagingBuffer, baseIndex * sizeof(GPUObject), uint32_t(mesh.Instances.size()) * sizeof(GPUObject));
-			commandList.CopyToBuffer(m_TransformStorageBuffer, baseIndex * sizeof(Math::Mat4), m_TransformStagingBuffer, baseIndex * sizeof(Math::Mat4), uint32_t(mesh.Instances.size()) * sizeof(Math::Mat4));
-		}, [this, handle = meshComponent->Value]()
-		{
-			m_Meshes.MarkReady(handle);
-		}, {}, {});*/
+				mesh.UploadBarrier.Wait();
+
+				const auto& gpuMesh = mesh.Meshes[meshComponent->MeshIndex];
+
+				GPUObject gpuObject =
+				{
+					.VertexVA = gpuMesh.VertexData.GetDeviceAddress(),
+					.MaterialVA = mesh.MaterialData.GetDeviceAddress(),
+					.BaseTextureOffset = mesh.BaseTextureOffset
+				};
+
+				Math::Mat4 transform = Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value);
+				m_ObjectStagingBuffer.SetData(&gpuObject, sizeof(GPUObject), objectIndex * sizeof(GPUObject));
+				m_TransformStagingBuffer.SetData(&transform, sizeof(Math::Mat4), objectIndex * sizeof(Math::Mat4));
+				objectIndex++;
+			});
+
+			uint32_t offset = m_GPUObjectCount.load();
+
+			auto commandList = InPool.CreateCommandList();
+			commandList.Begin();
+			commandList.CopyToBuffer(m_ObjectStorageBuffer, offset * sizeof(GPUObject), m_ObjectStagingBuffer, 0, objectIndex * sizeof(GPUObject));
+			commandList.CopyToBuffer(m_TransformStorageBuffer, offset * sizeof(Math::Mat4), m_TransformStagingBuffer, 0, objectIndex * sizeof(Math::Mat4));
+			commandList.End();
+
+			InQueue.SubmitCommandLists({ commandList }, { InFence }, { InFence });
+		});
 	}
 
-	/*MeshHandle WorldRenderer::SubmitForUpload(Mesh InMesh)
+	void WorldRenderer::SubmitForUpload(AssetID InAssetID, const MeshScene& InMeshScene)
 	{
-		auto[handle, mesh] = m_Meshes.Insert(InMesh);
-		
-		std::scoped_lock lock(m_MeshUploadMutex);
-		m_MeshUploadQueue.push_back(handle);
-		YUKI_UNUSED(mesh);
+		static constexpr uint32_t CopyChunkSize = 100 * 1024 * 1024;
 
-		return handle;
-	}*/
+		if (m_GPUMeshScenes.contains(InAssetID))
+			return;
+
+		auto& gpuMeshScene = m_GPUMeshScenes[InAssetID];
+		gpuMeshScene.Meshes.resize(InMeshScene.Meshes.size());
+		gpuMeshScene.MaterialData = Buffer(m_Context, {
+			.Type = BufferType::StorageBuffer,
+			.Size = uint32_t(InMeshScene.Materials.size() * sizeof(MaterialData))
+		});
+
+		ScheduleTransfer([this, &gpuMeshScene, InMeshScene](Queue InQueue, CommandPool InPool, Buffer InStagingBuffer, Fence InFence)
+		{
+			auto stagingBuffer = Buffer(m_Context, {
+				.Type = BufferType::StagingBuffer,
+				.Size = uint32_t(InMeshScene.Materials.size() * sizeof(MaterialData))
+			});
+
+			Fence fence{m_Context};
+
+			for (size_t i = 0; i < InMeshScene.Materials.size(); i++)
+				stagingBuffer.SetData(&InMeshScene.Materials[i], sizeof(MaterialData), uint32_t(i * sizeof(MaterialData)));
+
+			auto commandList = InPool.CreateCommandList();
+			commandList.Begin();
+			commandList.CopyToBuffer(gpuMeshScene.MaterialData, 0, stagingBuffer, 0, 0);
+			commandList.End();
+
+			InQueue.SubmitCommandLists({ commandList }, {}, { fence });
+			fence.Wait();
+
+			m_Context->Destroy(stagingBuffer);
+			m_Context->Destroy(fence);
+		}, &gpuMeshScene.UploadBarrier);
+
+		ScheduleTransfer([this, &gpuMeshScene, InMeshScene](Queue InQueue, CommandPool InPool, Buffer InStagingBuffer, Fence InFence)
+		{
+			Fence fence{ m_Context };
+
+			for (size_t i = 0; i < InMeshScene.Meshes.size(); i++)
+			{
+				const auto& mesh = InMeshScene.Meshes[i];
+				auto& gpuMesh = gpuMeshScene.Meshes[i];
+
+				{
+					uint32_t vertexDataSize = uint32_t(mesh.Vertices.size()) * sizeof(Vertex);
+
+					gpuMesh.VertexData = Buffer(m_Context, {
+						.Type = BufferType::StorageBuffer,
+						.Size = vertexDataSize
+					});
+
+					if (gpuMesh.VertexData != BufferHandle{})
+					{
+						for (uint32_t bufferOffset = 0; bufferOffset < vertexDataSize; bufferOffset += CopyChunkSize)
+						{
+							auto commandList = InPool.CreateCommandList();
+							commandList.Begin();
+							const std::byte* ptr = (const std::byte*)mesh.Vertices.data();
+							uint32_t blockSize = Math::Min(bufferOffset + CopyChunkSize, vertexDataSize) - bufferOffset;
+							InStagingBuffer.SetData(ptr + bufferOffset, blockSize, 0);
+							commandList.CopyToBuffer(gpuMesh.VertexData, bufferOffset, InStagingBuffer, 0, blockSize);
+							commandList.End();
+
+							InQueue.SubmitCommandLists({ commandList }, { InFence }, { InFence, fence });
+
+							fence.Wait();
+						}
+					}
+				}
+
+				{
+					uint32_t indexDataSize = uint32_t(mesh.Indices.size()) * sizeof(uint32_t);
+
+					gpuMesh.IndexData = Buffer(m_Context, {
+						.Type = BufferType::IndexBuffer,
+						.Size = indexDataSize
+					});
+
+					if (gpuMesh.IndexData.Handle != BufferHandle{})
+					{
+						for (uint32_t bufferOffset = 0; bufferOffset < indexDataSize; bufferOffset += CopyChunkSize)
+						{
+							auto commandList = InPool.CreateCommandList();
+							commandList.Begin();
+							const std::byte* ptr = (const std::byte*)mesh.Indices.data();
+							uint32_t blockSize = Math::Min(bufferOffset + CopyChunkSize, indexDataSize) - bufferOffset;
+							InStagingBuffer.SetData(ptr + bufferOffset, blockSize, 0);
+							commandList.CopyToBuffer(gpuMesh.IndexData, bufferOffset, InStagingBuffer, 0, blockSize);
+							commandList.End();
+
+							InQueue.SubmitCommandLists({ commandList }, { InFence }, { InFence, fence });
+
+							fence.Wait();
+						}
+
+						gpuMesh.IndexCount = uint32_t(mesh.Indices.size());
+					}
+				}
+
+				std::atomic_ref<bool>(gpuMesh.IsReady) = true;
+			}
+
+			m_Context->Destroy(fence);
+		}, &gpuMeshScene.UploadBarrier);
+	}
 
 	void WorldRenderer::Reset()
 	{
@@ -154,6 +261,7 @@ namespace Yuki {
 
 	void WorldRenderer::BeginFrame(const Math::Mat4& InViewProjection)
 	{
+		ExecuteTransfers();
 		PrepareFrame();
 
 		m_PushConstants.ViewProjection = InViewProjection;
@@ -192,21 +300,20 @@ namespace Yuki {
 
 	void WorldRenderer::RenderEntities()
 	{
-		/*uint32_t instanceIndex = 0;
-
-		for (const auto& instance : m_CPUObjects)
+		uint32_t instanceIndex = 0;
+		auto filter = m_World.GetEntityWorld().filter<Entities::MeshComponent>();
+		filter.each([this, &instanceIndex](flecs::entity InEntity, Entities::MeshComponent& InComponent)
 		{
-			if (!m_Meshes.IsValid(instance.Mesh))
+			auto& meshScene = m_GPUMeshScenes.at(InComponent.MeshID);
+			auto& mesh = meshScene.Meshes[InComponent.MeshIndex];
+
+			if (!std::atomic_ref<bool>(mesh.IsReady))
 				return;
 
-			const auto& mesh = m_Meshes.Get(instance.Mesh);
-			const auto& meshInstance = mesh.Instances[instance.InstanceIndex];
-			const auto& meshData = mesh.Sources[meshInstance.SourceIndex];
-
-			m_CommandList.BindIndexBuffer(meshData.IndexBuffer, 0);
-			m_CommandList.DrawIndexed(meshData.IndexCount, 0, instanceIndex);
+			m_CommandList.BindIndexBuffer(mesh.IndexData, 0);
+			m_CommandList.DrawIndexed(mesh.IndexCount, 0, instanceIndex);
 			instanceIndex++;
-		}*/
+		});
 	}
 
 	void WorldRenderer::EndFrame()

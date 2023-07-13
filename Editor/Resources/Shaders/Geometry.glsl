@@ -79,7 +79,7 @@ layout(location = 4) in flat uint64_t InMaterialVA;
 struct Material
 {
 	int AlbedoTextureIndex;
-	vec4 AlbedoColor;
+	uint AlbedoColor;
 };
 
 layout(buffer_reference, scalar) buffer MaterialData
@@ -98,12 +98,14 @@ void main()
 	
 	Material material = MaterialData(InMaterialVA).Data[InMaterialIndex];
 
+    vec4 albedoColor = unpackUnorm4x8(material.AlbedoColor);
+
 	if (material.AlbedoTextureIndex == -1)
 	{
-		OutColor = material.AlbedoColor;
+		OutColor = albedoColor;
 	}
 	else
 	{
-		OutColor = texture(InAlbedoTextures[nonuniformEXT(InBaseTextureOffset + material.AlbedoTextureIndex)], InUV) * material.AlbedoColor;
+		OutColor = texture(InAlbedoTextures[nonuniformEXT(InBaseTextureOffset + material.AlbedoTextureIndex)], InUV) * albedoColor;
 	}
 }

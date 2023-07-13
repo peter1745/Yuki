@@ -58,11 +58,17 @@ namespace YukiEditor {
 			}
 		}
 
-		m_AssetRegistry.ForEach([&](auto InHandle, const auto& InMetadata)
+		m_AssetRegistry.ForEach([&](const auto& InHandle, const auto& InMetadata)
 		{
 			auto label = InMetadata.FilePath.stem().string();
-			if (ImGui::Button(label.c_str()))
-				Yuki::AssetImporter<Yuki::MeshAsset>().Load(m_AssetRegistry, InHandle);
+			ImGui::Button(label.c_str());
+
+			if (ImGui::BeginDragDropSource())
+			{
+				ImGui::SetDragDropPayload("AssetDragDrop", &InHandle, sizeof(Yuki::AssetID));
+				ImGui::TextUnformatted(label.c_str());
+				ImGui::EndDragDropSource();
+			}
 		});
 	}
 

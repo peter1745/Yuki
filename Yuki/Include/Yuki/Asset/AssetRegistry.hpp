@@ -1,6 +1,7 @@
 #pragma once
 
-#include "AssetSystem.hpp"
+#include "AssetTypes.hpp"
+#include "AssetID.hpp"
 
 #include <filesystem>
 

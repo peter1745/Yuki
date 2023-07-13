@@ -15,22 +15,12 @@ namespace Yuki {
 		m_Fence = Fence(InContext);
 	}
 
-	void TransferScheduler::Schedule(TransferJobFunc InJobFunc, JobFinishCallback InFinishedCallback, InitializerList<FenceHandle> InWaits, InitializerList<FenceHandle> InSignals)
+	void TransferScheduler::Schedule(TransferJobFunc InJobFunc, JobFinishCallback InFinishedCallback)
 	{
 		auto[jobIndex, job] = m_Jobs.EmplaceBack();
-		job.Task = [&, jobFunc = std::move(InJobFunc), waits = DynamicArray<FenceHandle>(InWaits.List), signals = DynamicArray<FenceHandle>(InSignals.List)](size_t InThreadID) mutable
+		job.Task = [&, jobFunc = std::move(InJobFunc)](size_t InThreadID) mutable
 		{
-			LogInfo("Running Transfer Job");
-			auto commandList = m_Context->CreateCommandList(m_CommandPools[InThreadID]);
-			m_Context->CommandListBegin(commandList);
-			jobFunc(commandList);
-			m_Context->CommandListEnd(commandList);
-
-			waits.emplace_back(m_Fence);
-			signals.emplace_back(m_Fence);
-
-			Queue(m_Context->GetTransferQueue(InThreadID), m_Context).SubmitCommandLists({ commandList }, waits, signals);
-			LogInfo("Done Transfer Job");
+			jobFunc(m_CommandPools[InThreadID]);
 		};
 		job.OnDone = [this, j = &job, callback = std::move(InFinishedCallback)]() mutable
 		{
@@ -41,6 +31,17 @@ namespace Yuki {
 
 		std::scoped_lock lock(m_Mutex);
 		m_ActiveJobs.push_back(&job);
+	}
+
+	void TransferScheduler::SubmitCommandBuffer(size_t InThreadID, CommandListHandle InCommandList, InitializerList<FenceHandle> InWaits, InitializerList<FenceHandle> InSignals)
+	{
+		auto waits = DynamicArray<FenceHandle>(InWaits.List);
+		auto signals = DynamicArray<FenceHandle>(InSignals.List);
+
+		waits.emplace_back(m_Fence);
+		signals.emplace_back(m_Fence);
+
+		Queue(m_Context->GetTransferQueue(InThreadID), m_Context).SubmitCommandLists({ InCommandList }, waits, signals);
 	}
 
 	void TransferScheduler::Execute()

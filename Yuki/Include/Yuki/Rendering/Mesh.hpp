@@ -17,7 +17,7 @@ namespace Yuki {
 	struct MaterialData
 	{
 		int32_t AlbedoTextureIndex = -1;
-		uint32_t AlbedoColor = 0;
+		uint32_t AlbedoColor;
 	};
 
 	struct MeshSource
@@ -33,12 +33,15 @@ namespace Yuki {
 		Math::Quat Rotation;
 		Math::Vec3 Scale;
 		int32_t MeshIndex;
+
+		DynamicArray<size_t> ChildNodes;
 	};
 
 	struct MeshScene
 	{
 		DynamicArray<MaterialData> Materials;
 		DynamicArray<MeshSource> Meshes;
+		size_t RootNodeIndex;
 		DynamicArray<MeshNode> Nodes;
 	};
 

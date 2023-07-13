@@ -8,7 +8,7 @@
 
 namespace Yuki {
 
-	using TransferJobFunc = std::function<void(CommandListHandle)>;
+	using TransferJobFunc = std::function<void(CommandPoolHandle)>;
 	using JobFinishCallback = std::function<void()>;
 
 	class RenderContext;
@@ -18,7 +18,8 @@ namespace Yuki {
 	public:
 		TransferScheduler(RenderContext* InContext);
 
-		void Schedule(TransferJobFunc InJobFunc, JobFinishCallback InFinishedCallback, InitializerList<FenceHandle> InWaits, InitializerList<FenceHandle> InSignals);
+		void Schedule(TransferJobFunc InJobFunc, JobFinishCallback InFinishedCallback);
+		void SubmitCommandBuffer(size_t InThreadID, CommandListHandle InCommandList, InitializerList<FenceHandle> InWaits, InitializerList<FenceHandle> InSignals);
 		void Execute();
 
 	private:

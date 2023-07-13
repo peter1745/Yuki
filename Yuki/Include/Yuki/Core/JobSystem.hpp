@@ -18,7 +18,13 @@ namespace Yuki {
 		std::atomic<uint32_t> Counter = 0;
 		std::vector<Job*> Pending;
 
-		void Wait(uint32_t InValue = 0)
+		Barrier() = default;
+		Barrier(const Barrier& InOther)
+			: Counter(InOther.Counter.load()), Pending(InOther.Pending)
+		{
+		}
+
+		void Wait(uint32_t InValue = 0) const
 		{
 			uint32_t value = Counter.load();
 			while (value != InValue)

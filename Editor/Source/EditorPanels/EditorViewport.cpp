@@ -2,6 +2,7 @@
 #include "../FreeCamera.hpp"
 
 #include <Yuki/Core/ScopeExitGuard.hpp>
+#include <Yuki/Asset/AssetID.hpp>
 #include <Yuki/Rendering/EntityRenderer.hpp>
 #include <Yuki/ImGui/ImGuiRenderContext.hpp>
 
@@ -9,10 +10,10 @@
 
 namespace YukiEditor {
 
-	EditorViewport::EditorViewport(Yuki::GenericWindow* InWindow, Yuki::RenderContext* InContext, Yuki::ImGuiRenderContext* InImGuiContext)
-		: m_Context(InContext), m_ImGuiContext(InImGuiContext)
+	EditorViewport::EditorViewport(Yuki::AssetSystem& InAssetSystem, Yuki::GenericWindow* InWindow, Yuki::RenderContext* InContext, Yuki::ImGuiRenderContext* InImGuiContext, Yuki::World* InWorld)
+		: m_AssetSystem(InAssetSystem), m_Context(InContext), m_ImGuiContext(InImGuiContext), m_World(InWorld)
 	{
-		m_Renderer = Yuki::Unique<Yuki::WorldRenderer>::Create(m_Context);
+		m_Renderer = Yuki::Unique<Yuki::WorldRenderer>::Create(*InWorld, m_Context);
 		m_Camera = Yuki::Unique<FreeCamera>::Create(InWindow);
 	}
 
@@ -35,11 +36,7 @@ namespace YukiEditor {
 
 	void EditorViewport::Draw()
 	{
-		YUKI_SCOPE_EXIT_GUARD()
-		{
-			ImGui::PopStyleVar();
-			ImGui::End();
-		};
+		YUKI_SCOPE_EXIT_GUARD() { ImGui::PopStyleVar(); ImGui::End(); };
 
 		m_LastViewportWidth = m_ViewportWidth;
 		m_LastViewportHeight = m_ViewportHeight;
@@ -55,6 +52,28 @@ namespace YukiEditor {
 		{
 			m_ViewportWidth = uint32_t(viewportSize.x);
 			m_ViewportHeight = uint32_t(viewportSize.y);
+		}
+
+		if (ImGui::BeginDragDropTarget())
+		{
+			YUKI_SCOPE_EXIT_GUARD() { ImGui::EndDragDropTarget(); };
+
+			const auto* payload = ImGui::AcceptDragDropPayload("AssetDragDrop");
+
+			if (payload)
+			{
+				const auto& assetID = *reinterpret_cast<const Yuki::AssetID*>(payload->Data);
+
+				if (assetID.GetType() == Yuki::AssetType::Mesh)
+				{
+					m_AssetSystem.Request<Yuki::MeshAsset>(assetID, [assetID, world = m_World, renderer = m_Renderer.GetPtr()](const auto& InMeshAsset)
+					{
+						auto rootEntity = world->InstantiateMeshScene(assetID, InMeshAsset.Scene);
+						renderer->SubmitForUpload(assetID, InMeshAsset.Scene);
+						renderer->CreateGPUInstance(rootEntity);
+					});
+				}
+			}
 		}
 	}
 
