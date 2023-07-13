@@ -20,7 +20,6 @@
 #include <Yuki/Rendering/PipelineBuilder.hpp>
 #include <Yuki/Rendering/DescriptorSetBuilder.hpp>
 #include <Yuki/Rendering/EntityRenderer.hpp>
-#include <Yuki/IO/MeshLoader.hpp>
 
 #include <Yuki/World/World.hpp>
 #include <Yuki/Entities/TransformComponents.hpp>
@@ -392,7 +391,6 @@ namespace YukiEditor {
 		Yuki::Queue m_GraphicsQueue{};
 		Yuki::Fence m_Fence{};
 
-		Yuki::Unique<Yuki::MeshLoader> m_MeshLoader = nullptr;
 		Yuki::Unique<Yuki::AssetSystem> m_AssetSystem = nullptr;
 		Yuki::Unique<Yuki::AssetRegistry> m_AssetRegistry = nullptr;
 
