@@ -33,6 +33,8 @@
 
 #include <imgui/imgui.h>
 
+#include <FastNoise/FastNoise.h>
+
 namespace YukiEditor {
 
 	struct SceneHierarchyNode
@@ -205,9 +207,16 @@ namespace YukiEditor {
 
 			BeginMainDockspace();
 
+			static bool s_Wireframe = false;
+
 			if (ImGui::Begin("Settings"))
 			{
 				ImGui::Text("Delta Time: %.4f", GetDeltaTime());
+
+				if (ImGui::Checkbox("Wireframe", &s_Wireframe))
+				{
+					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->SetWireframe(s_Wireframe);
+				}
 
 				//ImGui::DragFloat("Camera Speed", &m_Camera->GetMovementSpeed());
 
@@ -216,8 +225,135 @@ namespace YukiEditor {
 
 				if (ImGui::Button("Cube Sphere"))
 				{
-					auto assetID = Yuki::MeshGenerator::GenerateCubeSphere(*m_AssetSystem, 10.0f, 16, 1.0f);
-					const auto* asset = m_AssetSystem->Request<Yuki::MeshAsset>(assetID);
+					auto assetID = Yuki::MeshGenerator::GenerateCubeSphere(*m_AssetSystem, 10.0f, 32, 10.0f);
+					auto* asset = m_AssetSystem->Request<Yuki::MeshAsset>(assetID);
+
+					{
+						auto* texture = new Yuki::TextureAsset();
+						texture->Width = 128;
+						texture->Height = 128;
+						auto noiseGen = FastNoise::New<FastNoise::CellularDistance>();
+						auto rgba8Convert = FastNoise::New<FastNoise::ConvertRGBA8>();
+						rgba8Convert->SetSource(noiseGen);
+						texture->Data = new std::byte[texture->Width * texture->Height * 4];
+
+						//set up spherical stuff
+						int count = 0;
+						const float piOverHeight = Yuki::Math::PI<float>() / (texture->Height + 1);
+						const float twoPiOverWidth = (Yuki::Math::PI<float>() * 2.0f) / texture->Width;
+						float phi = 0;
+						float x3d, y3d, z3d;
+						float sinPhi, theta;
+
+						//*outMin = 999;
+						//*outMax = -999;
+
+						float* xcos = new float[texture->Width];
+						float* ysin = new float[texture->Width];
+						//Precalculate cos/sin	
+						theta = 0;
+						for (int x = 0; x < texture->Width; x = x + 1)
+						{
+							theta = theta + twoPiOverWidth;
+							ysin[x] = sinf(theta);
+							xcos[x] = cosf(theta);
+						}
+
+						for (int y = 0; y < texture->Height; y = y + 1)
+						{
+							phi = phi + piOverHeight;
+							z3d = cosf(phi);
+							sinPhi = sinf(phi);
+
+							for (int x = 0; x < texture->Width; x = x + 1)
+							{
+								//use cos/sin lookup tables
+								x3d = xcos[x] * sinPhi;
+								y3d = ysin[x] * sinPhi;
+
+								float value = rgba8Convert->GenSingle3D(x3d, y3d, z3d, 1234098);
+								memcpy(&texture->Data[count], &value, sizeof(float));
+
+								//*outMin = fminf(*outMin, result[count]);
+								//*outMax = fmaxf(*outMax, result[count]);
+								count += 4;
+							}
+						}
+						delete[] xcos;
+						delete[] ysin;
+
+						//rgba8Convert->GenTileable2D(reinterpret_cast<float*>(texture->Data), texture->Width, texture->Height, 0.05f, 1234098);
+						asset->Scene.Textures.push_back(m_AssetSystem->AddAsset(Yuki::AssetType::Texture, texture));
+					}
+
+					flecs::entity entity = m_World.InstantiateMeshScene(assetID, asset->Scene);
+					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->SubmitForUpload(assetID, *m_AssetSystem, asset->Scene);
+					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->CreateGPUInstance(entity);
+				}
+
+				if (ImGui::Button("Icosphere"))
+				{
+					auto assetID = Yuki::MeshGenerator::GenerateIcosphere(*m_AssetSystem, 32, 16.0f);
+					auto* asset = m_AssetSystem->Request<Yuki::MeshAsset>(assetID);
+
+					{
+						auto* texture = new Yuki::TextureAsset();
+						texture->Width = 128;
+						texture->Height = 128;
+						auto noiseGen = FastNoise::New<FastNoise::CellularDistance>();
+						auto rgba8Convert = FastNoise::New<FastNoise::ConvertRGBA8>();
+						rgba8Convert->SetSource(noiseGen);
+						texture->Data = new std::byte[texture->Width * texture->Height * 4];
+
+						//set up spherical stuff
+						int count = 0;
+						const float piOverHeight = Yuki::Math::PI<float>() / (texture->Height + 1);
+						const float twoPiOverWidth = (Yuki::Math::PI<float>() * 2.0f) / texture->Width;
+						float phi = 0;
+						float x3d, y3d, z3d;
+						float sinPhi, theta;
+
+						//*outMin = 999;
+						//*outMax = -999;
+
+						float* xcos = new float[texture->Width];
+						float* ysin = new float[texture->Width];
+						//Precalculate cos/sin	
+						theta = 0;
+						for (int x = 0; x < texture->Width; x = x + 1)
+						{
+							theta = theta + twoPiOverWidth;
+							ysin[x] = sinf(theta);
+							xcos[x] = cosf(theta);
+						}
+
+						for (int y = 0; y < texture->Height; y = y + 1)
+						{
+							phi = phi + piOverHeight;
+							z3d = cosf(phi);
+							sinPhi = sinf(phi);
+
+							for (int x = 0; x < texture->Width; x = x + 1)
+							{
+								//use cos/sin lookup tables
+								x3d = xcos[x] * sinPhi;
+								y3d = ysin[x] * sinPhi;
+
+								float value = rgba8Convert->GenSingle3D(x3d, y3d, z3d, 1234098);
+								memcpy(&texture->Data[count], &value, sizeof(float));
+
+								//*outMin = fminf(*outMin, result[count]);
+								//*outMax = fmaxf(*outMax, result[count]);
+								count += 4;
+							}
+						}
+						delete[] xcos;
+						delete[] ysin;
+
+						//rgba8Convert->GenTileable2D(reinterpret_cast<float*>(texture->Data), texture->Width, texture->Height, 0.05f, 1234098);
+						asset->Scene.Textures.push_back(m_AssetSystem->AddAsset(Yuki::AssetType::Texture, texture));
+					}
+
 					flecs::entity entity = m_World.InstantiateMeshScene(assetID, asset->Scene);
 					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->SubmitForUpload(assetID, *m_AssetSystem, asset->Scene);
 					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->CreateGPUInstance(entity);

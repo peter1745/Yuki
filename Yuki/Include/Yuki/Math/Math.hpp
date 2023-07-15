@@ -35,6 +35,12 @@ namespace Yuki::Math {
 	constexpr T Atan2(T InY, T InX) { return static_cast<T>(std::atan2(static_cast<double>(InY), static_cast<double>(InX))); }
 
 	template<typename T>
+	constexpr T Asin(T InValue) { return static_cast<T>(std::asin(static_cast<double>(InValue))); }
+
+	template<typename T>
+	constexpr T Acos(T InValue) { return static_cast<T>(std::acos(static_cast<double>(InValue))); }
+
+	template<typename T>
 	constexpr T Clamp(T InValue, T InMin, T InMax)
 	{
 		if (InValue > InMax)
@@ -47,6 +53,15 @@ namespace Yuki::Math {
 	}
 
 	template<typename T>
-	constexpr T Sqrt(T InValue) { return T(std::sqrt(double(InValue))); }
+	T Sqrt(T InValue) { return T(std::sqrt(double(InValue))); }
+
+	template<typename T>
+	T Pow(T InValue, T InExponent) { return T(std::pow(double(InValue), double(InExponent))); }
+
+	template<typename T>
+	T Floor(T InValue) { return T(std::floor(double(InValue))); }
+
+	template<typename T>
+	T Abs(T InValue) { return T(std::abs(double(InValue))); }
 
 }

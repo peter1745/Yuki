@@ -4,7 +4,9 @@
 #include "Core/StringHelper.hpp"
 #include "IO/FileIO.hpp"
 
-#include <shaderc/shaderc.hpp>
+#include <glslang/Public/ShaderLang.h>
+#include <glslang/Public/ResourceLimits.h>
+#include <glslang/SPIRV/GlslangToSpv.h>
 
 namespace Yuki {
 
@@ -18,15 +20,15 @@ namespace Yuki {
 		return ShaderModuleType::None;
 	}
 
-	static constexpr shaderc_shader_kind ShaderModuleTypeToShaderCKind(ShaderModuleType InType)
+	static constexpr EShLanguage ShaderModuleTypeToGLSLangType(ShaderModuleType InType)
 	{
 		switch (InType)
 		{
-		case ShaderModuleType::Vertex: return shaderc_vertex_shader;
-		case ShaderModuleType::Fragment: return shaderc_fragment_shader;
+		case ShaderModuleType::Vertex: return EShLangVertex;
+		case ShaderModuleType::Fragment: return EShLangFragment;
 		}
 
-		return static_cast<shaderc_shader_kind>(-1);
+		return static_cast<EShLanguage>(-1);
 	}
 
 	Map<ShaderModuleType, std::string> ParseShaderSource(std::string_view InSource)
@@ -59,9 +61,98 @@ namespace Yuki {
 		return result;
 	}
 
-	shaderc::SpvCompilationResult CompileModule(ShaderModuleType InType, std::string_view InSource)
+	class GlslIncluder : public glslang::TShader::Includer
 	{
-		shaderc::Compiler compiler;
+	public:
+		IncludeResult* includeSystem(const char* headerName, const char* includerName, size_t inclusionDepth) override
+		{
+			return nullptr;
+		}
+
+		IncludeResult* includeLocal(const char* headerName, const char* includerName, size_t inclusionDepth) override
+		{
+			return nullptr;
+		}
+
+		void releaseInclude(IncludeResult* includeResult) override
+		{
+			YUKI_UNUSED(includeResult);
+		}
+	};
+
+	std::vector<uint32_t> CompileModule(ShaderModuleType InType, const std::filesystem::path& InFilePath, std::string_view InSource)
+	{
+		auto stage = ShaderModuleTypeToGLSLangType(InType);
+
+		glslang::TShader shader{stage};
+		shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3);
+		shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3);
+		shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_6);
+
+		const char* source = InSource.data();
+		int32_t sourceLength = InSource.length();
+		auto filepath = InFilePath.string();
+		const char* filePathStr = filepath.c_str();
+		shader.setStringsWithLengthsAndNames(&source, &sourceLength, &filePathStr, 1);
+
+		GlslIncluder includer;
+
+		const auto* resource = GetDefaultResources();
+
+		std::string preprocessed;
+		if (!shader.preprocess(resource, 450, EEsProfile, false, false, EShMessages::EShMsgEnhanced, &preprocessed, includer))
+		{
+			LogError("Failed to preprocess shader: {}!", InFilePath.string());
+			LogError("Reason: {}\n{}", shader.getInfoLog(), shader.getInfoDebugLog());
+			YUKI_VERIFY(false);
+		}
+
+		const char* preprocessedStr = preprocessed.c_str();
+		shader.setStrings(&preprocessedStr, 1);
+
+		if (!shader.parse(resource, 450, ENoProfile, EShMessages::EShMsgDefault))
+		{
+			LogError("Failed to parse shader: {}!", InFilePath.string());
+			LogError("Reason: {}\n{}", shader.getInfoLog(), shader.getInfoDebugLog());
+			YUKI_VERIFY(false);
+		}
+
+		glslang::TProgram program;
+		program.addShader(&shader);
+
+		if (!program.link(EShMessages(int(EShMessages::EShMsgSpvRules) | int(EShMessages::EShMsgVulkanRules))))
+		{
+			LogError("Failed to link shader: {}!", InFilePath.string());
+			LogError("Reason: {}\n{}", program.getInfoLog(), program.getInfoDebugLog());
+			YUKI_VERIFY(false);
+		}
+
+		glslang::SpvOptions spvOptions =
+		{
+			.generateDebugInfo = s_IncludeDebugInfo,
+			.stripDebugInfo = !s_IncludeDebugInfo,
+			.disableOptimizer = s_IncludeDebugInfo,
+			.disassemble = false,
+			.validate = true,
+			.emitNonSemanticShaderDebugInfo = false,
+			.emitNonSemanticShaderDebugSource = false,
+		};
+
+		const glslang::TIntermediate* intermediate = program.getIntermediate(stage);
+
+		std::vector<uint32_t> bytecode;
+		spv::SpvBuildLogger logger;
+		glslang::GlslangToSpv(*intermediate, bytecode, &spvOptions);
+
+		if (!logger.getAllMessages().empty())
+		{
+			LogWarn("SPIR-V messages generated for shader {}!", InFilePath.string());
+			LogWarn("Message: {}", logger.getAllMessages());
+		}
+
+		return bytecode;
+
+		/*shaderc::Compiler compiler;
 		shaderc::CompileOptions compilerOptions;
 		compilerOptions.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
 
@@ -84,7 +175,7 @@ namespace Yuki {
 			LogError("Failed to compiler shader! Error: {}", result.GetErrorMessage());
 		}
 
-		return result;
+		return result;*/
 	}
 
 	ShaderHandle VulkanRenderContext::CreateShader(const std::filesystem::path& InFilePath)
@@ -105,15 +196,15 @@ namespace Yuki {
 		Map<ShaderModuleType, std::vector<uint32_t>> compiledByteCode;
 		for (const auto& [shaderModuleType, moduleSource] : shaderModules)
 		{
-			auto result = CompileModule(shaderModuleType, moduleSource);
+			auto result = CompileModule(shaderModuleType, InFilePath, moduleSource);
 
-			if (result.GetCompilationStatus() != shaderc_compilation_status_success)
+			/*if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 			{
 				compiledByteCode.clear();
 				break;
-			}
+			}*/
 
-			compiledByteCode[shaderModuleType] = std::vector<uint32_t>(result.begin(), result.end());
+			compiledByteCode[shaderModuleType] = result;
 		}
 
 		shader.Name = InFilePath.stem().string();
@@ -142,15 +233,15 @@ namespace Yuki {
 		Map<ShaderModuleType, std::vector<uint32_t>> compiledByteCode;
 		for (const auto& [shaderModuleType, moduleSource] : shaderModules)
 		{
-			auto result = CompileModule(shaderModuleType, moduleSource);
+			auto result = CompileModule(shaderModuleType, "", moduleSource);
 
-			if (result.GetCompilationStatus() != shaderc_compilation_status_success)
+			/*if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 			{
 				compiledByteCode.clear();
 				break;
-			}
+			}*/
 
-			compiledByteCode[shaderModuleType] = std::vector<uint32_t>(result.begin(), result.end());
+			compiledByteCode[shaderModuleType] = result;
 		}
 
 		shader.Name = "Unnamed";

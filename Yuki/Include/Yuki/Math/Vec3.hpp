@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Vec2.hpp"
+
 #include <array>
 
 namespace Yuki::Math {
@@ -24,6 +26,10 @@ namespace Yuki::Math {
 			: Values(InValues)
 		{}
 
+		Vec3(const Vec2& InXY, float InZ)
+			: X(InXY.X), Y(InXY.Y), Z(InZ)
+		{}
+
 		float Dot(const Vec3& InOther) const;
 		float Length() const;
 
@@ -31,6 +37,8 @@ namespace Yuki::Math {
 		Vec3 Normalized() const;
 
 		Vec3 Cross(const Vec3& InOther) const;
+
+		static Vec3 Slerp(const Vec3& InStart, const Vec3& InEnd, float InPercent);
 
 		Vec3& operator+=(const Vec3& InOther);
 		Vec3& operator-=(const Vec3& InOther);

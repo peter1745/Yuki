@@ -11,7 +11,7 @@ namespace Yuki {
 	{
 		Math::Vec3 Position;
 		Math::Vec3 Normal;
-		Math::Vec2 UV;
+		Math::Vec3 UV;
 		uint32_t MaterialIndex = 0; // TODO(Peter): Change to material handle?
 	};
 

@@ -3,6 +3,8 @@
 #include "VulkanPlatform.hpp"
 #include "VulkanHelper.hpp"
 
+#include <glslang/Public/ShaderLang.h>
+
 namespace Yuki {
 
 	static constexpr uint32_t s_MessageSeverities = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -131,11 +133,15 @@ namespace Yuki {
 		}
 
 		m_TransferScheduler = Unique<TransferScheduler>::Create(this);
+
+		glslang::InitializeProcess();
 	}
 
 	VulkanRenderContext::~VulkanRenderContext()
 	{
 		DeviceWaitIdle();
+
+		glslang::FinalizeProcess();
 
 #define YUKI_DESTROY_REGISTRY(registry) registry.ForEach([&](auto key, auto& value) { Destroy(key); })
 		YUKI_DESTROY_REGISTRY(m_DescriptorSetLayouts);

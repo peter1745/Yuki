@@ -15,7 +15,8 @@ namespace Yuki::Math {
 
 	void Vec3::Normalize()
 	{
-		float invLength = 1.0f / Length();
+		float length = Length();
+		float invLength = 1.0f / length;
 		X *= invLength;
 		Y *= invLength;
 		Z *= invLength;
@@ -36,6 +37,17 @@ namespace Yuki::Math {
 		result.Z = X * InOther.Y - Y * InOther.X;
 		return result;
     }
+
+	Vec3 Vec3::Slerp(const Vec3& InStart, const Vec3& InEnd, float InPercent)
+	{
+		float dot = Math::Clamp(InStart.Dot(InEnd), -1.0f, 1.0f);
+		float theta = Math::Acos(dot) * InPercent;
+		auto relative = InEnd - InStart * dot;
+
+		relative.Normalize();
+
+		return (InStart * Math::Cos(theta)) + (relative * Math::Sin(theta));
+	}
 
     Vec3 &Vec3::operator+=(const Vec3 &InOther)
     {

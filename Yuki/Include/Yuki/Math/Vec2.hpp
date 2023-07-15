@@ -11,10 +11,20 @@ namespace Yuki::Math {
 		Vec2& operator*=(const Vec2& InOther);
 		Vec2& operator/=(const Vec2& InOther);
 
-		Vec2 operator+(const Vec2& InOther);
-		Vec2 operator-(const Vec2& InOther);
-		Vec2 operator*(const Vec2& InOther);
-		Vec2 operator/(const Vec2& InOther);
+		Vec2& operator+=(const float InOther);
+		Vec2& operator-=(const float InOther);
+		Vec2& operator*=(const float InOther);
+		Vec2& operator/=(const float InOther);
+
+		Vec2 operator+(const Vec2& InOther) const;
+		Vec2 operator-(const Vec2& InOther) const;
+		Vec2 operator*(const Vec2& InOther) const;
+		Vec2 operator/(const Vec2& InOther) const;
+
+		Vec2 operator+(const float InOther) const;
+		Vec2 operator-(const float InOther) const;
+		Vec2 operator*(const float InOther) const;
+		Vec2 operator/(const float InOther) const;
 	};
 
 }

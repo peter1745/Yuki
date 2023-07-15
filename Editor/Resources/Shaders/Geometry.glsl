@@ -9,7 +9,7 @@ struct Vertex
 {
 	vec3 Position;
 	vec3 Normal;
-	vec2 UV;
+	vec3 UV;
 	uint MaterialIndex;
 };
 
@@ -43,7 +43,7 @@ layout(push_constant, scalar) uniform PushConstants
 } InPushConstants;
 
 layout(location = 0) out vec3 OutNormal;
-layout(location = 1) out vec2 OutUV;
+layout(location = 1) out vec3 OutUV;
 layout(location = 2) out flat uint OutMaterialIndex;
 layout(location = 3) out flat uint OutBaseTextureOffset;
 layout(location = 4) out flat uint64_t OutMaterialVA;
@@ -71,7 +71,7 @@ void main()
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
 layout(location = 0) in vec3 InNormal;
-layout(location = 1) in vec2 InUV;
+layout(location = 1) in vec3 InUV;
 layout(location = 2) in flat uint InMaterialIndex;
 layout(location = 3) in flat uint InBaseTextureOffset;
 layout(location = 4) in flat uint64_t InMaterialVA;
@@ -94,11 +94,12 @@ layout(location = 0) out vec4 OutColor;
 
 void main()
 {
-	OutColor = vec4(InUV, 0.0, 1.0);
+	OutColor = vec4(InUV, 1.0);
 	
 	Material material = MaterialData(InMaterialVA).Data[InMaterialIndex];
 
     vec4 albedoColor = unpackUnorm4x8(material.AlbedoColor);
+	//albedoColor = vec4(InUV.x, 0.0, 0.0, 1.0);
 
 	if (material.AlbedoTextureIndex == -1)
 	{
@@ -106,6 +107,14 @@ void main()
 	}
 	else
 	{
-		OutColor = texture(InAlbedoTextures[nonuniformEXT(InBaseTextureOffset + material.AlbedoTextureIndex)], InUV) * albedoColor;
+		vec4 colX = texture(InAlbedoTextures[nonuniformEXT(material.AlbedoTextureIndex)], InUV.zy);
+		vec4 colY = texture(InAlbedoTextures[nonuniformEXT(material.AlbedoTextureIndex)], InUV.xz);
+		vec4 colZ = texture(InAlbedoTextures[nonuniformEXT(material.AlbedoTextureIndex)], InUV.xy);
+
+		vec3 blendWeight = abs(InNormal);
+		float d = dot(blendWeight, vec3(1.0));
+		blendWeight /= vec3(d, d, d);
+		
+		OutColor = colX * blendWeight.x + colY * blendWeight.y + colZ * blendWeight.z;
 	}
 }

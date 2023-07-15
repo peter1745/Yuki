@@ -198,7 +198,7 @@ namespace Yuki {
 					auto& uvAccessor = parsedAsset->accessors[primitive.attributes["TEXCOORD_0"]];
 					fastgltf::iterateAccessor<Math::Vec2>(*parsedAsset, uvAccessor, [&](Math::Vec2 InUV)
 					{
-						sourceData.Vertices[vertexID++].UV = InUV;
+						sourceData.Vertices[vertexID++].UV = Math::Vec3(InUV, 0.0f);
 					});
 					vertexID = baseVertexOffset;
 				}

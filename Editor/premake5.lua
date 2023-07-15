@@ -7,7 +7,10 @@ project "Editor"
 
 	warnings "Extra"
    
-    defines { "SPDLOG_COMPILED_LIB" }
+    defines {
+		"SPDLOG_COMPILED_LIB",
+		"FASTNOISE_STATIC_LIB"
+	}
    
     externalincludedirs {
         "../Yuki/Include/",
@@ -15,6 +18,7 @@ project "Editor"
         "../ThirdParty/spdlog/include/",
         "../ThirdParty/ankerl/include/",
         "../ThirdParty/NFD-Extended/src/include/",
+        "../ThirdParty/FastNoise2/include/",
 
         "../ThirdParty/",
     }
@@ -32,17 +36,45 @@ project "Editor"
         "DearImGui",
 		"flecs",
 		"JoltPhysics",
-		"NFD-Extended"
+		"NFD-Extended",
+		"FastNoise",
     }
 
     filter { "configurations:Debug" }
         defines { "YUKI_CONFIG_DEBUG" }
+		
+		libdirs {
+			"../ThirdParty/FastNoise2/lib/Debug/"
+		}
+
+		links {
+			"glslangd",
+			"glslang-default-resource-limitsd"
+		}
 
     filter { "configurations:RelWithDebug" }
         defines { "YUKI_CONFIG_REL_WITH_DEBUG" }
 
+		libdirs {
+			"../ThirdParty/FastNoise2/lib/Debug/"
+		}
+
+		links {
+			"glslangd",
+			"glslang-default-resource-limitsd"
+		}
+
     filter { "configurations:Release" }
         defines { "YUKI_CONFIG_RELEASE" }
+
+		libdirs {
+			"../ThirdParty/FastNoise2/lib/Release/"
+		}
+
+		links {
+			"glslang",
+			"glslang-default-resource-limits"
+		}
 
     filter { "configurations:Release or system:linux" }
         links { "shaderc_combined" }
