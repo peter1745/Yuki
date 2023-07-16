@@ -3,7 +3,7 @@
 #include "Yuki/Core/ResourceRegistry.hpp"
 #include "Yuki/Math/Mat4.hpp"
 #include "Yuki/World/World.hpp"
-#include "Yuki/Entities/RenderingComponents.hpp"
+#include "Yuki/World/Components/RenderingComponents.hpp"
 #include "Yuki/Asset/AssetSystem.hpp"
 
 #include "Renderer.hpp"
@@ -19,7 +19,6 @@ namespace Yuki {
 		void SubmitForUpload(AssetID InAssetID, AssetSystem& InAssetSystem, const MeshScene& InMeshScene);
 
 		void Reset();
-		void PrepareFrame();
 		void BeginFrame(const Math::Mat4& InViewProjection);
 		void RenderEntities();
 		void EndFrame();
@@ -47,7 +46,6 @@ namespace Yuki {
 
 		DescriptorPool m_DescriptorPool{};
 		DescriptorSetLayout m_DescriptorSetLayout{};
-		DescriptorSet m_MaterialSet{};
 
 		Sampler m_Sampler{};
 
@@ -98,8 +96,6 @@ namespace Yuki {
 		Buffer m_ObjectStorageBuffer{};
 		Buffer m_ObjectStagingBuffer{};
 		Buffer m_TransformStorageBuffer{};
-
-		uint32_t m_TextureCount = 0;
 
 		uint32_t m_ViewportWidth = 0;
 		uint32_t m_ViewportHeight = 0;

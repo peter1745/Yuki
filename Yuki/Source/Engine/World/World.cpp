@@ -1,6 +1,7 @@
 #include "World/World.hpp"
-#include "Entities/TransformComponents.hpp"
-#include "Entities/RenderingComponents.hpp"
+#include "World/Components/CoreComponents.hpp"
+#include "World/Components/TransformComponents.hpp"
+#include "World/Components/RenderingComponents.hpp"
 #include "Rendering/EntityRenderer.hpp"
 
 #include <Jolt/Jolt.h>
@@ -109,10 +110,10 @@ namespace Yuki {
 	flecs::entity World::CreateEntity(std::string_view InName)
 	{
 		auto entity = m_EntityWorld.entity();
-		entity.emplace<Entities::Name>(InName);
-		entity.emplace<Entities::Translation>();
-		entity.emplace<Entities::Rotation>();
-		entity.emplace<Entities::Scale>(Math::Vec3{1.0f, 1.0f, 1.0f});
+		entity.emplace<Components::Name>(std::string(InName));
+		entity.emplace<Components::Translation>();
+		entity.emplace<Components::Rotation>();
+		entity.emplace<Components::Scale>(Math::Vec3{1.0f, 1.0f, 1.0f});
 		
 		JPH::BoxShapeSettings shapeSettings({ 0.5f, 0.5f, 0.5f });
 		auto shape = shapeSettings.Create();
@@ -133,14 +134,14 @@ namespace Yuki {
 		const auto& node = InScene.Nodes[InNodeIndex];
 		auto entity = CreateEntity(node.Name);
 
-		entity.get_mut<Entities::Translation>()->Value = node.Translation;
-		entity.get_mut<Entities::Rotation>()->Value = node.Rotation;
-		entity.get_mut<Entities::Scale>()->Value = node.Scale;
+		entity.get_mut<Components::Translation>()->Value = node.Translation;
+		entity.get_mut<Components::Rotation>()->Value = node.Rotation;
+		entity.get_mut<Components::Scale>()->Value = node.Scale;
 
 		if (node.MeshIndex != -1)
 		{
-			entity.emplace<Entities::GPUTransform>(0U);
-			entity.set([InMeshID, meshIndex = node.MeshIndex](Entities::MeshComponent& InMeshComponent)
+			entity.emplace<Components::GPUTransform>(0U);
+			entity.set([InMeshID, meshIndex = node.MeshIndex](Components::Mesh& InMeshComponent)
 			{
 				InMeshComponent.MeshID = InMeshID;
 				InMeshComponent.MeshIndex = meshIndex;

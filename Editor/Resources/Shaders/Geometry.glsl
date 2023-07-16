@@ -98,7 +98,7 @@ void main()
 	
 	Material material = MaterialData(InMaterialVA).Data[InMaterialIndex];
 
-    vec4 albedoColor = unpackUnorm4x8(material.AlbedoColor);
+    vec4 albedoColor = unpackUnorm4x8(material.AlbedoColor) * vec4(0.6, 0.3, 0.0, 1.0);
 	//albedoColor = vec4(InUV.x, 0.0, 0.0, 1.0);
 
 	if (material.AlbedoTextureIndex == -1)
@@ -115,6 +115,6 @@ void main()
 		float d = dot(blendWeight, vec3(1.0));
 		blendWeight /= vec3(d, d, d);
 		
-		OutColor = colX * blendWeight.x + colY * blendWeight.y + colZ * blendWeight.z;
+		OutColor = (colX * blendWeight.x + colY * blendWeight.y + colZ * blendWeight.z) * albedoColor;
 	}
 }

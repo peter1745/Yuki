@@ -2,6 +2,7 @@
 #include "EditorPanels/EditorPanel.hpp"
 #include "EditorPanels/ContentBrowser.hpp"
 #include "EditorPanels/EditorViewport.hpp"
+#include "EditorPanels/EntityDetails.hpp"
 
 #include <iostream>
 #include <filesystem>
@@ -23,8 +24,9 @@
 #include <Yuki/Rendering/MeshGenerator.hpp>
 
 #include <Yuki/World/World.hpp>
-#include <Yuki/Entities/TransformComponents.hpp>
-#include <Yuki/Entities/RenderingComponents.hpp>
+#include <Yuki/World/Components/CoreComponents.hpp>
+#include <Yuki/World/Components/TransformComponents.hpp>
+#include <Yuki/World/Components/RenderingComponents.hpp>
 
 #include <Yuki/ImGui/ImGuiWindowContext.hpp>
 #include <Yuki/ImGui/ImGuiRenderContext.hpp>
@@ -94,6 +96,7 @@ namespace YukiEditor {
 
 			auto viewport = std::make_unique<EditorViewport>(*m_AssetSystem, m_Windows[0], m_RenderContext, m_ImGuiRenderContext, &m_World);
 			m_EditorPanels.emplace_back(std::move(viewport));
+			m_EditorPanels.emplace_back(std::make_unique<EntityDetails>());
 		}
 
 		void InitializeImGui()
@@ -228,63 +231,15 @@ namespace YukiEditor {
 					auto assetID = Yuki::MeshGenerator::GenerateCubeSphere(*m_AssetSystem, 10.0f, 32, 10.0f);
 					auto* asset = m_AssetSystem->Request<Yuki::MeshAsset>(assetID);
 
-					{
-						auto* texture = new Yuki::TextureAsset();
-						texture->Width = 128;
-						texture->Height = 128;
-						auto noiseGen = FastNoise::New<FastNoise::CellularDistance>();
-						auto rgba8Convert = FastNoise::New<FastNoise::ConvertRGBA8>();
-						rgba8Convert->SetSource(noiseGen);
-						texture->Data = new std::byte[texture->Width * texture->Height * 4];
-
-						//set up spherical stuff
-						int count = 0;
-						const float piOverHeight = Yuki::Math::PI<float>() / (texture->Height + 1);
-						const float twoPiOverWidth = (Yuki::Math::PI<float>() * 2.0f) / texture->Width;
-						float phi = 0;
-						float x3d, y3d, z3d;
-						float sinPhi, theta;
-
-						//*outMin = 999;
-						//*outMax = -999;
-
-						float* xcos = new float[texture->Width];
-						float* ysin = new float[texture->Width];
-						//Precalculate cos/sin	
-						theta = 0;
-						for (int x = 0; x < texture->Width; x = x + 1)
-						{
-							theta = theta + twoPiOverWidth;
-							ysin[x] = sinf(theta);
-							xcos[x] = cosf(theta);
-						}
-
-						for (int y = 0; y < texture->Height; y = y + 1)
-						{
-							phi = phi + piOverHeight;
-							z3d = cosf(phi);
-							sinPhi = sinf(phi);
-
-							for (int x = 0; x < texture->Width; x = x + 1)
-							{
-								//use cos/sin lookup tables
-								x3d = xcos[x] * sinPhi;
-								y3d = ysin[x] * sinPhi;
-
-								float value = rgba8Convert->GenSingle3D(x3d, y3d, z3d, 1234098);
-								memcpy(&texture->Data[count], &value, sizeof(float));
-
-								//*outMin = fminf(*outMin, result[count]);
-								//*outMax = fmaxf(*outMax, result[count]);
-								count += 4;
-							}
-						}
-						delete[] xcos;
-						delete[] ysin;
-
-						//rgba8Convert->GenTileable2D(reinterpret_cast<float*>(texture->Data), texture->Width, texture->Height, 0.05f, 1234098);
-						asset->Scene.Textures.push_back(m_AssetSystem->AddAsset(Yuki::AssetType::Texture, texture));
-					}
+					auto* texture = new Yuki::TextureAsset();
+					texture->Width = 1024;
+					texture->Height = 1024;
+					auto noiseGen = FastNoise::New<FastNoise::CellularDistance>();
+					auto rgba8Convert = FastNoise::New<FastNoise::ConvertRGBA8>();
+					rgba8Convert->SetSource(noiseGen);
+					texture->Data = new std::byte[texture->Width * texture->Height * 4];
+					rgba8Convert->GenTileable2D(reinterpret_cast<float*>(texture->Data), texture->Width, texture->Height, 0.01f, static_cast<int32_t>(time(NULL)));
+					asset->Scene.Textures.push_back(m_AssetSystem->AddAsset(Yuki::AssetType::Texture, texture));
 
 					flecs::entity entity = m_World.InstantiateMeshScene(assetID, asset->Scene);
 					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->SubmitForUpload(assetID, *m_AssetSystem, asset->Scene);
@@ -293,66 +248,20 @@ namespace YukiEditor {
 
 				if (ImGui::Button("Icosphere"))
 				{
-					auto assetID = Yuki::MeshGenerator::GenerateIcosphere(*m_AssetSystem, 32, 16.0f);
+					auto assetID = Yuki::MeshGenerator::GenerateIcosphere(*m_AssetSystem, 32, 4.0f);
 					auto* asset = m_AssetSystem->Request<Yuki::MeshAsset>(assetID);
 
-					{
-						auto* texture = new Yuki::TextureAsset();
-						texture->Width = 128;
-						texture->Height = 128;
-						auto noiseGen = FastNoise::New<FastNoise::CellularDistance>();
-						auto rgba8Convert = FastNoise::New<FastNoise::ConvertRGBA8>();
-						rgba8Convert->SetSource(noiseGen);
-						texture->Data = new std::byte[texture->Width * texture->Height * 4];
+					// TODO(Peter): Create a StarComponent or some sort of start generation system
 
-						//set up spherical stuff
-						int count = 0;
-						const float piOverHeight = Yuki::Math::PI<float>() / (texture->Height + 1);
-						const float twoPiOverWidth = (Yuki::Math::PI<float>() * 2.0f) / texture->Width;
-						float phi = 0;
-						float x3d, y3d, z3d;
-						float sinPhi, theta;
-
-						//*outMin = 999;
-						//*outMax = -999;
-
-						float* xcos = new float[texture->Width];
-						float* ysin = new float[texture->Width];
-						//Precalculate cos/sin	
-						theta = 0;
-						for (int x = 0; x < texture->Width; x = x + 1)
-						{
-							theta = theta + twoPiOverWidth;
-							ysin[x] = sinf(theta);
-							xcos[x] = cosf(theta);
-						}
-
-						for (int y = 0; y < texture->Height; y = y + 1)
-						{
-							phi = phi + piOverHeight;
-							z3d = cosf(phi);
-							sinPhi = sinf(phi);
-
-							for (int x = 0; x < texture->Width; x = x + 1)
-							{
-								//use cos/sin lookup tables
-								x3d = xcos[x] * sinPhi;
-								y3d = ysin[x] * sinPhi;
-
-								float value = rgba8Convert->GenSingle3D(x3d, y3d, z3d, 1234098);
-								memcpy(&texture->Data[count], &value, sizeof(float));
-
-								//*outMin = fminf(*outMin, result[count]);
-								//*outMax = fmaxf(*outMax, result[count]);
-								count += 4;
-							}
-						}
-						delete[] xcos;
-						delete[] ysin;
-
-						//rgba8Convert->GenTileable2D(reinterpret_cast<float*>(texture->Data), texture->Width, texture->Height, 0.05f, 1234098);
-						asset->Scene.Textures.push_back(m_AssetSystem->AddAsset(Yuki::AssetType::Texture, texture));
-					}
+					auto* texture = new Yuki::TextureAsset();
+					texture->Width = 512;
+					texture->Height = 512;
+					auto noiseGen = FastNoise::New<FastNoise::CellularDistance>();
+					auto rgba8Convert = FastNoise::New<FastNoise::ConvertRGBA8>();
+					rgba8Convert->SetSource(noiseGen);
+					texture->Data = new std::byte[texture->Width * texture->Height * 4];
+					rgba8Convert->GenTileable2D(reinterpret_cast<float*>(texture->Data), texture->Width, texture->Height, 0.01f, static_cast<int32_t>(time(NULL)));
+					asset->Scene.Textures.push_back(m_AssetSystem->AddAsset(Yuki::AssetType::Texture, texture));
 
 					flecs::entity entity = m_World.InstantiateMeshScene(assetID, asset->Scene);
 					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->SubmitForUpload(assetID, *m_AssetSystem, asset->Scene);
@@ -362,53 +271,9 @@ namespace YukiEditor {
 			ImGui::End();
 
 			DrawEntityList();
-			DrawEntityData();
 
 			for (auto& panel : m_EditorPanels)
 				panel->Draw();
-		}
-
-		void DrawEntityData()
-		{
-			YUKI_SCOPE_EXIT_GUARD(){ ImGui::End(); };
-
-			if (!ImGui::Begin("Entity Data"))
-				return;
-
-			if (m_SelectedEntity == flecs::entity::null())
-				return;
-
-			const auto* name = m_SelectedEntity.get_mut<Yuki::Entities::Name>();
-
-			ImGui::Text("Name: %s", name->Value.data());
-
-			auto* translation = m_SelectedEntity.get_mut<Yuki::Entities::Translation>();
-			auto* rotation = m_SelectedEntity.get_mut<Yuki::Entities::Rotation>();
-			auto* scale = m_SelectedEntity.get_mut<Yuki::Entities::Scale>();
-
-			bool changed = false;
-
-			auto& eulerAngles = m_EulerCache[m_SelectedEntity];
-
-			changed |= ImGui::DragFloat3("Translation", &translation->Value[0], 0.5f);
-		
-			if (ImGui::DragFloat3("Rotation", &eulerAngles[0], 0.5f))
-			{
-				Yuki::Math::Vec3 radians;
-				radians.X = Yuki::Math::Radians(eulerAngles.X);
-				radians.Y = Yuki::Math::Radians(eulerAngles.Y);
-				radians.Z = Yuki::Math::Radians(eulerAngles.Z);
-				rotation->Value = Yuki::Math::Quat(radians);
-
-				changed = true;
-			}
-
-			changed |= ImGui::DragFloat3("Scale", &scale->Value[0], 0.5f);
-
-			if (changed)
-			{
-				static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->SynchronizeGPUTransform(m_SelectedEntity);
-			}
 		}
 
 		void AddToHierarchy(Yuki::DynamicArray<SceneHierarchyNode>& InHierarchy, flecs::entity InEntity, int32_t InParentIndex = -1)
@@ -439,8 +304,8 @@ namespace YukiEditor {
 		void RebuildSceneHierarchy()
 		{
 			Yuki::DynamicArray<SceneHierarchyNode> newHierarchy;
-			auto filter = m_World.GetEntityWorld().filter<Yuki::Entities::Translation>();
-			filter.each([&](flecs::entity InEntity, Yuki::Entities::Translation& InTranslation)
+			auto filter = m_World.GetEntityWorld().filter<Yuki::Components::Translation>();
+			filter.each([&](flecs::entity InEntity, Yuki::Components::Translation& InTranslation)
 			{
 				if (InEntity.parent() != flecs::entity::null())
 					return;
@@ -471,7 +336,7 @@ namespace YukiEditor {
 			for (; depth < InLastDepth; InLastDepth--)
 				ImGui::Unindent();
 
-			auto label = fmt::format("{}", InNode.Entity.get_mut<Yuki::Entities::Name>()->Value);
+			auto label = fmt::format("{}##{}", InNode.Entity.get_mut<Yuki::Components::Name>()->Value, InNode.Entity.raw_id());
 			ImGui::ArrowButton("##ArrowButton", InNode.Expanded ? ImGuiDir_Down : ImGuiDir_Right);
 
 			if (ImGui::IsItemClicked())
@@ -485,7 +350,7 @@ namespace YukiEditor {
 
 			if (ImGui::IsItemClicked())
 			{
-				m_SelectedEntity = InNode.Entity;
+				static_cast<EntityDetails*>(m_EditorPanels[2].get())->SetCurrentEntity(InNode.Entity);
 				m_RebuildSceneHierarchy = true;
 			}
 		}
@@ -551,8 +416,6 @@ namespace YukiEditor {
 		Yuki::DynamicArray<SceneHierarchyNode> m_SceneHierarchyCache;
 		Yuki::Map<flecs::entity, size_t, Yuki::FlecsEntityHash> m_SceneHierarchyCacheIndexLookup;
 		bool m_RebuildSceneHierarchy = false;
-
-		flecs::entity m_SelectedEntity = flecs::entity::null();
 
 		Yuki::Map<flecs::entity, Yuki::Math::Vec3, Yuki::FlecsEntityHash> m_EulerCache;
 

@@ -4,7 +4,7 @@
 #include "Yuki/Math/Quat.hpp"
 #include "Yuki/Math/Mat4.hpp"
 
-namespace Yuki::Entities {
+namespace Yuki::Components {
 
 	struct Translation
 	{
@@ -29,11 +29,7 @@ namespace Yuki::Entities {
 	struct GPUTransform
 	{
 		uint32_t BufferIndex;
-	};
-
-	struct Name
-	{
-		std::string_view Value;
+		bool IsDirty = false;
 	};
 
 }

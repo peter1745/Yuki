@@ -115,7 +115,7 @@ namespace Yuki {
 	{
 		MeshScene meshScene;
 		auto& rootNode = meshScene.Nodes.emplace_back();
-		rootNode.Name = "CubeSphere";
+		rootNode.Name = "Icosphere";
 		rootNode.Translation = { 0.0f, 0.0f, 0.0f };
 		rootNode.Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
 		rootNode.Scale = { 1.0f, 1.0f, 1.0f };
@@ -246,7 +246,7 @@ namespace Yuki {
 
 		for (auto& vertex : mesh.Vertices)
 		{
-			vertex.Normal = vertex.Position.Normalized();
+			vertex.Normal = vertex.Position;
 			vertex.UV = vertex.Position * InUVMultiplier;
 		}
 

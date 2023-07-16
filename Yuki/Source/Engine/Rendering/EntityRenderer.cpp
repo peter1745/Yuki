@@ -1,7 +1,7 @@
 #include "Rendering/EntityRenderer.hpp"
 #include "Rendering/RenderContext.hpp"
 #include "Rendering/DescriptorSetBuilder.hpp"
-#include "Entities/TransformComponents.hpp"
+#include "World/Components/TransformComponents.hpp"
 #include "Math/Math.hpp"
 
 namespace Yuki {
@@ -15,7 +15,7 @@ namespace Yuki {
 
 		m_TransformStorageBuffer = Buffer(m_Context, {
 			.Type = BufferType::StorageBuffer,
-			.Size = 655360 * sizeof(Entities::LocalTransform)
+			.Size = 655360 * sizeof(Math::Mat4)
 		});
 
 		m_ObjectStorageBuffer = Buffer(m_Context, {
@@ -40,8 +40,6 @@ namespace Yuki {
 			.Stages(ShaderStage::Vertex | ShaderStage::Fragment)
 			.Binding(500, DescriptorType::CombinedImageSampler)
 			.Build();
-
-		//m_MaterialSet = m_DescriptorPool.AllocateDescriptorSet(m_DescriptorSetLayout);
 
 		m_Shader = Shader(m_Context, std::filesystem::path("Resources/Shaders/Geometry.glsl"));
 		
@@ -83,15 +81,15 @@ namespace Yuki {
 
 			m_World.IterateHierarchy(InRoot, [this, &InStagingBuffer, &objectIndex, baseObjectIndex](flecs::entity InEntity)
 			{
-				if (!InEntity.has<Entities::MeshComponent>())
+				if (!InEntity.has<Components::Mesh>())
 					return;
 
-				const auto* translation = InEntity.get<Entities::Translation>();
-				const auto* rotation = InEntity.get<Entities::Rotation>();
-				const auto* scale = InEntity.get<Entities::Scale>();
-				const auto* meshComponent = InEntity.get<Entities::MeshComponent>();
+				const auto* translation = InEntity.get<Components::Translation>();
+				const auto* rotation = InEntity.get<Components::Rotation>();
+				const auto* scale = InEntity.get<Components::Scale>();
+				const auto* meshComponent = InEntity.get<Components::Mesh>();
 				const auto& mesh = m_GPUMeshScenes.at(meshComponent->MeshID);
-				InEntity.get_mut<Entities::GPUTransform>()->BufferIndex = objectIndex;
+				InEntity.get_mut<Components::GPUTransform>()->BufferIndex = objectIndex;
 
 				mesh.UploadBarrier.Wait();
 
@@ -301,33 +299,18 @@ namespace Yuki {
 		m_CommandPool.Reset();
 	}
 
-	void WorldRenderer::PrepareFrame()
-	{
-		/*std::scoped_lock lock(m_MeshUploadMutex);
-
-		while (!m_MeshUploadQueue.empty())
-		{
-			auto meshHandle = m_MeshUploadQueue.back();
-			auto& mesh = m_Meshes.Get(meshHandle);
-
-			if (mesh.Textures.empty())
-			{
-				m_MeshUploadQueue.pop_back();
-				continue;
-			}
-
-			mesh.TextureOffset = m_TextureCount;
-			m_MaterialSet.Write(0, mesh.Textures, m_Sampler, m_TextureCount);
-			m_TextureCount += uint32_t(mesh.Textures.size());
-
-			m_MeshUploadQueue.pop_back();
-		}*/
-	}
-
 	void WorldRenderer::BeginFrame(const Math::Mat4& InViewProjection)
 	{
+		{
+			auto query = m_World.GetEntityWorld().query<const Components::GPUTransform>();
+			query.each([this](flecs::entity InEntity, const Components::GPUTransform& InGPUTransform)
+			{
+				if (InGPUTransform.IsDirty)
+					SynchronizeGPUTransform(InEntity);
+			});
+		}
+
 		ExecuteTransfers();
-		PrepareFrame();
 
 		m_PushConstants.ViewProjection = InViewProjection;
 		m_PushConstants.ObjectVA = m_ObjectStorageBuffer.GetDeviceAddress();
@@ -337,7 +320,6 @@ namespace Yuki {
 		m_CommandList.Begin();
 		
 		m_CommandList.BindPipeline(m_ActivePipeline);
-		//m_CommandList.BindDescriptorSet(m_Pipeline, m_MaterialSet);
 		m_CommandList.PushConstants(m_ActivePipeline, &m_PushConstants, sizeof(m_PushConstants));
 
 		m_CommandList.SetViewport({
@@ -367,8 +349,8 @@ namespace Yuki {
 	{
 		std::scoped_lock lock(m_RenderMutex);
 		uint32_t instanceIndex = 0;
-		auto filter = m_World.GetEntityWorld().filter<const Entities::MeshComponent>();
-		filter.each([this, &instanceIndex](flecs::entity InEntity, const Entities::MeshComponent& InComponent)
+		auto filter = m_World.GetEntityWorld().filter<const Components::Mesh>();
+		filter.each([this, &instanceIndex](flecs::entity InEntity, const Components::Mesh& InComponent)
 		{
 			auto& meshScene = m_GPUMeshScenes.at(InComponent.MeshID);
 			auto& mesh = meshScene.Meshes[InComponent.MeshIndex];
@@ -414,10 +396,12 @@ namespace Yuki {
 
 			m_World.IterateHierarchy(InEntity, [this, &InStagingBuffer, &matrixCount, &bufferStart](flecs::entity InCurrent)
 			{
-				const auto* gpuTransform = InCurrent.get<Entities::GPUTransform>();
+				auto* gpuTransform = InCurrent.get_mut<Components::GPUTransform>();
 
 				if (gpuTransform == nullptr)
 					return;
+
+				gpuTransform->IsDirty = false;
 
 				if (bufferStart == std::numeric_limits<uint32_t>::max())
 					bufferStart = gpuTransform->BufferIndex;
@@ -428,15 +412,15 @@ namespace Yuki {
 				flecs::entity entity = InCurrent;
 				while ((entity = entity.parent()) != flecs::entity::null())
 				{
-					const auto* translation = entity.get<Entities::Translation>();
-					const auto* rotation = entity.get<Entities::Rotation>();
-					const auto* scale = entity.get<Entities::Scale>();
+					const auto* translation = entity.get<Components::Translation>();
+					const auto* rotation = entity.get<Components::Rotation>();
+					const auto* scale = entity.get<Components::Scale>();
 					parentTransform = parentTransform * (Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value) * Math::Mat4::Scale(scale->Value));
 				}
 
-				const auto* translation = InCurrent.get<Entities::Translation>();
-				const auto* rotation = InCurrent.get<Entities::Rotation>();
-				const auto* scale = InCurrent.get<Entities::Scale>();
+				const auto* translation = InCurrent.get<Components::Translation>();
+				const auto* rotation = InCurrent.get<Components::Rotation>();
+				const auto* scale = InCurrent.get<Components::Scale>();
 
 				Math::Mat4 transform = parentTransform * (Math::Mat4::Translation(translation->Value) * Math::Mat4::Rotation(rotation->Value) * Math::Mat4::Scale(scale->Value));
 				InStagingBuffer.SetData(&transform, sizeof(Math::Mat4), matrixCount * sizeof(Math::Mat4));
