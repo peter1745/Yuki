@@ -6,6 +6,7 @@
 #include <Yuki/World/ComponentGroup.hpp>
 #include <Yuki/World/Components/CoreComponents.hpp>
 #include <Yuki/World/Components/TransformComponents.hpp>
+#include <Yuki/World/Components/SpaceComponents.hpp>
 
 #include <imgui/imgui.h>
 #include <imgui/misc/cpp/imgui_stdlib.h>
@@ -15,7 +16,8 @@ namespace YukiEditor {
 	using EditableComponents = Yuki::ComponentGroup<
 		Yuki::Components::Translation,
 		Yuki::Components::Rotation,
-		Yuki::Components::Scale
+		Yuki::Components::Scale,
+		Yuki::Components::StarGenerator
 	>;
 
 	void EntityDetails::Draw()

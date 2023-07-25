@@ -325,7 +325,8 @@ namespace Yuki {
 		size_t textureCount;
 		stream.read(reinterpret_cast<char*>(&textureCount), sizeof(size_t));
 		InAsset->Scene.Textures.resize(textureCount);
-		stream.read(reinterpret_cast<char*>(InAsset->Scene.Textures.data()), textureCount * sizeof(AssetID));
+		if (textureCount > 0)
+			stream.read(reinterpret_cast<char*>(InAsset->Scene.Textures.data()), textureCount * sizeof(AssetID));
 
 		stream.read(reinterpret_cast<char*>(&InAsset->Scene.RootNodeIndex), sizeof(size_t));
 

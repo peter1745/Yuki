@@ -80,6 +80,7 @@ struct Material
 {
 	int AlbedoTextureIndex;
 	uint AlbedoColor;
+	uint EnableTriplanarMapping;
 };
 
 layout(buffer_reference, scalar) buffer MaterialData
@@ -105,7 +106,7 @@ void main()
 	{
 		OutColor = albedoColor;
 	}
-	else
+	else if (material.EnableTriplanarMapping > 0)
 	{
 		vec4 colX = texture(InAlbedoTextures[nonuniformEXT(material.AlbedoTextureIndex)], InUV.zy);
 		vec4 colY = texture(InAlbedoTextures[nonuniformEXT(material.AlbedoTextureIndex)], InUV.xz);
@@ -116,5 +117,9 @@ void main()
 		blendWeight /= vec3(d, d, d);
 		
 		OutColor = (colX * blendWeight.x + colY * blendWeight.y + colZ * blendWeight.z) * albedoColor;
+	}
+	else
+	{
+		OutColor = texture(InAlbedoTextures[nonuniformEXT(material.AlbedoTextureIndex)], InUV.xy);
 	}
 }

@@ -17,6 +17,16 @@ namespace JPH {
 
 namespace Yuki {
 
+	struct FlecsIDHash
+	{
+		using is_avalanching = void;
+
+		uint64_t operator()(const flecs::id& InID) const noexcept
+		{
+			return ankerl::unordered_dense::detail::wyhash::hash(&InID, sizeof(flecs::id));
+		}
+	};
+
 	struct FlecsEntityHash
 	{
 		using is_avalanching = void;

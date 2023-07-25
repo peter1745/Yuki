@@ -27,6 +27,7 @@
 #include <Yuki/World/Components/CoreComponents.hpp>
 #include <Yuki/World/Components/TransformComponents.hpp>
 #include <Yuki/World/Components/RenderingComponents.hpp>
+#include <Yuki/World/Components/SpaceComponents.hpp>
 
 #include <Yuki/ImGui/ImGuiWindowContext.hpp>
 #include <Yuki/ImGui/ImGuiRenderContext.hpp>
@@ -39,10 +40,29 @@
 
 namespace YukiEditor {
 
+	struct HierarchyNodeID
+	{
+		flecs::id Parent;
+		flecs::id Child;
+
+		bool operator==(const HierarchyNodeID& InOther) const { return (Parent == InOther.Parent && Child == InOther.Child); }
+	};
+
+	struct HierarchyNodeIDHash
+	{
+		using is_avalanching = void;
+
+		uint64_t operator()(const HierarchyNodeID& InID) const noexcept
+		{
+			return ankerl::unordered_dense::detail::wyhash::hash(&InID, sizeof(HierarchyNodeID));
+		}
+	};
+
 	struct SceneHierarchyNode
 	{
-		flecs::entity Entity;
+		HierarchyNodeID ID;
 		bool Expanded = false;
+		bool Expandable = true;
 		int32_t ParentIndex = -1;
 	};
 
@@ -264,6 +284,8 @@ namespace YukiEditor {
 					asset->Scene.Textures.push_back(m_AssetSystem->AddAsset(Yuki::AssetType::Texture, texture));
 
 					flecs::entity entity = m_World.InstantiateMeshScene(assetID, asset->Scene);
+					entity.add<Yuki::Components::StarGenerator>();
+
 					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->SubmitForUpload(assetID, *m_AssetSystem, asset->Scene);
 					static_cast<EditorViewport*>(m_EditorPanels[1].get())->GetRenderer()->CreateGPUInstance(entity);
 				}
@@ -276,27 +298,37 @@ namespace YukiEditor {
 				panel->Draw();
 		}
 
-		void AddToHierarchy(Yuki::DynamicArray<SceneHierarchyNode>& InHierarchy, flecs::entity InEntity, int32_t InParentIndex = -1)
+		void AddToHierarchy(Yuki::DynamicArray<SceneHierarchyNode>& InHierarchy, flecs::id InID, flecs::id InParentID, bool InExpandable, int32_t InParentIndex = -1)
 		{
-			if (m_SceneHierarchyCacheIndexLookup.contains(InEntity))
+			HierarchyNodeID id{ InParentID, InID };
+			if (m_SceneHierarchyCacheIndexLookup.contains(id))
 			{
-				const auto& oldNode = m_SceneHierarchyCache[m_SceneHierarchyCacheIndexLookup[InEntity]];
+				const auto& oldNode = m_SceneHierarchyCache[m_SceneHierarchyCacheIndexLookup[id]];
 				auto& newNode = InHierarchy.emplace_back();
-				newNode.Entity = InEntity;
+				newNode.ID = id;
 				newNode.Expanded = oldNode.Expanded;
+				newNode.Expandable = oldNode.Expandable;
 				newNode.ParentIndex = InParentIndex;
 
-				if (newNode.Expanded)
+				if (newNode.Expanded && InID.is_entity())
 				{
-					InEntity.children([this, &InHierarchy, nodeIndex = InHierarchy.size() - 1](flecs::entity InChild)
+					InID.entity().each([this, &InID, &InHierarchy, nodeIndex = InHierarchy.size() - 1](flecs::id InChild)
 					{
-						AddToHierarchy(InHierarchy, InChild, int32_t(nodeIndex));
+						if (InChild.is_pair())
+							return;
+
+						AddToHierarchy(InHierarchy, InChild, InID, false, int32_t(nodeIndex));
+					});
+
+					InID.entity().children([this, &InID, &InHierarchy, nodeIndex = InHierarchy.size() - 1](flecs::entity InChild)
+					{
+						AddToHierarchy(InHierarchy, InChild, InID, true, int32_t(nodeIndex));
 					});
 				}
 			}
 			else
 			{
-				auto& node = InHierarchy.emplace_back(SceneHierarchyNode{ InEntity, false, InParentIndex });
+				auto& node = InHierarchy.emplace_back(SceneHierarchyNode{ id, false, InExpandable, InParentIndex });
 				YUKI_UNUSED(node);
 			}
 		}
@@ -310,14 +342,14 @@ namespace YukiEditor {
 				if (InEntity.parent() != flecs::entity::null())
 					return;
 
-				AddToHierarchy(newHierarchy, InEntity);
+				AddToHierarchy(newHierarchy, InEntity, flecs::id{}, true);
 			});
 
 			m_SceneHierarchyCache = newHierarchy;
 			m_SceneHierarchyCacheIndexLookup.clear();
 
 			for (size_t i = 0; i < m_SceneHierarchyCache.size(); i++)
-				m_SceneHierarchyCacheIndexLookup[m_SceneHierarchyCache[i].Entity] = i;
+				m_SceneHierarchyCacheIndexLookup[m_SceneHierarchyCache[i].ID] = i;
 		}
 
 		size_t GetHierarchyDepth(int32_t InNodeIndex)
@@ -336,23 +368,36 @@ namespace YukiEditor {
 			for (; depth < InLastDepth; InLastDepth--)
 				ImGui::Unindent();
 
-			auto label = fmt::format("{}##{}", InNode.Entity.get_mut<Yuki::Components::Name>()->Value, InNode.Entity.raw_id());
-			ImGui::ArrowButton("##ArrowButton", InNode.Expanded ? ImGuiDir_Down : ImGuiDir_Right);
+			std::string label = "";
 
-			if (ImGui::IsItemClicked())
+			auto id = InNode.ID.Child;
+
+			const auto* name = id.entity().get<Yuki::Components::Name>();
+			if (name)
+				label = fmt::format("{}##{}", name->Value, id.raw_id());
+			else
+				label = fmt::format("{}##{}", id.entity().name(), id.raw_id());
+
+			if (InNode.Expandable)
 			{
-				InNode.Expanded = !InNode.Expanded;
-				m_RebuildSceneHierarchy = true;
+				ImGui::ArrowButton("##ArrowButton", InNode.Expanded ? ImGuiDir_Down : ImGuiDir_Right);
+
+				if (ImGui::IsItemClicked())
+				{
+					InNode.Expanded = !InNode.Expanded;
+					m_RebuildSceneHierarchy = true;
+				}
+			}
+			else
+			{
+				ImGui::Dummy(ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()));
 			}
 
 			ImGui::SameLine();
 			ImGui::Selectable(label.c_str(), false, ImGuiSelectableFlags_AllowItemOverlap);
 
 			if (ImGui::IsItemClicked())
-			{
-				static_cast<EntityDetails*>(m_EditorPanels[2].get())->SetCurrentEntity(InNode.Entity);
-				m_RebuildSceneHierarchy = true;
-			}
+				static_cast<EntityDetails*>(m_EditorPanels[2].get())->SetCurrentEntity(id.entity());
 		}
 
 		void DrawEntityList()
@@ -414,7 +459,7 @@ namespace YukiEditor {
 		Yuki::World m_World;
 
 		Yuki::DynamicArray<SceneHierarchyNode> m_SceneHierarchyCache;
-		Yuki::Map<flecs::entity, size_t, Yuki::FlecsEntityHash> m_SceneHierarchyCacheIndexLookup;
+		Yuki::Map<HierarchyNodeID, size_t, HierarchyNodeIDHash> m_SceneHierarchyCacheIndexLookup;
 		bool m_RebuildSceneHierarchy = false;
 
 		Yuki::Map<flecs::entity, Yuki::Math::Vec3, Yuki::FlecsEntityHash> m_EulerCache;

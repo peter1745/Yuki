@@ -102,6 +102,7 @@ namespace Yuki {
 			auto& material = meshScene.Materials.emplace_back();
 			material.AlbedoColor = 0xFFFFFFFF;
 			material.AlbedoTextureIndex = 0;
+			material.EnableTriplanarMapping = 1;
 		}
 
 		LogInfo("Generated {} vertices, {} triangles", mesh.Vertices.size(), mesh.Indices.size() / 3);
@@ -255,6 +256,7 @@ namespace Yuki {
 			auto& material = meshScene.Materials.emplace_back();
 			material.AlbedoColor = 0xFFFFFFFF;
 			material.AlbedoTextureIndex = 0;
+			material.EnableTriplanarMapping = 1;
 		}
 
 		LogInfo("Generated {} vertices, {} triangles", mesh.Vertices.size(), mesh.Indices.size() / 3);

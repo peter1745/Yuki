@@ -3,6 +3,7 @@
 #include <Yuki/Core/Core.hpp>
 #include <Yuki/Math/Math.hpp>
 #include <Yuki/World/Components/TransformComponents.hpp>
+#include <Yuki/World/Components/SpaceComponents.hpp>
 
 #include <imgui/imgui.h>
 
@@ -37,6 +38,27 @@ namespace YukiEditor {
 	void ComponentUI<Scale>::Draw(flecs::entity InEntity, Scale* InScale)
 	{
 		InEntity.get_mut<GPUTransform>()->IsDirty |= ImGui::DragFloat3("Scale", &InScale->Value[0]);
+	}
+
+	void ComponentUI<StarGenerator>::Draw(flecs::entity InEntity, StarGenerator* InGenerator)
+	{
+		if (ImGui::TreeNode("Mesh Settings"))
+		{
+			InGenerator->Regenerate |= ImGui::DragScalar("Subdivsions", ImGuiDataType_U32, &InGenerator->MeshSubdivisions);
+			InGenerator->Regenerate |= ImGui::DragFloat("UV Multiplier", &InGenerator->UVMultiplier);
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Noise Settings"))
+		{
+			InGenerator->Regenerate |= ImGui::DragFloat("Frequency", &InGenerator->NoiseFrequency);
+			InGenerator->Regenerate |= ImGui::Checkbox("Random Seed", &InGenerator->RandomSeed);
+
+			if (!InGenerator->RandomSeed)
+				InGenerator->Regenerate |= ImGui::DragInt("Seed", &InGenerator->Seed);
+
+			ImGui::TreePop();
+		}
 	}
 
 }

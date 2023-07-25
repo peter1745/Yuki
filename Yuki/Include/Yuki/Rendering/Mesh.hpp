@@ -19,6 +19,7 @@ namespace Yuki {
 	{
 		int32_t AlbedoTextureIndex = -1;
 		uint32_t AlbedoColor;
+		uint32_t EnableTriplanarMapping = 0;
 	};
 
 	struct MeshSource
