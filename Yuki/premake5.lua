@@ -7,7 +7,7 @@ project "Yuki"
   
     pchheader "YukiPCH.hpp"
     pchsource "Source/YukiPCH.cpp"
-    forceincludes { "YukiPCH.hpp" }
+	forceincludes { "YukiPCH.hpp" }
 
     files {
         "Source/YukiPCH.cpp",
@@ -16,13 +16,12 @@ project "Yuki"
         "Source/Engine/**.cpp",
         "Source/Engine/**.hpp",
 
-        "Include/**.hpp"
+		"Source/VulkanRHI/**.cpp",
+		"Source/VulkanRHI/**.hpp",
     }
 
     includedirs {
         "Source/",
-        "Include/",
-        "Include/Yuki/",
     }
 
     externalincludedirs {
@@ -32,11 +31,9 @@ project "Yuki"
         "../ThirdParty/fastgltf/include/",
         "../ThirdParty/stb_image/include/",
         "../ThirdParty/imgui/",
-        "../ThirdParty/JoltPhysics/",
-        "../ThirdParty/JoltPhysics/",
         "../ThirdParty/nlohmann/json/single_include/",
         "../ThirdParty/simdjson/include/",
-        "../ThirdParty/",
+		"../ThirdParty/volk/Include/",
 
         VulkanSDKPath,
     }
@@ -67,4 +64,3 @@ project "Yuki"
             "Source/Platform/Linux/**.cpp",
 			"Source/Platform/Linux/**.hpp",
 		}
-

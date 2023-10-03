@@ -20,6 +20,8 @@
 #include <limits>
 
 #include <ranges>
+#include <chrono>
+#include <algorithm>
 
 #if defined(YUKI_PLATFORM_WINDOWS)
 	#define NOMINMAX
@@ -28,9 +30,5 @@
 	#include <hidusage.h>
 #endif
 
-#include "Core/Core.hpp"
-#include "Core/Debug.hpp"
-
-#include "Memory/Unique.hpp"
-
-#include <Jolt/Jolt.h>
+#include "Engine/Common/Core.hpp"
+#include "Engine/Common/Logging.hpp"

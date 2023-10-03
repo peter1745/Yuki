@@ -10,7 +10,26 @@ project "spdlog"
 
     defines { "SPDLOG_COMPILED_LIB" }
 
-project "simdjson"
+local VulkanSDKPath = os.getenv("VULKAN_SDK") .. "/include"
+
+project "volk"
+	kind "StaticLib"
+
+	files {
+		"./volk/Include/volk/volk.c"
+	}
+
+	externalincludedirs {
+		VulkanSDKPath
+	}
+
+    filter { "system:windows" }
+        defines { "VK_USE_PLATFORM_WIN32_KHR" }
+
+    filter { "system:linux" }
+        defines { "VK_USE_PLATFORM_XCB_KHR" }
+
+--[[project "simdjson"
 	kind "StaticLib"
 
 	defines {
@@ -113,3 +132,4 @@ project "NFD-Extended"
 		files {
 			"NFD-Extended/src/nfd_win.cpp"
 		}
+]]--

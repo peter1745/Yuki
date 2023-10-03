@@ -3,10 +3,10 @@ workspace "Yuki"
 	architecture "x86_64"
 
 	language "C++"
-	cppdialect "C++20"
+	cppdialect "C++latest"
 
-	targetdir "Out/Bin/%{cfg.buildcfg}"
-	objdir "Out/Intermediates/%{cfg.buildcfg}"
+	targetdir "Build/Bin/%{cfg.buildcfg}"
+	objdir "Build/Intermediates/%{cfg.buildcfg}"
 
 	externalanglebrackets "On"
 	externalwarnings "Off"
@@ -55,18 +55,9 @@ workspace "Yuki"
 			"/Zc:preprocessor"
 		}
 
-	defines {
-		"flecs_STATIC",
-		"FLECS_CUSTOM_BUILD",
-		"FLECS_SYSTEM",
-		"FLECS_PIPELINE",
-		"FLECS_CPP",
-	}
-
 group "ThirdParty"
 include "ThirdParty/"
 group ""
 
 include "Yuki/"
-include "Editor/"
-include "TestFramework/"
+include "EngineTester/"
