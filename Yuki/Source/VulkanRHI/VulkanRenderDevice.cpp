@@ -7,11 +7,28 @@ namespace Yuki::RHI {
 	VulkanRenderDevice::VulkanRenderDevice(VkInstance InInstance, const DynamicArray<RendererFeature>& InRequestedFeatures)
 		: m_Instance(InInstance)
 	{
+		m_Features[RendererFeature::Core] = std::move(Unique<VulkanCoreFeature>::New());
+
 		for (auto RequestedFeature : InRequestedFeatures)
 			m_Features[RequestedFeature] = std::move(Vulkan::GetVulkanFeature(RequestedFeature));
 
 		FindPhysicalDevice();
 		CreateLogicalDevice();
+
+		VmaVulkanFunctions VulkanFunctions = {};
+		VulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+		VulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+
+		VmaAllocatorCreateInfo AllocatorInfo =
+		{
+			.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+			.physicalDevice = m_PhysicalDevice,
+			.device = m_Device,
+			.pVulkanFunctions = &VulkanFunctions,
+			.instance = m_Instance,
+			.vulkanApiVersion = VK_API_VERSION_1_3,
+		};
+		YUKI_VERIFY(vmaCreateAllocator(&AllocatorInfo, &m_Allocator) == VK_SUCCESS);
 	}
 
 	uint32_t CalculateScoreForDeviceType(const VkPhysicalDeviceProperties& InProperties)
@@ -55,7 +72,7 @@ namespace Yuki::RHI {
 		}
 	}
 
-	DynamicArray<const char*> GetDeviceSupportedExtensions(VkPhysicalDevice InPhysicalDevice, const HashMap<RHI::RendererFeature, Unique<VulkanFeature>>& InRequestedFeatures)
+	DynamicArray<const char*> GetDeviceSupportedExtensions(VkPhysicalDevice InPhysicalDevice, const HashMap<RendererFeature, Unique<VulkanFeature>>& InRequestedFeatures)
 	{
 		DynamicArray<const char*> Result;
 
@@ -200,29 +217,9 @@ namespace Yuki::RHI {
 			QueuePrioritiesStart += QueueFamilies[Index].queueCount;
 		}
 
-		VkPhysicalDeviceVulkan13Features Features13 =
-		{
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-			.synchronization2 = VK_TRUE,
-			.dynamicRendering = VK_TRUE,
-		};
-
-		VkPhysicalDeviceVulkan12Features Features12 =
-		{
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-			.pNext = &Features13,
-			.timelineSemaphore = VK_TRUE
-		};
-
-		VkPhysicalDeviceFeatures2 Features2 =
-		{
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-			.pNext = &Features12,
-		};
-
+		VkPhysicalDeviceFeatures2 Features2{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, };
 		for (const auto& RequestedFeature : m_Features | std::views::values)
 			RequestedFeature->PopulatePhysicalDeviceFeatures(Features2);
-		vkGetPhysicalDeviceFeatures2(m_PhysicalDevice, &Features2);
 
 		DynamicArray<const char*> RequiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 		for (const auto& Feature : m_Features | std::views::values)
@@ -247,6 +244,11 @@ namespace Yuki::RHI {
 		YUKI_VERIFY(vkCreateDevice(m_PhysicalDevice, &DeviceInfo, nullptr, &m_Device) == VK_SUCCESS);
 
 		volkLoadDevice(m_Device);
+
+		VkPhysicalDeviceProperties2 Properties2{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, };
+		for (const auto& RequestedFeature : m_Features | std::views::values)
+			RequestedFeature->PopulateProperties(Properties2);
+		vkGetPhysicalDeviceProperties2(m_PhysicalDevice, &Properties2);
 
 		m_Queues.ForEach([this](auto Handle, auto& Queue)
 		{

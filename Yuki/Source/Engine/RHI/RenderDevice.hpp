@@ -4,6 +4,7 @@
 #include "RenderFeatures.hpp"
 #include "RenderTarget.hpp"
 #include "Barriers.hpp"
+#include "PipelineInfo.hpp"
 
 #include "Engine/Common/UniqueID.hpp"
 #include "Engine/Containers/Span.hpp"
@@ -45,6 +46,11 @@ namespace Yuki::RHI {
 		virtual void CommandListImageBarrier(CommandListRH InList, ImageBarrier InBarrier) = 0;
 		virtual void CommandListBeginRendering(CommandListRH InList, RenderTarget InRenderTarget) = 0;
 		virtual void CommandListEndRendering(CommandListRH InList) = 0;
+		virtual void CommandListCopyBuffer(CommandListRH InList, BufferRH InDest, BufferRH InSrc) = 0;
+		virtual void CommandListPushConstants(CommandListRH InList, PipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize) = 0;
+		virtual void CommandListBindDescriptorSets(CommandListRH InList, PipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets) = 0;
+		virtual void CommandListBindPipeline(CommandListRH InList, PipelineRH InPipeline) = 0;
+		virtual void CommandListTraceRay(CommandListRH InList, PipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight) = 0;
 		virtual void CommandListEnd(CommandListRH InList) = 0;
 
 		virtual ImageRH ImageCreate(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;
@@ -52,6 +58,26 @@ namespace Yuki::RHI {
 
 		virtual ImageViewRH ImageViewCreate(ImageRH InImage) = 0;
 		virtual void ImageViewDestroy(ImageViewRH InImageView) = 0;
+
+		virtual BufferRH BufferCreate(uint64_t InSize, BufferUsage InUsage, bool InHostAccess = false) = 0;
+		virtual void BufferSetData(BufferRH InBuffer, const void* InData, uint64_t InDataSize = ~0) = 0;
+		virtual uint64_t BufferGetDeviceAddress(BufferRH InBuffer) = 0;
+		virtual void* BufferGetMappedMemory(BufferRH InBuffer) = 0;
+		virtual void BufferDestroy(BufferRH InBuffer) = 0;
+
+		virtual DescriptorSetLayoutRH DescriptorSetLayoutCreate(const DescriptorSetLayoutInfo& InLayoutInfo) = 0;
+		virtual void DescriptorSetLayoutDestroy(DescriptorSetLayoutRH InLayout) = 0;
+		virtual DescriptorPoolRH DescriptorPoolCreate(Span<DescriptorCount> InDescriptorCounts) = 0;
+		virtual void DescriptorPoolDestroy(DescriptorPoolRH InPool) = 0;
+		virtual DescriptorSetRH DescriptorPoolAllocateDescriptorSet(DescriptorPoolRH InPool, DescriptorSetLayoutRH InLayout) = 0;
+		virtual void DescriptorSetWrite(DescriptorSetRH InSet, uint32_t InBinding, Span<ImageViewRH> InImageViews, uint32_t InArrayOffset) = 0;
+
+		virtual PipelineRH PipelineCreate(const PipelineInfo& InPipelineInfo) = 0;
+		virtual void PipelineDestroy(PipelineRH InPipeline) = 0;
+
+		virtual AccelerationStructureRH AccelerationStructureCreate(BufferRH InVertexBuffer, BufferRH InIndexBuffer) = 0;
+		virtual uint64_t AccelerationStructureGetTopLevelAddress(AccelerationStructureRH InAccelerationStructure) = 0;
+		virtual void AccelerationStructureDestroy(AccelerationStructureRH InAccelerationStructure) = 0;
 
 	};
 

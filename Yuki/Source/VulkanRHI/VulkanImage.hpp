@@ -28,6 +28,7 @@ namespace Yuki::RHI {
 		switch (InLayout)
 		{
 		case ImageLayout::Undefined: return VK_IMAGE_LAYOUT_UNDEFINED;
+		case ImageLayout::General: return VK_IMAGE_LAYOUT_GENERAL;
 		case ImageLayout::Attachment: return VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 		case ImageLayout::ShaderReadOnly: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		case ImageLayout::Present: return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;

@@ -12,6 +12,11 @@
 #include "VulkanFence.hpp"
 #include "VulkanCommandPool.hpp"
 #include "VulkanImage.hpp"
+#include "VulkanBuffer.hpp"
+#include "VulkanPipeline.hpp"
+#include "VulkanShaderCompiler.hpp"
+#include "VulkanDescriptors.hpp"
+#include "VulkanAccelerationStructure.hpp"
 
 namespace Yuki::RHI {
 
@@ -51,6 +56,11 @@ namespace Yuki::RHI {
 		void CommandListImageBarrier(CommandListRH InList, ImageBarrier InBarrier) override;
 		void CommandListBeginRendering(CommandListRH InList, RenderTarget InRenderTarget) override;
 		void CommandListEndRendering(CommandListRH InList) override;
+		void CommandListCopyBuffer(CommandListRH InList, BufferRH InDest, BufferRH InSrc) override;
+		void CommandListPushConstants(CommandListRH InList, PipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize) override;
+		void CommandListBindDescriptorSets(CommandListRH InList, PipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets) override;
+		void CommandListBindPipeline(CommandListRH InList, PipelineRH InPipeline) override;
+		void CommandListTraceRay(CommandListRH InList, PipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight) override;
 		void CommandListEnd(CommandListRH InList) override;
 
 		ImageRH ImageCreate(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
@@ -58,6 +68,26 @@ namespace Yuki::RHI {
 
 		ImageViewRH ImageViewCreate(ImageRH InImage) override;
 		void ImageViewDestroy(ImageViewRH InImageView) override;
+
+		BufferRH BufferCreate(uint64_t InSize, BufferUsage InType, bool InHostAccess = false) override;
+		void BufferSetData(BufferRH InBuffer, const void* InData, uint64_t InDataSize) override;
+		uint64_t BufferGetDeviceAddress(BufferRH InBuffer) override;
+		void* BufferGetMappedMemory(BufferRH InBuffer) override;
+		void BufferDestroy(BufferRH InBuffer) override;
+
+		DescriptorSetLayoutRH DescriptorSetLayoutCreate(const DescriptorSetLayoutInfo& InLayoutInfo) override;
+		void DescriptorSetLayoutDestroy(DescriptorSetLayoutRH InLayout) override;
+		DescriptorPoolRH DescriptorPoolCreate(Span<DescriptorCount> InDescriptorCounts) override;
+		void DescriptorPoolDestroy(DescriptorPoolRH InPool) override;
+		DescriptorSetRH DescriptorPoolAllocateDescriptorSet(DescriptorPoolRH InPool, DescriptorSetLayoutRH InLayout) override;
+		void DescriptorSetWrite(DescriptorSetRH InSet, uint32_t InBinding, Span<ImageViewRH> InImageViews, uint32_t InArrayOffset) override;
+
+		PipelineRH PipelineCreate(const PipelineInfo& InPipelineInfo) override;
+		void PipelineDestroy(PipelineRH InPipeline) override;
+
+		AccelerationStructureRH AccelerationStructureCreate(BufferRH InVertexBuffer, BufferRH InIndexBuffer) override;
+		uint64_t AccelerationStructureGetTopLevelAddress(AccelerationStructureRH InAccelerationStructure) override;
+		void AccelerationStructureDestroy(AccelerationStructureRH InAccelerationStructure) override;
 
 	private:
 		VulkanRenderDevice(VkInstance InInstance, const DynamicArray<RendererFeature>& InRequestedFeatures);
@@ -71,7 +101,11 @@ namespace Yuki::RHI {
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkDevice m_Device = VK_NULL_HANDLE;
 
-		HashMap<RHI::RendererFeature, Unique<VulkanFeature>> m_Features;
+		VmaAllocator m_Allocator = VK_NULL_HANDLE;
+
+		HashMap<RendererFeature, Unique<VulkanFeature>> m_Features;
+
+		VulkanShaderCompiler m_ShaderCompiler;
 
 	private:
 		ResourceRegistry<QueueRH, VulkanQueue> m_Queues;
@@ -81,6 +115,12 @@ namespace Yuki::RHI {
 		ResourceRegistry<CommandListRH, VulkanCommandList> m_CommandLists;
 		ResourceRegistry<ImageRH, VulkanImage> m_Images;
 		ResourceRegistry<ImageViewRH, VulkanImageView> m_ImageViews;
+		ResourceRegistry<BufferRH, VulkanBuffer> m_Buffers;
+		ResourceRegistry<PipelineRH, VulkanPipeline> m_Pipelines;
+		ResourceRegistry<DescriptorSetLayoutRH, VulkanDescriptorSetLayout> m_DescriptorSetLayouts;
+		ResourceRegistry<DescriptorPoolRH, VulkanDescriptorPool> m_DescriptorPools;
+		ResourceRegistry<DescriptorSetRH, VulkanDescriptorSet> m_DescriptorSets;
+		ResourceRegistry<AccelerationStructureRH, VulkanAccelerationStructure> m_AccelerationStructures;
 
 	private:
 		friend class VulkanContext;

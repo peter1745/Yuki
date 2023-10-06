@@ -16,8 +16,8 @@ namespace Yuki {
 
 		constexpr const TElementClass& operator[](size_t InIndex) const { return m_Span[InIndex]; }
 
-		constexpr auto begin() { return m_Span.begin(); }
-		constexpr auto end() { return m_Span.end(); }
+		constexpr auto begin() const { return m_Span.begin(); }
+		constexpr auto end() const { return m_Span.end(); }
 
 	private:
 		std::span<const TElementClass> m_Span;

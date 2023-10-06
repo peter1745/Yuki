@@ -29,6 +29,8 @@ namespace Yuki {
 
 		virtual void PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& InDeviceFeatures) = 0;
 
+		virtual void PopulateProperties(VkPhysicalDeviceProperties2& InProperties) {}
+
 	protected:
 		VulkanFeature(RHI::RendererFeature InFeature)
 			: m_Feature(InFeature) {}

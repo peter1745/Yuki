@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Features/VulkanCoreFeature.hpp"
 #include "Features/VulkanRaytracingFeature.hpp"
 
 namespace Yuki::Vulkan {

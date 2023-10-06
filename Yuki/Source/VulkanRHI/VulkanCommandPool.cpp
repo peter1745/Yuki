@@ -204,6 +204,82 @@ namespace Yuki::RHI {
 		vkCmdEndRendering(List.Handle);
 	}
 
+	void VulkanRenderDevice::CommandListCopyBuffer(CommandListRH InList, BufferRH InDest, BufferRH InSrc)
+	{
+		auto& List = m_CommandLists[InList];
+		
+		auto& Dest = m_Buffers[InDest];
+		auto& Src = m_Buffers[InSrc];
+
+		uint64_t Size = std::min(Dest.Size, Src.Size);
+
+		VkBufferCopy2 Region =
+		{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+			.pNext = nullptr,
+			.srcOffset = 0,
+			.dstOffset = 0,
+			.size = Size,
+		};
+
+		VkCopyBufferInfo2 CopyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+			.pNext = nullptr,
+			.srcBuffer = Src.Handle,
+			.dstBuffer = Dest.Handle,
+			.regionCount = 1,
+			.pRegions = &Region,
+		};
+		vkCmdCopyBuffer2(List.Handle, &CopyInfo);
+	}
+
+	static VkShaderStageFlags ShaderStagesToVkShaderStageFlags(ShaderStage InStages)
+	{
+		VkShaderStageFlags Result = 0;
+
+		if (InStages & ShaderStage::Vertex) Result |= VK_SHADER_STAGE_VERTEX_BIT;
+		if (InStages & ShaderStage::Fragment) Result |= VK_SHADER_STAGE_FRAGMENT_BIT;
+		if (InStages & ShaderStage::RayGeneration) Result |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+		if (InStages & ShaderStage::RayMiss) Result |= VK_SHADER_STAGE_MISS_BIT_KHR;
+		if (InStages & ShaderStage::RayClosestHit) Result |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+
+		return Result;
+	}
+
+	void VulkanRenderDevice::CommandListPushConstants(CommandListRH InList, PipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize)
+	{
+		auto& List = m_CommandLists[InList];
+		const auto& Pipeline = m_Pipelines[InPipeline];
+		vkCmdPushConstants(List.Handle, Pipeline.Layout, VK_SHADER_STAGE_ALL, 0, InDataSize, InData);
+	}
+
+	void VulkanRenderDevice::CommandListBindDescriptorSets(CommandListRH InList, PipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets)
+	{
+		auto& List = m_CommandLists[InList];
+		const auto& Pipeline = m_Pipelines[InPipeline];
+
+		DynamicArray<VkDescriptorSet> Sets(InDescriptorSets.Count());
+		for (size_t Index = 0; Index < InDescriptorSets.Count(); Index++)
+			Sets[Index] = m_DescriptorSets[InDescriptorSets[Index]].Handle;
+
+		vkCmdBindDescriptorSets(List.Handle, Pipeline.Type == PipelineType::Raytracing ? VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR : VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline.Layout, 0, InDescriptorSets.Count(), Sets.data(), 0, nullptr);
+	}
+
+	void VulkanRenderDevice::CommandListBindPipeline(CommandListRH InList, PipelineRH InPipeline)
+	{
+		auto& List = m_CommandLists[InList];
+		const auto& Pipeline = m_Pipelines[InPipeline];
+		vkCmdBindPipeline(List.Handle, Pipeline.Type == PipelineType::Raytracing ? VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR : VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline.Handle);
+	}
+
+	void VulkanRenderDevice::CommandListTraceRay(CommandListRH InList, PipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight)
+	{
+		auto& List = m_CommandLists[InList];
+		const auto& Pipeline = m_Pipelines[InPipeline];
+		vkCmdTraceRaysKHR(List.Handle, &Pipeline.RayGenRegion, &Pipeline.MissGenRegion, &Pipeline.ClosestHitGenRegion, &Pipeline.CallableGenRegion, InWidth, InHeight, 1);
+	}
+
 	void VulkanRenderDevice::CommandListEnd(CommandListRH InList)
 	{
 		auto& List = m_CommandLists[InList];

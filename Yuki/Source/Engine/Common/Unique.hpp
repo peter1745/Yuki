@@ -53,6 +53,7 @@ namespace Yuki {
 		Unique& operator=(Unique<U>&& InOther) noexcept
 		{
 			m_Instance = static_cast<T*>(std::exchange(InOther.m_Instance, nullptr));
+			return *this;
 		}
 
 		Unique(const Unique&) = delete;

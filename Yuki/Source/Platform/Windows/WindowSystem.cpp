@@ -22,6 +22,12 @@ namespace Yuki {
 			SetWindowLongPtr(InHWND, GWLP_USERDATA, UserData);
 			break;
 		}
+		case WM_SIZE:
+		{
+			Data->Width = LOWORD(InLParam);
+			Data->Height = HIWORD(InLParam);
+			break;
+		}
 		case WM_CLOSE:
 		{
 			EngineMessages::Get().Post<WindowCloseMessage>({

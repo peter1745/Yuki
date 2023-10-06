@@ -14,6 +14,7 @@
 #include <functional>
 
 #include <cmath>
+#include <math.h>
 
 #include <random>
 

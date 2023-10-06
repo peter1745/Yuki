@@ -1,24 +1,14 @@
 #pragma once
 
-#include <functional>
+#include "Engine/Common/Core.hpp"
 
 namespace Yuki::RHI {
 
 	enum class RendererFeature
 	{
+		Core,
 		RayTracing
 	};
 }
 
-namespace std {
-
-	template<>
-	struct hash<Yuki::RHI::RendererFeature>
-	{
-		size_t operator()(Yuki::RHI::RendererFeature InFeature) const
-		{
-			return std::hash<std::underlying_type_t<decltype(InFeature)>>()(std::to_underlying(InFeature));
-		}
-	};
-
-}
+YUKI_ENUM_HASH(Yuki::RHI::RendererFeature);

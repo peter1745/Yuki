@@ -15,7 +15,7 @@ namespace Yuki {
 
 	public:
 		template<std::floating_point T = double>
-		static T DeltaTime() { return static_cast<T>(Get().m_DeltaTime); }
+		static T DeltaTime() { return static_cast<T>(Get().m_DeltaTime / 1000.0); }
 
 	private:
 		static void CalculateDeltaTime();

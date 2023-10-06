@@ -15,4 +15,17 @@ namespace Yuki {
 		return Result;
 	}
 
+	std::string_view StringHelper::TrimWhitespace(std::string_view InString)
+	{
+		constexpr std::string_view c_WhitespaceChars = " \n\r\t\f\v";
+
+		size_t Start = InString.find_first_not_of(c_WhitespaceChars);
+		InString.remove_prefix(Start);
+
+		size_t End = InString.find_last_not_of(c_WhitespaceChars);
+		InString.remove_suffix(InString.length() - End - 1);
+
+		return InString;
+	}
+
 }

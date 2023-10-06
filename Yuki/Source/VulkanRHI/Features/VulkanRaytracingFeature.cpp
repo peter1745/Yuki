@@ -2,7 +2,6 @@
 
 namespace Yuki {
 
-
 	VulkanRaytracingFeature::VulkanRaytracingFeature()
 		: VulkanFeature(RHI::RendererFeature::RayTracing)
 	{
@@ -19,8 +18,17 @@ namespace Yuki {
 
 	void VulkanRaytracingFeature::PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& InDeviceFeatures)
 	{
+		m_AccelerationStructureFeatures.accelerationStructure = VK_TRUE;
 		AddToPNext(InDeviceFeatures, m_AccelerationStructureFeatures);
+
+		m_RayTracingPipelineFeatures.rayTracingPipeline = VK_TRUE;
 		AddToPNext(InDeviceFeatures, m_RayTracingPipelineFeatures);
+	}
+
+	void VulkanRaytracingFeature::PopulateProperties(VkPhysicalDeviceProperties2& InProperties)
+	{
+		AddToPNext(InProperties, m_RayTracingProperties);
+		AddToPNext(InProperties, m_AccelerationStructureProperties);
 	}
 
 }
