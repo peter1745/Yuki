@@ -3,6 +3,9 @@
 #include "Unique.hpp"
 #include "Types.hpp"
 
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 namespace Yuki {
 
 	template<typename T>
@@ -13,6 +16,10 @@ namespace Yuki {
 	{
 		return (InValue + InAlignment - 1) & ~(InAlignment - 1);
 	}
+
+	using Vec3 = glm::vec3;
+	using Vec4 = glm::vec4;
+	using Quat = glm::quat;
 
 }
 

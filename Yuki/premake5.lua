@@ -34,6 +34,7 @@ project "Yuki"
         "../ThirdParty/nlohmann/json/single_include/",
         "../ThirdParty/simdjson/include/",
 		"../ThirdParty/volk/Include/",
+        "../ThirdParty/glm/",
 
         VulkanSDKPath,
     }

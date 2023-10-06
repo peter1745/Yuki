@@ -3,22 +3,22 @@
 #include <Engine/Common/WindowSystem.hpp>
 
 #include <Engine/RHI/Context.hpp>
-#include <Engine/Math/Mat4.hpp>
+#include <Engine/Input/InputContext.hpp>
 
 #include <iostream>
 
 struct PushConstants
 {
 	uint64_t TopLevelAS;
-	Yuki::Math::Vec3 ViewPos;
-	Yuki::Math::Vec3 CameraX;
-	Yuki::Math::Vec3 CameraY;
+	Yuki::Vec3 ViewPos;
+	Yuki::Vec3 CameraX;
+	Yuki::Vec3 CameraY;
 	float CameraZOffset;
 } c_PushConstants;
 
 struct Vertex
 {
-	float Position[3];
+	Yuki::Vec3 Position;
 };
 
 class EngineTesterApp : public Yuki::Application
@@ -49,9 +49,9 @@ public:
 
 		std::array Vertices =
 		{
-			 -0.5f, 0.5f, 0.0f,
-			 0.5f, 0.5f, 0.0f,
-			 0.0f, -0.5f, 0.0f
+			Vertex{ { -0.5f, 0.5f, 0.0f } },
+			Vertex{ { 0.5f, 0.5f, 0.0f } },
+			Vertex{ { 0.0f, -0.5f, 0.0f } }
 		};
 
 		std::array Indices =
@@ -59,10 +59,10 @@ public:
 			0U, 1U, 2U
 		};
 
-		auto StagingBuffer = RenderDevice.BufferCreate(3 * 3 * sizeof(float), Yuki::RHI::BufferUsage::TransferSrc, true);
+		auto StagingBuffer = RenderDevice.BufferCreate(Vertices.size() * sizeof(Vertex), Yuki::RHI::BufferUsage::TransferSrc, true);
 		RenderDevice.BufferSetData(StagingBuffer, Vertices.data());
 
-		m_VertexBuffer = RenderDevice.BufferCreate(3 * 3 * sizeof(float), Yuki::RHI::BufferUsage::AccelerationStructureBuildInput | Yuki::RHI::BufferUsage::TransferDst);
+		m_VertexBuffer = RenderDevice.BufferCreate(Vertices.size() * sizeof(Vertex), Yuki::RHI::BufferUsage::AccelerationStructureBuildInput | Yuki::RHI::BufferUsage::TransferDst);
 		m_IndexBuffer = RenderDevice.BufferCreate(3 * sizeof(uint32_t), Yuki::RHI::BufferUsage::AccelerationStructureBuildInput | Yuki::RHI::BufferUsage::TransferDst);
 
 		auto CmdList = RenderDevice.CommandPoolNewList(m_CommandPool);
@@ -111,9 +111,39 @@ public:
 			}
 		});
 
-		c_PushConstants.CameraX = { 1.0f, 0.0f, 0.0f };
-		c_PushConstants.CameraY = { 0.0f, 1.0f, 0.0f };
 		c_PushConstants.CameraZOffset = 1.0f / std::tanf(0.5f * 1.22173048f);
+
+		/*m_CameraInput.Bind<Yuki::RangedInput>(Yuki::RangedInput{
+			{
+				.Value = -1.0f,
+				.Key = Yuki::KeyCode::A,
+			},
+			{
+				.Value = 1.0f,
+				.Key = Yuki::KeyCode::D,
+			},
+			[&](float InValue)
+			{
+				c_PushConstants.ViewPos.X += InValue * Yuki::EngineTime::DeltaTime();
+			}
+		});
+
+		m_CameraInput.Bind<Yuki::RangedInput>({
+			{
+				.Value = -1.0f,
+				.Key = Yuki::KeyCode::W,
+			},
+			{
+				.Value = 1.0f,
+				.Key = Yuki::KeyCode::S,
+			},
+			[&](float InValue)
+			{
+				c_PushConstants.ViewPos.Z += InValue * 10.0f * Yuki::EngineTime::DeltaTime();
+			}
+		});*/
+
+		//m_WindowSystem.AddInputContext(m_Window, &m_CameraInput);
 	}
 
 	void Update() override
@@ -122,26 +152,57 @@ public:
 
 		auto& RenderDevice = m_RHIContext->GetRenderDevice();
 
+		Yuki::Logging::Info("Delta Time: {}", Yuki::EngineTime::DeltaTime() * 1000.0f);
+
 		RenderDevice.FenceWait(m_Fence);
 
 		RenderDevice.QueueAcquireImages(m_GraphicsQueue, { m_Swapchain }, { m_Fence });
 
 		auto SwapchainImage = RenderDevice.SwapchainGetCurrentImage(m_Swapchain);
 
-		/*Yuki::RHI::RenderTarget RenderTarget =
-		{
-			.ColorAttachments = {
-				{
-					.ImageView = RenderDevice.SwapchainGetCurrentImageView(m_Swapchain),
-					.LoadOp = Yuki::RHI::AttachmentLoadOp::Clear,
-					.StoreOp = Yuki::RHI::AttachmentStoreOp::Store
-				}
-			}
-		};*/
+		Yuki::Vec3 Translation = {};
 
-		static float t = 0.0f;
-		t += Yuki::EngineTime::DeltaTime();
-		c_PushConstants.ViewPos = { std::cosf(t) * 5.0f, 0.0f, 10.0f + std::sinf(t) * 5.0f };
+		if (m_WindowSystem.GetKeyState(m_Window, Yuki::KeyCode::W))
+		{
+			Translation.z -= 5.0f;
+		}
+		else if (m_WindowSystem.GetKeyState(m_Window, Yuki::KeyCode::S))
+		{
+			Translation.z += 5.0f;
+		}
+
+		if (m_WindowSystem.GetKeyState(m_Window, Yuki::KeyCode::A))
+		{
+			Translation.x -= 5.0f;
+		}
+		else if (m_WindowSystem.GetKeyState(m_Window, Yuki::KeyCode::D))
+		{
+			Translation.x += 5.0f;
+		}
+
+		if (m_WindowSystem.GetMouseButtonState(m_Window, Yuki::MouseButton::Right))
+		{
+			m_WindowSystem.SetCursorLock(m_Window, true);
+
+			int32_t DeltaX = m_WindowSystem.GetRawMouseDeltaX(m_Window) * -1;
+			int32_t DeltaY = m_WindowSystem.GetRawMouseDeltaY(m_Window) * -1;
+
+			m_Rotation = glm::angleAxis(DeltaX * 0.001f, Yuki::Vec3{ 0.0f, 1.0f, 0.0f }) * m_Rotation;
+			auto PitchedRotation = m_Rotation * glm::angleAxis(DeltaY * 0.001f, Yuki::Vec3{ -1.0f, 0.0f, 0.0f });
+			if (glm::dot(PitchedRotation * Yuki::Vec3{ 0.0f, 1.0f, 0.0f }, Yuki::Vec3{ 0.0f, 1.0f, 0.0f }) >= 0.0f)
+			{
+				m_Rotation = PitchedRotation;
+			}
+			m_Rotation = glm::normalize(m_Rotation);
+		}
+		else
+		{
+			m_WindowSystem.SetCursorLock(m_Window, false);
+		}
+
+		c_PushConstants.ViewPos += (m_Rotation * Translation) * Yuki::EngineTime::DeltaTime<float>();
+		c_PushConstants.CameraX = m_Rotation * Yuki::Vec3{ 1.0f, 0.0f, 0.0f };
+		c_PushConstants.CameraY = m_Rotation * Yuki::Vec3{ 0.0f, 1.0f, 0.0f };
 
 		RenderDevice.DescriptorSetWrite(m_DescriptorSet, 0, { RenderDevice.SwapchainGetCurrentImageView(m_Swapchain) }, 0);
 
@@ -183,6 +244,10 @@ private:
 	Yuki::RHI::DescriptorPoolRH m_DescriptorPool;
 	Yuki::RHI::DescriptorSetRH m_DescriptorSet;
 	Yuki::RHI::AccelerationStructureRH m_AccelerationStructure;
+
+	Yuki::InputContext m_CameraInput;
+
+	Yuki::Quat m_Rotation{1.0f, 0.0f, 0.0f, 0.0f};
 };
 
 YUKI_DECLARE_APPLICATION(EngineTesterApp)

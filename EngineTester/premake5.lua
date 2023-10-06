@@ -14,7 +14,10 @@ project "EngineTester"
 		"Source/",
 	}
 
-	externalincludedirs { "../Yuki/Source/" }
+	externalincludedirs {
+        "../Yuki/Source/",
+        "../ThirdParty/glm/"
+    }
 
 	libdirs {
         VulkanSDKPath .. "/Lib/"
