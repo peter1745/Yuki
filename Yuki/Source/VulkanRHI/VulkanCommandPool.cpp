@@ -175,9 +175,9 @@ namespace Yuki::RHI {
 			ColorAttachmentInfos[Index].imageLayout = Image.Layout;
 			ColorAttachmentInfos[Index].loadOp = LoadOp;
 			ColorAttachmentInfos[Index].storeOp = StoreOp;
-			ColorAttachmentInfos[Index].clearValue.color.float32[0] = 1.0f;
-			ColorAttachmentInfos[Index].clearValue.color.float32[1] = 0.0f;
-			ColorAttachmentInfos[Index].clearValue.color.float32[2] = 0.0f;
+			ColorAttachmentInfos[Index].clearValue.color.float32[0] = 0.1f;
+			ColorAttachmentInfos[Index].clearValue.color.float32[1] = 0.1f;
+			ColorAttachmentInfos[Index].clearValue.color.float32[2] = 0.1f;
 			ColorAttachmentInfos[Index].clearValue.color.float32[3] = 1.0f;
 		}
 
@@ -254,6 +254,13 @@ namespace Yuki::RHI {
 		vkCmdPushConstants(List.Handle, Pipeline.Layout, VK_SHADER_STAGE_ALL, 0, InDataSize, InData);
 	}
 
+	void VulkanRenderDevice::CommandListPushConstants(CommandListRH InList, RayTracingPipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize)
+	{
+		auto& List = m_CommandLists[InList];
+		const auto& Pipeline = m_RayTracingPipelines[InPipeline];
+		vkCmdPushConstants(List.Handle, Pipeline.Layout, VK_SHADER_STAGE_ALL, 0, InDataSize, InData);
+	}
+
 	void VulkanRenderDevice::CommandListBindDescriptorSets(CommandListRH InList, PipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets)
 	{
 		auto& List = m_CommandLists[InList];
@@ -263,20 +270,74 @@ namespace Yuki::RHI {
 		for (size_t Index = 0; Index < InDescriptorSets.Count(); Index++)
 			Sets[Index] = m_DescriptorSets[InDescriptorSets[Index]].Handle;
 
-		vkCmdBindDescriptorSets(List.Handle, Pipeline.Type == PipelineType::Raytracing ? VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR : VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline.Layout, 0, InDescriptorSets.Count(), Sets.data(), 0, nullptr);
+		vkCmdBindDescriptorSets(List.Handle, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline.Layout, 0, Cast<uint32_t>(InDescriptorSets.Count()), Sets.data(), 0, nullptr);
+	}
+
+	void VulkanRenderDevice::CommandListBindDescriptorSets(CommandListRH InList, RayTracingPipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets)
+	{
+		auto& List = m_CommandLists[InList];
+		const auto& Pipeline = m_RayTracingPipelines[InPipeline];
+
+		DynamicArray<VkDescriptorSet> Sets(InDescriptorSets.Count());
+		for (size_t Index = 0; Index < InDescriptorSets.Count(); Index++)
+			Sets[Index] = m_DescriptorSets[InDescriptorSets[Index]].Handle;
+
+		vkCmdBindDescriptorSets(List.Handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, Pipeline.Layout, 0, InDescriptorSets.Count(), Sets.data(), 0, nullptr);
 	}
 
 	void VulkanRenderDevice::CommandListBindPipeline(CommandListRH InList, PipelineRH InPipeline)
 	{
 		auto& List = m_CommandLists[InList];
 		const auto& Pipeline = m_Pipelines[InPipeline];
-		vkCmdBindPipeline(List.Handle, Pipeline.Type == PipelineType::Raytracing ? VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR : VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline.Handle);
+		vkCmdBindPipeline(List.Handle, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline.Handle);
 	}
 
-	void VulkanRenderDevice::CommandListTraceRay(CommandListRH InList, PipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight)
+	void VulkanRenderDevice::CommandListBindPipeline(CommandListRH InList, RayTracingPipelineRH InPipeline)
 	{
 		auto& List = m_CommandLists[InList];
-		const auto& Pipeline = m_Pipelines[InPipeline];
+		const auto& Pipeline = m_RayTracingPipelines[InPipeline];
+		vkCmdBindPipeline(List.Handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, Pipeline.Handle);
+	}
+
+	void VulkanRenderDevice::CommandListBindIndexBuffer(CommandListRH InList, BufferRH InBuffer)
+	{
+		auto& List = m_CommandLists[InList];
+		const auto& Buffer = m_Buffers[InBuffer];
+		vkCmdBindIndexBuffer(List.Handle, Buffer.Handle, 0, VK_INDEX_TYPE_UINT32);
+	}
+
+	void VulkanRenderDevice::CommandListSetViewport(CommandListRH InList, Viewport InViewport)
+	{
+		auto& List = m_CommandLists[InList];
+		VkViewport Viewport =
+		{
+			.x = InViewport.X,
+			.y = InViewport.Y,
+			.width = InViewport.Width,
+			.height = InViewport.Height,
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
+		};
+		vkCmdSetViewport(List.Handle, 0, 1, &Viewport);
+
+		VkRect2D Scissor =
+		{
+			.offset = { 0, 0 },
+			.extent = { Cast<uint32_t>(InViewport.Width), Cast<uint32_t>(InViewport.Height) }
+		};
+		vkCmdSetScissor(List.Handle, 0, 1, &Scissor);
+	}
+
+	void VulkanRenderDevice::CommandListDrawIndexed(CommandListRH InList, uint32_t InIndexCount, uint32_t InIndexOffset, uint32_t InInstanceIndex)
+	{
+		auto& List = m_CommandLists[InList];
+		vkCmdDrawIndexed(List.Handle, InIndexCount, 1, 0, 0, InInstanceIndex);
+	}
+
+	void VulkanRenderDevice::CommandListTraceRay(CommandListRH InList, RayTracingPipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight)
+	{
+		auto& List = m_CommandLists[InList];
+		const auto& Pipeline = m_RayTracingPipelines[InPipeline];
 		vkCmdTraceRaysKHR(List.Handle, &Pipeline.RayGenRegion, &Pipeline.MissGenRegion, &Pipeline.ClosestHitGenRegion, &Pipeline.CallableGenRegion, InWidth, InHeight, 1);
 	}
 

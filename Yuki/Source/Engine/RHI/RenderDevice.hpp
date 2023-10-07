@@ -48,9 +48,22 @@ namespace Yuki::RHI {
 		virtual void CommandListEndRendering(CommandListRH InList) = 0;
 		virtual void CommandListCopyBuffer(CommandListRH InList, BufferRH InDest, BufferRH InSrc) = 0;
 		virtual void CommandListPushConstants(CommandListRH InList, PipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize) = 0;
+		virtual void CommandListPushConstants(CommandListRH InList, RayTracingPipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize) = 0;
 		virtual void CommandListBindDescriptorSets(CommandListRH InList, PipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets) = 0;
+		virtual void CommandListBindDescriptorSets(CommandListRH InList, RayTracingPipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets) = 0;
 		virtual void CommandListBindPipeline(CommandListRH InList, PipelineRH InPipeline) = 0;
-		virtual void CommandListTraceRay(CommandListRH InList, PipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight) = 0;
+		virtual void CommandListBindPipeline(CommandListRH InList, RayTracingPipelineRH InPipeline) = 0;
+		virtual void CommandListBindIndexBuffer(CommandListRH InList, BufferRH InBuffer) = 0;
+		struct Viewport
+		{
+			float X;
+			float Y;
+			float Width;
+			float Height;
+		};
+		virtual void CommandListSetViewport(CommandListRH InList, Viewport InViewport) = 0;
+		virtual void CommandListDrawIndexed(CommandListRH InList, uint32_t InIndexCount, uint32_t InIndexOffset, uint32_t InInstanceIndex) = 0;
+		virtual void CommandListTraceRay(CommandListRH InList, RayTracingPipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight) = 0;
 		virtual void CommandListEnd(CommandListRH InList) = 0;
 
 		virtual ImageRH ImageCreate(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) = 0;
@@ -74,6 +87,9 @@ namespace Yuki::RHI {
 
 		virtual PipelineRH PipelineCreate(const PipelineInfo& InPipelineInfo) = 0;
 		virtual void PipelineDestroy(PipelineRH InPipeline) = 0;
+
+		virtual RayTracingPipelineRH RayTracingPipelineCreate(const RayTracingPipelineInfo& InPipelineInfo) = 0;
+		virtual void RayTracingPipelineDestroy(RayTracingPipelineRH InPipeline) = 0;
 
 		virtual AccelerationStructureRH AccelerationStructureCreate(BufferRH InVertexBuffer, BufferRH InIndexBuffer) = 0;
 		virtual uint64_t AccelerationStructureGetTopLevelAddress(AccelerationStructureRH InAccelerationStructure) = 0;

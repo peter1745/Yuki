@@ -58,9 +58,15 @@ namespace Yuki::RHI {
 		void CommandListEndRendering(CommandListRH InList) override;
 		void CommandListCopyBuffer(CommandListRH InList, BufferRH InDest, BufferRH InSrc) override;
 		void CommandListPushConstants(CommandListRH InList, PipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize) override;
+		void CommandListPushConstants(CommandListRH InList, RayTracingPipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize) override;
 		void CommandListBindDescriptorSets(CommandListRH InList, PipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets) override;
+		void CommandListBindDescriptorSets(CommandListRH InList, RayTracingPipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets) override;
 		void CommandListBindPipeline(CommandListRH InList, PipelineRH InPipeline) override;
-		void CommandListTraceRay(CommandListRH InList, PipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight) override;
+		void CommandListBindPipeline(CommandListRH InList, RayTracingPipelineRH InPipeline) override;
+		void CommandListBindIndexBuffer(CommandListRH InList, BufferRH InBuffer) override;
+		void CommandListSetViewport(CommandListRH InList, Viewport InViewport) override;
+		void CommandListDrawIndexed(CommandListRH InList, uint32_t InIndexCount, uint32_t InIndexOffset, uint32_t InInstanceIndex) override;
+		void CommandListTraceRay(CommandListRH InList, RayTracingPipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight) override;
 		void CommandListEnd(CommandListRH InList) override;
 
 		ImageRH ImageCreate(uint32_t InWidth, uint32_t InHeight, ImageFormat InFormat, ImageUsage InUsage) override;
@@ -84,6 +90,9 @@ namespace Yuki::RHI {
 
 		PipelineRH PipelineCreate(const PipelineInfo& InPipelineInfo) override;
 		void PipelineDestroy(PipelineRH InPipeline) override;
+
+		RayTracingPipelineRH RayTracingPipelineCreate(const RayTracingPipelineInfo& InPipelineInfo) override;
+		void RayTracingPipelineDestroy(RayTracingPipelineRH InPipeline) override;
 
 		AccelerationStructureRH AccelerationStructureCreate(BufferRH InVertexBuffer, BufferRH InIndexBuffer) override;
 		uint64_t AccelerationStructureGetTopLevelAddress(AccelerationStructureRH InAccelerationStructure) override;
@@ -117,6 +126,7 @@ namespace Yuki::RHI {
 		ResourceRegistry<ImageViewRH, VulkanImageView> m_ImageViews;
 		ResourceRegistry<BufferRH, VulkanBuffer> m_Buffers;
 		ResourceRegistry<PipelineRH, VulkanPipeline> m_Pipelines;
+		ResourceRegistry<RayTracingPipelineRH, VulkanRayTracingPipeline> m_RayTracingPipelines;
 		ResourceRegistry<DescriptorSetLayoutRH, VulkanDescriptorSetLayout> m_DescriptorSetLayouts;
 		ResourceRegistry<DescriptorPoolRH, VulkanDescriptorPool> m_DescriptorPools;
 		ResourceRegistry<DescriptorSetRH, VulkanDescriptorSet> m_DescriptorSets;

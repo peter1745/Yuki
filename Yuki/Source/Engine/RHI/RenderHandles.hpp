@@ -60,6 +60,7 @@ namespace Yuki::RHI {
 	};
 
 	YUKI_RENDER_HANDLE(Pipeline);
+	YUKI_RENDER_HANDLE(RayTracingPipeline);
 	YUKI_FLAG_ENUM(ShaderStage)
 	{
 		None			= 0,

@@ -22,7 +22,16 @@ namespace Yuki::RHI {
 
 	struct PipelineInfo
 	{
-		PipelineType Type;
+		Span<PipelineShaderInfo> Shaders;
+		uint32_t PushConstantSize = 0;
+		Span<DescriptorSetLayoutRH> DescriptorLayouts;
+
+		struct ColorAttachmentInfo { ImageFormat Format; };
+		DynamicArray<ColorAttachmentInfo> ColorAttachments;
+	};
+
+	struct RayTracingPipelineInfo
+	{
 		Span<PipelineShaderInfo> Shaders;
 		uint32_t PushConstantSize = 0;
 		Span<DescriptorSetLayoutRH> DescriptorLayouts;

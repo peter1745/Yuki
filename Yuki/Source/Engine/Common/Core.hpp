@@ -4,7 +4,7 @@
 #include "Types.hpp"
 
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 namespace Yuki {
 
@@ -20,6 +20,20 @@ namespace Yuki {
 	using Vec3 = glm::vec3;
 	using Vec4 = glm::vec4;
 	using Quat = glm::quat;
+	using Mat4 = glm::mat4;
+	
+	inline Mat4 PerspectiveInfReversedZ(float InFovY, float InAspect, float InNearZ)
+	{
+		float F = 1.0f / std::tanf(InFovY / 2.0f);
+
+		Mat4 Result{};
+		Result[0][0] = F / InAspect;
+		Result[1][1] = F;
+		Result[3][2] = InNearZ;
+		Result[2][3] = -1.0f;
+
+		return Result;
+	}
 
 }
 

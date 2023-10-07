@@ -9,8 +9,12 @@ namespace Yuki::RHI {
 
 	struct VulkanPipeline
 	{
-		PipelineType Type;
+		VkPipeline Handle;
+		VkPipelineLayout Layout;
+	};
 
+	struct VulkanRayTracingPipeline
+	{
 		VkPipeline Handle;
 		VkPipelineLayout Layout;
 
