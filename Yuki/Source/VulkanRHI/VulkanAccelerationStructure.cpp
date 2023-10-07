@@ -1,26 +1,24 @@
-#include "VulkanAccelerationStructure.hpp"
+#include "VulkanRHI.hpp"
 #include "VulkanRenderDevice.hpp"
+
 #include "Features/VulkanRaytracingFeature.hpp"
 
 namespace Yuki::RHI {
 
-	AccelerationStructureRH VulkanRenderDevice::AccelerationStructureCreate(BufferRH InVertexBuffer, BufferRH InIndexBuffer)
+	AccelerationStructure AccelerationStructure::Create(Context InContext, BufferRH InVertexBuffer, BufferRH InIndexBuffer)
 	{
-		auto[Handle, AccelerationStructure] = m_AccelerationStructures.Acquire();
-
-		const auto& VertexBuffer = m_Buffers[InVertexBuffer];
-		const auto& IndexBuffer = m_Buffers[InIndexBuffer];
+		auto AccelerationStructure = new AccelerationStructureRH::Impl;
 
 		VkAccelerationStructureGeometryTrianglesDataKHR TrianglesData =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
 			.pNext = nullptr,
 			.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT,
-			.vertexData = { .deviceAddress = VertexBuffer.Address },
+			.vertexData = { .deviceAddress = InVertexBuffer->Address },
 			.vertexStride = sizeof(float) * 3,
 			.maxVertex = 2,
 			.indexType = VK_INDEX_TYPE_UINT32,
-			.indexData = { .deviceAddress = IndexBuffer.Address },
+			.indexData = { .deviceAddress = InIndexBuffer->Address },
 			.transformData = {},
 		};
 
@@ -59,30 +57,29 @@ namespace Yuki::RHI {
 		uint32_t NumPrimitives = 1;
 
 		VkAccelerationStructureBuildSizesInfoKHR BuildSizesInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
-		vkGetAccelerationStructureBuildSizesKHR(m_Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &BuildInfo, &NumPrimitives, &BuildSizesInfo);
+		vkGetAccelerationStructureBuildSizesKHR(InContext->Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &BuildInfo, &NumPrimitives, &BuildSizesInfo);
 
-		const auto& AccelerationStructureProperties = GetFeature<VulkanRaytracingFeature>().GetAccelerationStructureProperties();
+		//const auto& AccelerationStructureProperties = GetFeature<VulkanRaytracingFeature>().GetAccelerationStructureProperties();
 
-		auto ScratchBuffer = BufferCreate(BuildSizesInfo.buildScratchSize + AccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment, BufferUsage::Storage);
+		//auto ScratchBuffer = BufferCreate(BuildSizesInfo.buildScratchSize + AccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment, BufferUsage::Storage);
 
 		// TODO(Peter): Compactify
 
-		AccelerationStructure.AccelerationStructureStorage = BufferCreate(BuildSizesInfo.accelerationStructureSize, BufferUsage::AccelerationStructureStorage);
+		/*AccelerationStructure->AccelerationStructureStorage = BufferCreate(BuildSizesInfo.accelerationStructureSize, BufferUsage::AccelerationStructureStorage);
 
 		VkAccelerationStructureCreateInfoKHR AccelerationStructureInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
 			.pNext = nullptr,
 			.createFlags = 0,
-			.buffer = m_Buffers[AccelerationStructure.AccelerationStructureStorage].Handle,
+			.buffer = AccelerationStructure->AccelerationStructureStorage->Handle,
 			.offset = 0,
 			.size = BuildSizesInfo.accelerationStructureSize,
 			.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
-			//.deviceAddress,
 		};
-		vkCreateAccelerationStructureKHR(m_Device, &AccelerationStructureInfo, nullptr, &AccelerationStructure.BottomLevelAS);
+		vkCreateAccelerationStructureKHR(m_Device, &AccelerationStructureInfo, nullptr, &AccelerationStructure->BottomLevelAS);
 
-		BuildInfo.dstAccelerationStructure = AccelerationStructure.BottomLevelAS;
+		BuildInfo.dstAccelerationStructure = AccelerationStructure->BottomLevelAS;
 		BuildInfo.scratchData.deviceAddress = AlignUp(BufferGetDeviceAddress(ScratchBuffer), Cast<uint64_t>(AccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment));
 
 		auto Queue = QueueRequest(QueueType::Graphics);
@@ -102,14 +99,14 @@ namespace Yuki::RHI {
 
 		FenceWait(Fence);
 
-		BufferDestroy(ScratchBuffer);
+		BufferDestroy(ScratchBuffer);*/
 
 		// TLAS
 
-		VkAccelerationStructureDeviceAddressInfoKHR AddressInfo =
+		/*VkAccelerationStructureDeviceAddressInfoKHR AddressInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
-			.accelerationStructure = AccelerationStructure.BottomLevelAS
+			.accelerationStructure = AccelerationStructure->BottomLevelAS
 		};
 
 		VkAccelerationStructureInstanceKHR Instance =
@@ -158,24 +155,23 @@ namespace Yuki::RHI {
 		uint32_t NumInstances = 1;
 		vkGetAccelerationStructureBuildSizesKHR(m_Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &BuildInfo, &NumInstances, &BuildSizesInfo);
 
-		AccelerationStructure.TopLevelAccelerationStructureStorage = BufferCreate(BuildSizesInfo.accelerationStructureSize, BufferUsage::AccelerationStructureStorage);
+		AccelerationStructure->TopLevelAccelerationStructureStorage = BufferCreate(BuildSizesInfo.accelerationStructureSize, BufferUsage::AccelerationStructureStorage);
 
 		AccelerationStructureInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
 			.pNext = nullptr,
 			.createFlags = 0,
-			.buffer = m_Buffers[AccelerationStructure.TopLevelAccelerationStructureStorage].Handle,
+			.buffer = AccelerationStructure->TopLevelAccelerationStructureStorage->Handle,
 			.offset = 0,
 			.size = BuildSizesInfo.accelerationStructureSize,
 			.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
-			//.deviceAddress,
 		};
-		vkCreateAccelerationStructureKHR(m_Device, &AccelerationStructureInfo, nullptr, &AccelerationStructure.TopLevelAS);
+		vkCreateAccelerationStructureKHR(m_Device, &AccelerationStructureInfo, nullptr, &AccelerationStructure->TopLevelAS);
 
 		ScratchBuffer = BufferCreate(BuildSizesInfo.buildScratchSize + AccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment, BufferUsage::Storage);
 
-		BuildInfo.dstAccelerationStructure = AccelerationStructure.TopLevelAS;
+		BuildInfo.dstAccelerationStructure = AccelerationStructure->TopLevelAS;
 		BuildInfo.scratchData.deviceAddress = AlignUp(BufferGetDeviceAddress(ScratchBuffer), Cast<uint64_t>(AccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment));
 
 		VkAccelerationStructureBuildRangeInfoKHR BuildOffsets{ NumInstances, 0, 0, 0 };
@@ -191,25 +187,23 @@ namespace Yuki::RHI {
 		BufferDestroy(ScratchBuffer);
 
 		FenceDestroy(Fence);
-		CommandPoolDestroy(CmdPool);
+		CommandPoolDestroy(CmdPool);*/
 
-		return Handle;
+		return { AccelerationStructure };
 	}
 
-	uint64_t VulkanRenderDevice::AccelerationStructureGetTopLevelAddress(AccelerationStructureRH InAccelerationStructure)
+	/*uint64_t AccelerationStructure::GetTopLevelAddress()
 	{
-		const auto& AccelerationStructure = m_AccelerationStructures[InAccelerationStructure];
-
 		VkAccelerationStructureDeviceAddressInfoKHR AddressInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
-			.accelerationStructure = AccelerationStructure.TopLevelAS
+			.accelerationStructure = m_Impl->TopLevelAS
 		};
 		return vkGetAccelerationStructureDeviceAddressKHR(m_Device, &AddressInfo);
 	}
 
 	void VulkanRenderDevice::AccelerationStructureDestroy(AccelerationStructureRH InAccelerationStructure)
 	{
-	}
+	}*/
 
 }

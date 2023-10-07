@@ -2,7 +2,7 @@
 #include <Engine/Common/EngineTime.hpp>
 #include <Engine/Common/WindowSystem.hpp>
 
-#include <Engine/RHI/Context.hpp>
+#include <Engine/RHI/RenderHandles.hpp>
 #include <Engine/Input/InputContext.hpp>
 
 #include <iostream>
@@ -34,7 +34,7 @@ public:
 		: Yuki::Application()
 	{
 		using enum Yuki::RHI::RendererFeature;
-		m_RHIContext = Yuki::RHI::Context::New({
+		m_RHIContext = Yuki::RHI::Context::Create({
 			.RequestedFeatures = {
 				RayTracing,
 			},
@@ -44,14 +44,14 @@ public:
 			.Title = "My Window"
 		});
 
-		auto& RenderDevice = m_RHIContext->GetRenderDevice();
+		/*auto& RenderDevice = m_RHIContext->GetRenderDevice();
 
 		m_GraphicsQueue = RenderDevice.QueueRequest(Yuki::RHI::QueueType::Graphics);
 
 		m_Swapchain = RenderDevice.SwapchainCreate(m_WindowSystem, m_Window);
 
 		m_Fence = RenderDevice.FenceCreate();
-		m_CommandPool = RenderDevice.CommandPoolCreate(m_GraphicsQueue);
+		m_CommandPool = RenderDevice.CommandPoolCreate(m_GraphicsQueue);*/
 
 		std::array Vertices =
 		{
@@ -65,7 +65,7 @@ public:
 			0U, 1U, 2U
 		};
 
-		auto StagingBuffer = RenderDevice.BufferCreate(Vertices.size() * sizeof(Vertex), Yuki::RHI::BufferUsage::TransferSrc, true);
+		/*auto StagingBuffer = RenderDevice.BufferCreate(Vertices.size() * sizeof(Vertex), Yuki::RHI::BufferUsage::TransferSrc, true);
 		RenderDevice.BufferSetData(StagingBuffer, Vertices.data());
 
 		m_VertexBuffer = RenderDevice.BufferCreate(Vertices.size() * sizeof(Vertex), Yuki::RHI::BufferUsage::Storage | Yuki::RHI::BufferUsage::AccelerationStructureBuildInput | Yuki::RHI::BufferUsage::TransferDst);
@@ -131,7 +131,7 @@ public:
 			}
 		});
 
-		c_PushConstants.CameraZOffset = 1.0f / std::tanf(0.5f * 1.22173048f);
+		c_PushConstants.CameraZOffset = 1.0f / std::tanf(0.5f * 1.22173048f);*/
 
 		/*m_CameraInput.Bind<Yuki::RangedInput>(Yuki::RangedInput{
 			{
@@ -172,7 +172,7 @@ public:
 	{
 		m_WindowSystem.PollMessages();
 
-		auto& RenderDevice = m_RHIContext->GetRenderDevice();
+		/*auto& RenderDevice = m_RHIContext->GetRenderDevice();
 
 		RenderDevice.FenceWait(m_Fence);
 
@@ -280,11 +280,11 @@ public:
 		RenderDevice.CommandListImageBarrier(CmdList, { .Images = { SwapchainImage }, .Layouts = { Yuki::RHI::ImageLayout::Present } });
 		RenderDevice.CommandListEnd(CmdList);
 		RenderDevice.QueueSubmit(m_GraphicsQueue, { CmdList }, { m_Fence }, { m_Fence });
-		RenderDevice.QueuePresent(m_GraphicsQueue, { m_Swapchain }, { m_Fence });
+		RenderDevice.QueuePresent(m_GraphicsQueue, { m_Swapchain }, { m_Fence });*/
 	}
 
 private:
-	Yuki::Unique<Yuki::RHI::Context> m_RHIContext;
+	Yuki::RHI::Context m_RHIContext;
 	Yuki::WindowSystem m_WindowSystem;
 	Yuki::WindowHandle m_Window;
 	Yuki::RHI::SwapchainRH m_Swapchain;

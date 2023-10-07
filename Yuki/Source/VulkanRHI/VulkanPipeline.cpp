@@ -1,4 +1,4 @@
-#include "VulkanPipeline.hpp"
+#include "VulkanRHI.hpp"
 #include "VulkanRenderDevice.hpp"
 #include "VulkanUtils.hpp"
 
@@ -15,9 +15,9 @@ namespace Yuki::RHI {
 		{ ShaderStage::RayClosestHit,	VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR },
 	};
 
-	PipelineRH VulkanRenderDevice::PipelineCreate(const PipelineInfo& InPipelineInfo)
+	Pipeline Pipeline::Create(Context InContext, const PipelineInfo& InPipelineInfo)
 	{
-		auto[Handle, Pipeline] = m_Pipelines.Acquire();
+		auto Pipeline = new Pipeline::Impl();
 
 		DynamicArray<VkPipelineShaderStageCreateInfo> ShaderStages;
 
@@ -31,7 +31,7 @@ namespace Yuki::RHI {
 			auto& Stage = ShaderStages.emplace_back();
 			Stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			Stage.pNext = nullptr;
-			Stage.module = m_ShaderCompiler.CompileOrGetModule(m_Device, ShaderInfo.FilePath, ShaderInfo.Stage);
+			//Stage.module = m_ShaderCompiler.CompileOrGetModule(m_Device, ShaderInfo.FilePath, ShaderInfo.Stage);
 			Stage.stage = c_ShaderStageLookup.at(ShaderInfo.Stage);
 			Stage.pName = "main";
 		}
@@ -39,7 +39,7 @@ namespace Yuki::RHI {
 		DynamicArray<VkDescriptorSetLayout> DescriptorSetLayouts;
 		DescriptorSetLayouts.reserve(InPipelineInfo.DescriptorLayouts.Count());
 		for (auto LayoutHandle : InPipelineInfo.DescriptorLayouts)
-			DescriptorSetLayouts.emplace_back(m_DescriptorSetLayouts[LayoutHandle].Handle);
+			DescriptorSetLayouts.emplace_back(LayoutHandle->Handle);
 
 		VkPushConstantRange PushConstants =
 		{
@@ -58,7 +58,7 @@ namespace Yuki::RHI {
 			.pPushConstantRanges = InPipelineInfo.PushConstantSize > 0 ? &PushConstants : nullptr,
 		};
 
-		YUKI_VERIFY(vkCreatePipelineLayout(m_Device, &LayoutInfo, nullptr, &Pipeline.Layout) == VK_SUCCESS);
+		YUKI_VERIFY(vkCreatePipelineLayout(InContext->Device, &LayoutInfo, nullptr, &Pipeline->Layout) == VK_SUCCESS);
 
 		DynamicArray<VkFormat> ColorAttachmentFormats;
 		DynamicArray<VkPipelineColorBlendAttachmentState> ColorAttachmentBlendStates;
@@ -182,25 +182,25 @@ namespace Yuki::RHI {
 			.pDepthStencilState = &DepthStencilCreateInfo,
 			.pColorBlendState = &ColorBlendStateCreateInfo,
 			.pDynamicState = &DynamicStateCreateInfo,
-			.layout = Pipeline.Layout,
+			.layout = Pipeline->Layout,
 		};
 
-		YUKI_VERIFY(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, nullptr, &Pipeline.Handle) == VK_SUCCESS);
+		YUKI_VERIFY(vkCreateGraphicsPipelines(InContext->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, nullptr, &Pipeline->Handle) == VK_SUCCESS);
 
-		return Handle;
+		return { Pipeline };
 	}
 
-	void VulkanRenderDevice::PipelineDestroy(PipelineRH InPipeline)
+	/*void VulkanRenderDevice::PipelineDestroy(PipelineRH InPipeline)
 	{
 		auto& Pipeline = m_Pipelines[InPipeline];
 		vkDestroyPipeline(m_Device, Pipeline.Handle, nullptr);
 		vkDestroyPipelineLayout(m_Device, Pipeline.Layout, nullptr);
 		m_Pipelines.Return(InPipeline);
-	}
+	}*/
 
-	RayTracingPipelineRH VulkanRenderDevice::RayTracingPipelineCreate(const RayTracingPipelineInfo& InPipelineInfo)
+	RayTracingPipeline RayTracingPipeline::Create(Context InContext, const RayTracingPipelineInfo& InPipelineInfo)
 	{
-		auto [Handle, Pipeline] = m_RayTracingPipelines.Acquire();
+		auto Pipeline = new Impl();
 
 		DynamicArray<VkPipelineShaderStageCreateInfo> ShaderStages;
 
@@ -215,7 +215,7 @@ namespace Yuki::RHI {
 			auto& Stage = ShaderStages.emplace_back();
 			Stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			Stage.pNext = nullptr;
-			Stage.module = m_ShaderCompiler.CompileOrGetModule(m_Device, ShaderInfo.FilePath, ShaderInfo.Stage);
+			//Stage.module = m_ShaderCompiler.CompileOrGetModule(m_Device, ShaderInfo.FilePath, ShaderInfo.Stage);
 			Stage.stage = c_ShaderStageLookup.at(ShaderInfo.Stage);
 			Stage.pName = "main";
 		}
@@ -223,7 +223,7 @@ namespace Yuki::RHI {
 		DynamicArray<VkDescriptorSetLayout> DescriptorSetLayouts;
 		DescriptorSetLayouts.reserve(InPipelineInfo.DescriptorLayouts.Count());
 		for (auto LayoutHandle : InPipelineInfo.DescriptorLayouts)
-			DescriptorSetLayouts.emplace_back(m_DescriptorSetLayouts[LayoutHandle].Handle);
+			DescriptorSetLayouts.emplace_back(LayoutHandle->Handle);
 
 		VkPushConstantRange PushConstants =
 		{
@@ -242,7 +242,7 @@ namespace Yuki::RHI {
 			.pPushConstantRanges = InPipelineInfo.PushConstantSize > 0 ? &PushConstants : nullptr,
 		};
 
-		YUKI_VERIFY(vkCreatePipelineLayout(m_Device, &LayoutInfo, nullptr, &Pipeline.Layout) == VK_SUCCESS);
+		YUKI_VERIFY(vkCreatePipelineLayout(InContext->Device, &LayoutInfo, nullptr, &Pipeline->Layout) == VK_SUCCESS);
 
 		DynamicArray<VkRayTracingShaderGroupCreateInfoKHR> ShaderGroups;
 		for (uint32_t Index = 0; Index < ShaderStages.size(); Index++)
@@ -285,11 +285,11 @@ namespace Yuki::RHI {
 			.groupCount = Cast<uint32_t>(ShaderGroups.size()),
 			.pGroups = ShaderGroups.data(),
 			.maxPipelineRayRecursionDepth = 1,
-			.layout = Pipeline.Layout,
+			.layout = Pipeline->Layout,
 		};
-		YUKI_VERIFY(vkCreateRayTracingPipelinesKHR(m_Device, {}, {}, 1, &RayTracingPipelineInfo, nullptr, &Pipeline.Handle) == VK_SUCCESS);
+		YUKI_VERIFY(vkCreateRayTracingPipelinesKHR(InContext->Device, {}, {}, 1, &RayTracingPipelineInfo, nullptr, &Pipeline->Handle) == VK_SUCCESS);
 
-		const auto& RTProperties = GetFeature<VulkanRaytracingFeature>().GetRayTracingProperties();
+		/*const auto& RTProperties = InContext.GetFeature<VulkanRaytracingFeature>().GetRayTracingProperties();
 
 		uint32_t HandleCount = Cast<uint32_t>(InPipelineInfo.Shaders.Count());
 		uint32_t HandleSize = RTProperties.shaderGroupHandleSize;
@@ -342,12 +342,12 @@ namespace Yuki::RHI {
 		{
 			memcpy(DataPtr, GetHandle(HandleIndex++), HandleSize);
 			DataPtr += Pipeline.ClosestHitGenRegion.stride;
-		}
+		}*/
 
-		return Handle;
+		return { Pipeline };
 	}
 
-	void VulkanRenderDevice::RayTracingPipelineDestroy(RayTracingPipelineRH InPipeline)
+	/*void VulkanRenderDevice::RayTracingPipelineDestroy(RayTracingPipelineRH InPipeline)
 	{
 		auto& Pipeline = m_RayTracingPipelines[InPipeline];
 
@@ -356,6 +356,6 @@ namespace Yuki::RHI {
 		vkDestroyPipeline(m_Device, Pipeline.Handle, nullptr);
 		vkDestroyPipelineLayout(m_Device, Pipeline.Layout, nullptr);
 		m_RayTracingPipelines.Return(InPipeline);
-	}
+	}*/
 
 }

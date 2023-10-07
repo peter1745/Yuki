@@ -1,12 +1,13 @@
-#include "VulkanSwapchain.hpp"
+#include "VulkanRHI.hpp"
 #include "VulkanRenderDevice.hpp"
 #include "VulkanUtils.hpp"
 #include "VulkanPlatformUtils.hpp"
-#include "VulkanImage.hpp"
+
+#include "Engine/Common/WindowSystem.hpp"
 
 namespace Yuki::RHI {
 
-	void VulkanRenderDevice::SwapchainRecreate(VulkanSwapchain& InSwapchain)
+	/*void VulkanRenderDevice::SwapchainRecreate(VulkanSwapchain& InSwapchain)
 	{
 		auto OldSwapchain = InSwapchain.Handle;
 
@@ -101,21 +102,21 @@ namespace Yuki::RHI {
 
 		if (OldSwapchain != VK_NULL_HANDLE)
 			vkDestroySwapchainKHR(m_Device, OldSwapchain, nullptr);
-	}
+	}*/
 
-	SwapchainRH VulkanRenderDevice::SwapchainCreate(const WindowSystem& InWindowSystem, UniqueID InWindowHandle)
+	Swapchain Swapchain::Create(Context InContext, const WindowSystem& InWindowSystem, UniqueID InWindowHandle)
 	{
-		auto[Handle, Swapchain] = m_Swapchains.Acquire();
-		Swapchain.WindowingSystem = &InWindowSystem;
-		Swapchain.TargetWindow = InWindowHandle;
-		Swapchain.Surface = Vulkan::CreateSurface(m_Instance, InWindowSystem, InWindowHandle);
+		auto Swapchain = new Swapchain::Impl();
+		Swapchain->WindowingSystem = &InWindowSystem;
+		Swapchain->TargetWindow = InWindowHandle;
+		Swapchain->Surface = Vulkan::CreateSurface(InContext->Instance, InWindowSystem, InWindowHandle);
 
-		SwapchainRecreate(Swapchain);
+		//SwapchainRecreate(Swapchain);
 
-		return Handle;
+		return { Swapchain };
 	}
 
-	ImageRH VulkanRenderDevice::SwapchainGetCurrentImage(SwapchainRH InSwapchain)
+	/*ImageRH VulkanRenderDevice::SwapchainGetCurrentImage(SwapchainRH InSwapchain)
 	{
 		const auto& Swapchain = m_Swapchains[InSwapchain];
 		return Swapchain.Images[Swapchain.CurrentImageIndex];
@@ -130,6 +131,6 @@ namespace Yuki::RHI {
 	void VulkanRenderDevice::SwapchainDestroy(SwapchainRH InSwapchain)
 	{
 
-	}
+	}*/
 
 }

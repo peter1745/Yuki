@@ -6,9 +6,5 @@
 
 namespace Yuki::RHI {
 
-	struct ImageBarrier
-	{
-		Span<ImageRH> Images;
-		Span<ImageLayout> Layouts;
-	};
+	
 }

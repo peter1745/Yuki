@@ -1,11 +1,11 @@
-#include "VulkanFence.hpp"
+#include "VulkanRHI.hpp"
 #include "VulkanRenderDevice.hpp"
 
 namespace Yuki::RHI {
 
-	FenceRH VulkanRenderDevice::FenceCreate()
+	Fence Fence::Create(Context InContext)
 	{
-		auto[Handle, Fence] = m_Fences.Acquire();
+		auto Fence = new Impl();
 
 		VkSemaphoreTypeCreateInfo SemaphoreTypeInfo =
 		{
@@ -21,11 +21,11 @@ namespace Yuki::RHI {
 			.pNext = &SemaphoreTypeInfo
 		};
 
-		YUKI_VERIFY(vkCreateSemaphore(m_Device, &SemaphoreInfo, nullptr, &Fence.Handle) == VK_SUCCESS);
-		return Handle;
+		YUKI_VERIFY(vkCreateSemaphore(InContext->Device, &SemaphoreInfo, nullptr, &Fence->Handle) == VK_SUCCESS);
+		return { Fence };
 	}
 
-	void VulkanRenderDevice::FenceWait(FenceRH InFence, uint64_t InValue)
+	/*void VulkanRenderDevice::FenceWait(FenceRH InFence, uint64_t InValue)
 	{
 		auto& Fence = m_Fences[InFence];
 		VkSemaphoreWaitInfo WaitInfo =
@@ -43,5 +43,5 @@ namespace Yuki::RHI {
 		auto& Fence = m_Fences[InFence];
 		vkDestroySemaphore(m_Device, Fence.Handle, nullptr);
 		m_Fences.Return(InFence);
-	}
+	}*/
 }

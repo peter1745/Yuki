@@ -1,5 +1,4 @@
-#include "VulkanBuffer.hpp"
-#include "VulkanRenderDevice.hpp"
+#include "VulkanRHI.hpp"
 
 namespace Yuki::RHI {
 
@@ -19,10 +18,10 @@ namespace Yuki::RHI {
 		return Result;
 	}
 
-	BufferRH VulkanRenderDevice::BufferCreate(uint64_t InSize, BufferUsage InUsage, bool InHostAccess)
+	Buffer Buffer::Create(Context InContext, uint64_t InSize, BufferUsage InUsage, bool InHostAccess)
 	{
-		auto[Handle, Buffer] = m_Buffers.Acquire();
-		Buffer.Size = InSize;
+		auto Buffer = new Impl();
+		Buffer->Size = InSize;
 
 		VmaAllocationCreateInfo AllocationInfo = { .usage = VMA_MEMORY_USAGE_AUTO, };
 
@@ -43,19 +42,19 @@ namespace Yuki::RHI {
 			.pQueueFamilyIndices = nullptr,
 		};
 
-		vmaCreateBuffer(m_Allocator, &BufferInfo, &AllocationInfo, &Buffer.Handle, &Buffer.Allocation, nullptr);
+		vmaCreateBuffer(InContext->Allocator, &BufferInfo, &AllocationInfo, &Buffer->Handle, &Buffer->Allocation, nullptr);
 
 		VkBufferDeviceAddressInfo AddressInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-			.buffer = Buffer.Handle
+			.buffer = Buffer->Handle
 		};
-		Buffer.Address = vkGetBufferDeviceAddress(m_Device, &AddressInfo);
+		Buffer->Address = vkGetBufferDeviceAddress(InContext->Device, &AddressInfo);
 
-		return Handle;
+		return { Buffer };
 	}
 
-	void VulkanRenderDevice::BufferSetData(BufferRH InBuffer, const void* InData, uint64_t InDataSize)
+	/*void VulkanRenderDevice::BufferSetData(BufferRH InBuffer, const void* InData, uint64_t InDataSize)
 	{
 		auto& Buffer = m_Buffers[InBuffer];
 
@@ -85,6 +84,6 @@ namespace Yuki::RHI {
 		auto& Buffer = m_Buffers[InBuffer];
 		vmaDestroyBuffer(m_Allocator, Buffer.Handle, Buffer.Allocation);
 		m_Buffers.Return(InBuffer);
-	}
+	}*/
 
 }

@@ -1,4 +1,4 @@
-#include "VulkanDescriptors.hpp"
+#include "VulkanRHI.hpp"
 #include "VulkanRenderDevice.hpp"
 
 namespace Yuki::RHI {
@@ -37,9 +37,9 @@ namespace Yuki::RHI {
 		return Result;
 	}
 
-	DescriptorSetLayoutRH VulkanRenderDevice::DescriptorSetLayoutCreate(const DescriptorSetLayoutInfo& InLayoutInfo)
+	DescriptorSetLayout DescriptorSetLayout::Create(Context InContext, const DescriptorSetLayoutInfo& InLayoutInfo)
 	{
-		auto [Handle, Layout] = m_DescriptorSetLayouts.Acquire();
+		auto Layout = new Impl();
 
 		DynamicArray<VkDescriptorSetLayoutBinding> Bindings(InLayoutInfo.Descriptors.size());
 		for (uint32_t Index = 0; Index < InLayoutInfo.Descriptors.size(); Index++)
@@ -73,20 +73,20 @@ namespace Yuki::RHI {
 			.pBindings = Bindings.data(),
 		};
 
-		vkCreateDescriptorSetLayout(m_Device, &LayoutInfo, nullptr, &Layout.Handle);
-		return Handle;
+		vkCreateDescriptorSetLayout(InContext->Device, &LayoutInfo, nullptr, &Layout->Handle);
+		return { Layout };
 	}
 
-	void VulkanRenderDevice::DescriptorSetLayoutDestroy(DescriptorSetLayoutRH InLayout)
+	/*void VulkanRenderDevice::DescriptorSetLayoutDestroy(DescriptorSetLayoutRH InLayout)
 	{
 		auto& Layout = m_DescriptorSetLayouts[InLayout];
 		vkDestroyDescriptorSetLayout(m_Device, Layout.Handle, nullptr);
 		m_DescriptorSetLayouts.Return(InLayout);
-	}
+	}*/
 
-	DescriptorPoolRH VulkanRenderDevice::DescriptorPoolCreate(Span<DescriptorCount> InDescriptorCounts)
+	DescriptorPool DescriptorPool::Create(Context InContext, Span<DescriptorCount> InDescriptorCounts)
 	{
-		auto [Handle, Pool] = m_DescriptorPools.Acquire();
+		auto Pool = new Impl();
 
 		DynamicArray<VkDescriptorPoolSize> DescriptorSizes;
 		DescriptorSizes.reserve(InDescriptorCounts.Count());
@@ -110,19 +110,19 @@ namespace Yuki::RHI {
 			.pPoolSizes = DescriptorSizes.data(),
 		};
 
-		vkCreateDescriptorPool(m_Device, &DescriptorPoolInfo, nullptr, &Pool.Handle);
+		vkCreateDescriptorPool(InContext->Device, &DescriptorPoolInfo, nullptr, &Pool->Handle);
 
-		return Handle;
+		return { Pool };
 	}
 
-	void VulkanRenderDevice::DescriptorPoolDestroy(DescriptorPoolRH InPool)
+	/*void VulkanRenderDevice::DescriptorPoolDestroy(DescriptorPoolRH InPool)
 	{
 		auto& Pool = m_DescriptorPools[InPool];
 		vkDestroyDescriptorPool(m_Device, Pool.Handle, nullptr);
 		m_DescriptorPools.Return(InPool);
-	}
+	}*/
 
-	DescriptorSetRH VulkanRenderDevice::DescriptorPoolAllocateDescriptorSet(DescriptorPoolRH InPool, DescriptorSetLayoutRH InLayout)
+	/*DescriptorSetRH VulkanRenderDevice::DescriptorPoolAllocateDescriptorSet(DescriptorPoolRH InPool, DescriptorSetLayoutRH InLayout)
 	{
 		auto& Pool = m_DescriptorPools[InPool];
 		auto& Layout = m_DescriptorSetLayouts[InLayout];
@@ -177,6 +177,6 @@ namespace Yuki::RHI {
 		};
 
 		vkUpdateDescriptorSets(m_Device, 1, &writeDescriptor, 0, nullptr);
-	}
+	}*/
 
 }
