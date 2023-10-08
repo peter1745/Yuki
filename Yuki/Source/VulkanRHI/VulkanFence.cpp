@@ -1,11 +1,11 @@
 #include "VulkanRHI.hpp"
-#include "VulkanRenderDevice.hpp"
 
 namespace Yuki::RHI {
 
 	Fence Fence::Create(Context InContext)
 	{
 		auto Fence = new Impl();
+		Fence->Ctx = InContext;
 
 		VkSemaphoreTypeCreateInfo SemaphoreTypeInfo =
 		{
@@ -25,23 +25,21 @@ namespace Yuki::RHI {
 		return { Fence };
 	}
 
-	/*void VulkanRenderDevice::FenceWait(FenceRH InFence, uint64_t InValue)
+	void Fence::Destroy()
 	{
-		auto& Fence = m_Fences[InFence];
+		vkDestroySemaphore(m_Impl->Ctx->Device, m_Impl->Handle, nullptr);
+		delete m_Impl;
+	}
+
+	void Fence::Wait(uint64_t InValue)
+	{
 		VkSemaphoreWaitInfo WaitInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
 			.semaphoreCount = 1,
-			.pSemaphores = &Fence.Handle,
-			.pValues = InValue ? &InValue : &Fence.Value,
+			.pSemaphores = &m_Impl->Handle,
+			.pValues = InValue ? &InValue : &m_Impl->Value,
 		};
-		vkWaitSemaphores(m_Device, &WaitInfo, UINT64_MAX);
+		vkWaitSemaphores(m_Impl->Ctx->Device, &WaitInfo, UINT64_MAX);
 	}
-
-	void VulkanRenderDevice::FenceDestroy(FenceRH InFence)
-	{
-		auto& Fence = m_Fences[InFence];
-		vkDestroySemaphore(m_Device, Fence.Handle, nullptr);
-		m_Fences.Return(InFence);
-	}*/
 }

@@ -9,6 +9,8 @@
 
 namespace Yuki::RHI {
 
+	class VulkanShaderCompiler;
+
 	template<>
 	struct RenderHandle<Context>::Impl
 	{
@@ -24,11 +26,20 @@ namespace Yuki::RHI {
 		VkDebugUtilsMessengerEXT DebugMessengerHandle = VK_NULL_HANDLE;
 
 		HashMap<RendererFeature, Unique<VulkanFeature>> EnabledFeatures;
+
+		Unique<VulkanShaderCompiler> ShaderCompiler;
+
+		template<typename TFeatureClass>
+		TFeatureClass& GetFeature() const
+		{
+			return EnabledFeatures.at(TFeatureClass::GetRendererFeature());
+		}
 	};
 
 	template<>
 	struct RenderHandle<Queue>::Impl
 	{
+		Context Ctx = {};
 		VkQueue Handle = VK_NULL_HANDLE;
 		uint32_t Family = std::numeric_limits<uint32_t>::max();
 		uint32_t Index = 0;
@@ -38,22 +49,25 @@ namespace Yuki::RHI {
 	template<>
 	struct RenderHandle<Swapchain>::Impl
 	{
+		Context Ctx = {};
+
 		VkSwapchainKHR Handle = VK_NULL_HANDLE;
 		VkSurfaceKHR Surface = VK_NULL_HANDLE;
 		VkSurfaceFormatKHR SurfaceFormat = {};
-		DynamicArray<ImageRH> Images;
-		DynamicArray<ImageViewRH> ImageViews;
+		DynamicArray<Image> Images;
+		DynamicArray<ImageView> ImageViews;
 		uint32_t CurrentImageIndex = 0;
 		DynamicArray<VkSemaphore> Semaphores;
 		uint32_t CurrentSemaphoreIndex = 0;
 
-		const WindowSystem* WindowingSystem;
+		const WindowSystem* WindowingSystem = nullptr;
 		UniqueID TargetWindow;
 	};
 
 	template<>
 	struct RenderHandle<Fence>::Impl
 	{
+		Context Ctx = {};
 		VkSemaphore Handle = VK_NULL_HANDLE;
 		uint64_t Value = 0;
 	};
@@ -88,6 +102,7 @@ namespace Yuki::RHI {
 	template<>
 	struct RenderHandle<ImageView>::Impl
 	{
+		Context Ctx = {};
 		VkImageView Handle = VK_NULL_HANDLE;
 		ImageRH Image = {};
 	};
@@ -101,13 +116,15 @@ namespace Yuki::RHI {
 	template<>
 	struct RenderHandle<DescriptorPool>::Impl
 	{
+		Context Ctx = {};
 		VkDescriptorPool Handle;
-		DynamicArray<DescriptorSetRH> AllocatedSets;
+		DynamicArray<DescriptorSet> AllocatedSets;
 	};
 
 	template<>
 	struct RenderHandle<DescriptorSet>::Impl
 	{
+		Context Ctx = {};
 		VkDescriptorSet Handle;
 		DescriptorSetLayoutRH Layout = {};
 	};
@@ -115,8 +132,10 @@ namespace Yuki::RHI {
 	template<>
 	struct RenderHandle<CommandPool>::Impl
 	{
+		Context Ctx = {};
+
 		VkCommandPool Handle = VK_NULL_HANDLE;
-		DynamicArray<CommandListRH> AllocatedLists;
+		DynamicArray<CommandList> AllocatedLists;
 		size_t NextList = 0;
 	};
 
@@ -129,6 +148,7 @@ namespace Yuki::RHI {
 	template<>
 	struct RenderHandle<Buffer>::Impl
 	{
+		Context Ctx = {};
 		VkBuffer Handle = VK_NULL_HANDLE;
 		VmaAllocation Allocation = VK_NULL_HANDLE;
 		VkDeviceAddress Address = 0;
@@ -148,7 +168,7 @@ namespace Yuki::RHI {
 		VkPipeline Handle;
 		VkPipelineLayout Layout;
 
-		BufferRH SBTBuffer = {};
+		Buffer SBTBuffer = {};
 		VkStridedDeviceAddressRegionKHR RayGenRegion{};
 		VkStridedDeviceAddressRegionKHR MissGenRegion{};
 		VkStridedDeviceAddressRegionKHR ClosestHitGenRegion{};
@@ -158,10 +178,11 @@ namespace Yuki::RHI {
 	template<>
 	struct RenderHandle<AccelerationStructure>::Impl
 	{
+		Context Ctx = {};
 		VkAccelerationStructureKHR BottomLevelAS;
-		BufferRH AccelerationStructureStorage;
+		Buffer AccelerationStructureStorage;
 		VkAccelerationStructureKHR TopLevelAS;
-		BufferRH TopLevelAccelerationStructureStorage;
+		Buffer TopLevelAccelerationStructureStorage;
 	};
 
 }

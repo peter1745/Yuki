@@ -2,6 +2,7 @@
 #include "VulkanUtils.hpp"
 #include "VulkanRenderFeatures.hpp"
 #include "VulkanPlatformUtils.hpp"
+#include "VulkanShaderCompiler.hpp"
 
 namespace Yuki::RHI {
 
@@ -220,6 +221,7 @@ namespace Yuki::RHI {
 					for (uint32_t Index = 0; Index < QueueFamily.queueCount; Index++)
 					{
 						auto Queue = new QueueRH::Impl();
+						Queue->Ctx = { context };
 						Queue->Family = QueueFamilyIndex;
 						Queue->Index = Index;
 						Queue->Flags = QueueFamily.queueFlags;
@@ -298,6 +300,8 @@ namespace Yuki::RHI {
 			};
 			YUKI_VERIFY(vmaCreateAllocator(&AllocatorInfo, &context->Allocator) == VK_SUCCESS);
 		}
+
+		context->ShaderCompiler = Unique<VulkanShaderCompiler>::New();
 
 		return { context };
 	}

@@ -21,6 +21,7 @@ namespace Yuki::RHI {
 	Buffer Buffer::Create(Context InContext, uint64_t InSize, BufferUsage InUsage, bool InHostAccess)
 	{
 		auto Buffer = new Impl();
+		Buffer->Ctx = InContext;
 		Buffer->Size = InSize;
 
 		VmaAllocationCreateInfo AllocationInfo = { .usage = VMA_MEMORY_USAGE_AUTO, };
@@ -54,36 +55,31 @@ namespace Yuki::RHI {
 		return { Buffer };
 	}
 
-	/*void VulkanRenderDevice::BufferSetData(BufferRH InBuffer, const void* InData, uint64_t InDataSize)
+	void Buffer::SetData(const void* InData, uint64_t InDataSize)
 	{
-		auto& Buffer = m_Buffers[InBuffer];
-
-		InDataSize = std::min(InDataSize, Buffer.Size);
+		InDataSize = std::min(InDataSize, m_Impl->Size);
 
 		VmaAllocationInfo AllocationInfo;
-		vmaGetAllocationInfo(m_Allocator, Buffer.Allocation, &AllocationInfo);
+		vmaGetAllocationInfo(m_Impl->Ctx->Allocator, m_Impl->Allocation, &AllocationInfo);
 		memcpy(AllocationInfo.pMappedData, InData, InDataSize);
 	}
 
-	uint64_t VulkanRenderDevice::BufferGetDeviceAddress(BufferRH InBuffer)
+	uint64_t Buffer::GetDeviceAddress()
 	{
-		const auto& Buffer = m_Buffers[InBuffer];
-		return Buffer.Address;
+		return m_Impl->Address;
 	}
 
-	void* VulkanRenderDevice::BufferGetMappedMemory(BufferRH InBuffer)
+	void* Buffer::GetMappedMemory()
 	{
-		auto& Buffer = m_Buffers[InBuffer];
 		VmaAllocationInfo AllocationInfo;
-		vmaGetAllocationInfo(m_Allocator, Buffer.Allocation, &AllocationInfo);
+		vmaGetAllocationInfo(m_Impl->Ctx->Allocator, m_Impl->Allocation, &AllocationInfo);
 		return AllocationInfo.pMappedData;
 	}
 
-	void VulkanRenderDevice::BufferDestroy(BufferRH InBuffer)
+	void Buffer::Destroy()
 	{
-		auto& Buffer = m_Buffers[InBuffer];
-		vmaDestroyBuffer(m_Allocator, Buffer.Handle, Buffer.Allocation);
-		m_Buffers.Return(InBuffer);
-	}*/
+		vmaDestroyBuffer(m_Impl->Ctx->Allocator, m_Impl->Handle, m_Impl->Allocation);
+		delete m_Impl;
+	}
 
 }

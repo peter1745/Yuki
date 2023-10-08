@@ -1,6 +1,6 @@
 #include "VulkanRHI.hpp"
-#include "VulkanRenderDevice.hpp"
 #include "VulkanUtils.hpp"
+#include "VulkanShaderCompiler.hpp"
 
 #include "Features/VulkanRaytracingFeature.hpp"
 
@@ -31,7 +31,7 @@ namespace Yuki::RHI {
 			auto& Stage = ShaderStages.emplace_back();
 			Stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			Stage.pNext = nullptr;
-			//Stage.module = m_ShaderCompiler.CompileOrGetModule(m_Device, ShaderInfo.FilePath, ShaderInfo.Stage);
+			Stage.module = InContext->ShaderCompiler->CompileOrGetModule(InContext->Device, ShaderInfo.FilePath, ShaderInfo.Stage);
 			Stage.stage = c_ShaderStageLookup.at(ShaderInfo.Stage);
 			Stage.pName = "main";
 		}
@@ -215,7 +215,7 @@ namespace Yuki::RHI {
 			auto& Stage = ShaderStages.emplace_back();
 			Stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			Stage.pNext = nullptr;
-			//Stage.module = m_ShaderCompiler.CompileOrGetModule(m_Device, ShaderInfo.FilePath, ShaderInfo.Stage);
+			Stage.module = InContext->ShaderCompiler->CompileOrGetModule(InContext->Device, ShaderInfo.FilePath, ShaderInfo.Stage);
 			Stage.stage = c_ShaderStageLookup.at(ShaderInfo.Stage);
 			Stage.pName = "main";
 		}
@@ -289,60 +289,60 @@ namespace Yuki::RHI {
 		};
 		YUKI_VERIFY(vkCreateRayTracingPipelinesKHR(InContext->Device, {}, {}, 1, &RayTracingPipelineInfo, nullptr, &Pipeline->Handle) == VK_SUCCESS);
 
-		/*const auto& RTProperties = InContext.GetFeature<VulkanRaytracingFeature>().GetRayTracingProperties();
+		const auto& RTProperties = InContext->GetFeature<VulkanRaytracingFeature>().GetRayTracingProperties();
 
 		uint32_t HandleCount = Cast<uint32_t>(InPipelineInfo.Shaders.Count());
 		uint32_t HandleSize = RTProperties.shaderGroupHandleSize;
 		uint32_t HandleSizeAligned = AlignUp(HandleSize, RTProperties.shaderGroupHandleAlignment);
 
-		Pipeline.RayGenRegion = {
+		Pipeline->RayGenRegion = {
 			.stride = AlignUp(HandleSizeAligned, RTProperties.shaderGroupBaseAlignment),
 			.size = AlignUp(HandleSizeAligned, RTProperties.shaderGroupBaseAlignment),
 		};
 
-		Pipeline.MissGenRegion = {
+		Pipeline->MissGenRegion = {
 			.stride = HandleSizeAligned,
 			.size = AlignUp(1 * HandleSizeAligned, RTProperties.shaderGroupBaseAlignment),
 		};
 
-		Pipeline.ClosestHitGenRegion = {
+		Pipeline->ClosestHitGenRegion = {
 			.stride = HandleSizeAligned,
 			.size = AlignUp(1 * HandleSizeAligned, RTProperties.shaderGroupBaseAlignment),
 		};
 
 		uint32_t DataSize = HandleCount * HandleSize;
 		DynamicArray<uint8_t> Handles(DataSize);
-		vkGetRayTracingShaderGroupHandlesKHR(m_Device, Pipeline.Handle, 0, HandleCount, DataSize, Handles.data());
+		vkGetRayTracingShaderGroupHandlesKHR(InContext->Device, Pipeline->Handle, 0, HandleCount, DataSize, Handles.data());
 
-		uint64_t BufferSize = Pipeline.RayGenRegion.size + Pipeline.MissGenRegion.size + Pipeline.ClosestHitGenRegion.size + Pipeline.CallableGenRegion.size;
-		Pipeline.SBTBuffer = BufferCreate(BufferSize, BufferUsage::ShaderBindingTable, true);
+		uint64_t BufferSize = Pipeline->RayGenRegion.size + Pipeline->MissGenRegion.size + Pipeline->ClosestHitGenRegion.size + Pipeline->CallableGenRegion.size;
+		Pipeline->SBTBuffer = Buffer::Create(InContext, BufferSize, BufferUsage::ShaderBindingTable, true);
 
-		uint64_t BufferAddress = BufferGetDeviceAddress(Pipeline.SBTBuffer);
-		Pipeline.RayGenRegion.deviceAddress = BufferAddress;
-		Pipeline.MissGenRegion.deviceAddress = BufferAddress + Pipeline.RayGenRegion.size;
-		Pipeline.ClosestHitGenRegion.deviceAddress = BufferAddress + Pipeline.RayGenRegion.size + Pipeline.MissGenRegion.size;
+		uint64_t BufferAddress = Pipeline->SBTBuffer->Address;
+		Pipeline->RayGenRegion.deviceAddress = BufferAddress;
+		Pipeline->MissGenRegion.deviceAddress = BufferAddress + Pipeline->RayGenRegion.size;
+		Pipeline->ClosestHitGenRegion.deviceAddress = BufferAddress + Pipeline->RayGenRegion.size + Pipeline->MissGenRegion.size;
 
 		auto GetHandle = [&](uint32_t Index) { return Handles.data() + Index * HandleSize; };
 
-		auto* BufferData = reinterpret_cast<uint8_t*>(BufferGetMappedMemory(Pipeline.SBTBuffer));
+		auto* BufferData = reinterpret_cast<uint8_t*>(Pipeline->SBTBuffer.GetMappedMemory());
 		uint8_t* DataPtr = BufferData;
 		uint32_t HandleIndex = 0;
 
 		memcpy(DataPtr, GetHandle(HandleIndex++), HandleSize);
 
-		DataPtr = BufferData + Pipeline.RayGenRegion.size;
+		DataPtr = BufferData + Pipeline->RayGenRegion.size;
 		for (uint32_t Index = 0; Index < 1; Index++)
 		{
 			memcpy(DataPtr, GetHandle(HandleIndex++), HandleSize);
-			DataPtr += Pipeline.MissGenRegion.stride;
+			DataPtr += Pipeline->MissGenRegion.stride;
 		}
 
-		DataPtr = BufferData + Pipeline.RayGenRegion.size + Pipeline.MissGenRegion.size;
+		DataPtr = BufferData + Pipeline->RayGenRegion.size + Pipeline->MissGenRegion.size;
 		for (uint32_t Index = 0; Index < 1; Index++)
 		{
 			memcpy(DataPtr, GetHandle(HandleIndex++), HandleSize);
-			DataPtr += Pipeline.ClosestHitGenRegion.stride;
-		}*/
+			DataPtr += Pipeline->ClosestHitGenRegion.stride;
+		}
 
 		return { Pipeline };
 	}

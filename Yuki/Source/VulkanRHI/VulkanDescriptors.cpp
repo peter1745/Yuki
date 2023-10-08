@@ -1,5 +1,4 @@
 #include "VulkanRHI.hpp"
-#include "VulkanRenderDevice.hpp"
 
 namespace Yuki::RHI {
 
@@ -87,6 +86,7 @@ namespace Yuki::RHI {
 	DescriptorPool DescriptorPool::Create(Context InContext, Span<DescriptorCount> InDescriptorCounts)
 	{
 		auto Pool = new Impl();
+		Pool->Ctx = InContext;
 
 		DynamicArray<VkDescriptorPoolSize> DescriptorSizes;
 		DescriptorSizes.reserve(InDescriptorCounts.Count());
@@ -122,45 +122,41 @@ namespace Yuki::RHI {
 		m_DescriptorPools.Return(InPool);
 	}*/
 
-	/*DescriptorSetRH VulkanRenderDevice::DescriptorPoolAllocateDescriptorSet(DescriptorPoolRH InPool, DescriptorSetLayoutRH InLayout)
+	DescriptorSet DescriptorPool::AllocateDescriptorSet(DescriptorSetLayoutRH InLayout)
 	{
-		auto& Pool = m_DescriptorPools[InPool];
-		auto& Layout = m_DescriptorSetLayouts[InLayout];
-
-		auto [Handle, Set] = m_DescriptorSets.Acquire();
-		Set.Layout = InLayout;
+		auto Set = new DescriptorSet::Impl();
+		Set->Ctx = m_Impl->Ctx;
+		Set->Layout = InLayout;
 
 		VkDescriptorSetAllocateInfo AllocateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
 			.pNext = nullptr,
-			.descriptorPool = Pool.Handle,
+			.descriptorPool = m_Impl->Handle,
 			.descriptorSetCount = 1,
-			.pSetLayouts = &Layout.Handle,
+			.pSetLayouts = &InLayout->Handle,
 		};
 
-		vkAllocateDescriptorSets(m_Device, &AllocateInfo, &Set.Handle);
+		vkAllocateDescriptorSets(m_Impl->Ctx->Device, &AllocateInfo, &Set->Handle);
 
-		Pool.AllocatedSets.emplace_back(Handle);
-		return Handle;
+		DescriptorSet Result = { Set };
+		m_Impl->AllocatedSets.push_back(Result);
+		return Result;
 	}
 
-	void VulkanRenderDevice::DescriptorSetWrite(DescriptorSetRH InSet, uint32_t InBinding, Span<ImageViewRH> InImageViews, uint32_t InArrayOffset)
+	void DescriptorSet::Write(uint32_t InBinding, Span<ImageViewRH> InImageViews, uint32_t InArrayOffset)
 	{
 		if (InImageViews.IsEmpty())
 			return;
 
-		auto& Set = m_DescriptorSets[InSet];
-
 		DynamicArray<VkDescriptorImageInfo> DescriptorImageInfos;
 		DescriptorImageInfos.reserve(InImageViews.Count());
 
-		for (auto imageViewHandle : InImageViews)
+		for (auto View : InImageViews)
 		{
-			auto& ImageView = m_ImageViews.Get(imageViewHandle);
 			auto& DescriptorImageInfo = DescriptorImageInfos.emplace_back();
 			DescriptorImageInfo.sampler = VK_NULL_HANDLE;
-			DescriptorImageInfo.imageView = ImageView.Handle;
+			DescriptorImageInfo.imageView = View->Handle;
 			DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 		}
 
@@ -168,7 +164,7 @@ namespace Yuki::RHI {
 		{
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 			.pNext = nullptr,
-			.dstSet = Set.Handle,
+			.dstSet = m_Impl->Handle,
 			.dstBinding = InBinding,
 			.dstArrayElement = InArrayOffset,
 			.descriptorCount = uint32_t(DescriptorImageInfos.size()),
@@ -176,7 +172,7 @@ namespace Yuki::RHI {
 			.pImageInfo = DescriptorImageInfos.data(),
 		};
 
-		vkUpdateDescriptorSets(m_Device, 1, &writeDescriptor, 0, nullptr);
-	}*/
+		vkUpdateDescriptorSets(m_Impl->Ctx->Device, 1, &writeDescriptor, 0, nullptr);
+	}
 
 }

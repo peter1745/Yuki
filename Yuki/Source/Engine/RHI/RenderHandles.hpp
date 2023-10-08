@@ -198,19 +198,21 @@ namespace Yuki::RHI {
 
 		bool IsFeatureEnabled(RendererFeature InFeature) const;
 
-		QueueRH RequestQueue(QueueType InType) const;
+		Queue RequestQueue(QueueType InType) const;
 	};
 
 	struct Queue : RenderHandle<Queue>
 	{
-		void AcquireImages(Span<SwapchainRH> InSwapchains, Span<FenceRH> InFences);
+		void AcquireImages(Span<Swapchain> InSwapchains, Span<Fence> InFences);
 		void Submit(Span<CommandListRH> InCommandLists, Span<FenceRH> InWaits, Span<FenceRH> InSignals);
-		void Present(Span<SwapchainRH> InSwapchains, Span<FenceRH> InFences);
+		void Present(Span<Swapchain> InSwapchains, Span<Fence> InFences);
 	};
 
 	struct Swapchain : RenderHandle<Swapchain>
 	{
 		static Swapchain Create(Context InContext, const WindowSystem& InWindowSystem, UniqueID InWindowHandle);
+
+		void Recreate() const;
 
 		ImageRH GetCurrentImage();
 		ImageViewRH GetCurrentImageView();
@@ -219,16 +221,18 @@ namespace Yuki::RHI {
 	struct Fence : RenderHandle<Fence>
 	{
 		static Fence Create(Context InContext);
+		void Destroy();
 
 		void Wait(uint64_t InValue = 0);
 	};
 
 	struct CommandPool : RenderHandle<CommandPool>
 	{
-		static CommandPool Create(ContextRH InContext, QueueRH InQueue);
+		static CommandPool Create(Context InContext, QueueRH InQueue);
+		void Destroy();
 
 		void Reset();
-		CommandListRH NewList();
+		CommandList NewList();
 	};
 
 	struct Viewport
@@ -241,6 +245,8 @@ namespace Yuki::RHI {
 
 	struct CommandList : RenderHandle<CommandList>
 	{
+		friend CommandPool;
+
 		void Begin();
 		void ImageBarrier(ImageBarrier InBarrier);
 		void BeginRendering(RenderTarget InRenderTarget);
@@ -261,16 +267,19 @@ namespace Yuki::RHI {
 
 	struct Image : RenderHandle<Image>
 	{
+		friend Swapchain;
 	};
 
 	struct ImageView : RenderHandle<ImageView>
 	{
 		static ImageView Create(Context InContext, ImageRH InImage);
+		void Destroy();
 	};
 
 	struct Buffer : RenderHandle<Buffer>
 	{
 		static Buffer Create(Context InContext, uint64_t InSize, BufferUsage InUsage, bool InHostAccess = false);
+		void Destroy();
 
 		void SetData(const void* InData, uint64_t InDataSize = ~0);
 		uint64_t GetDeviceAddress();
@@ -286,7 +295,7 @@ namespace Yuki::RHI {
 	{
 		static DescriptorPool Create(Context InContext, Span<DescriptorCount> InDescriptorCounts);
 
-		DescriptorSetRH AllocateDescriptorSet(DescriptorSetLayoutRH InLayout);
+		DescriptorSet AllocateDescriptorSet(DescriptorSetLayoutRH InLayout);
 	};
 
 	struct DescriptorSet : RenderHandle<DescriptorSet>

@@ -1,5 +1,4 @@
 #include "VulkanRHI.hpp"
-#include "VulkanRenderDevice.hpp"
 #include "VulkanUtils.hpp"
 #include "VulkanPlatformUtils.hpp"
 
@@ -7,26 +6,26 @@
 
 namespace Yuki::RHI {
 
-	/*void VulkanRenderDevice::SwapchainRecreate(VulkanSwapchain& InSwapchain)
+	void Swapchain::Recreate() const
 	{
-		auto OldSwapchain = InSwapchain.Handle;
+		auto OldSwapchain = m_Impl->Handle;
 
 		if (OldSwapchain != VK_NULL_HANDLE)
 		{
-			for (auto ImageView : InSwapchain.ImageViews)
-				ImageViewDestroy(ImageView);
+			for (auto ImageView : m_Impl->ImageViews)
+				ImageView.Destroy();
 		}
 
 		VkSurfaceCapabilitiesKHR SurfaceCapabilities;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_PhysicalDevice, InSwapchain.Surface, &SurfaceCapabilities);
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_Impl->Ctx->PhysicalDevice, m_Impl->Surface, &SurfaceCapabilities);
 
 		DynamicArray<VkSurfaceFormatKHR> SurfaceFormats;
-		Vulkan::Enumerate(vkGetPhysicalDeviceSurfaceFormatsKHR, SurfaceFormats, m_PhysicalDevice, InSwapchain.Surface);
+		Vulkan::Enumerate(vkGetPhysicalDeviceSurfaceFormatsKHR, SurfaceFormats, m_Impl->Ctx->PhysicalDevice, m_Impl->Surface);
 		for (auto Format : SurfaceFormats)
 		{
 			if (Format.format == VK_FORMAT_R8G8B8A8_UNORM || Format.format == VK_FORMAT_B8G8R8A8_UNORM)
 			{
-				InSwapchain.SurfaceFormat = Format;
+				m_Impl->SurfaceFormat = Format;
 				break;
 			}
 		}
@@ -35,7 +34,7 @@ namespace Yuki::RHI {
 		uint32_t Height = SurfaceCapabilities.currentExtent.height;
 		if (Width == std::numeric_limits<uint32_t>::max())
 		{
-			const auto& WindowData = InSwapchain.WindowingSystem->GetWindowData(InSwapchain.TargetWindow);
+			const auto& WindowData = m_Impl->WindowingSystem->GetWindowData(m_Impl->TargetWindow);
 			Width = std::clamp(WindowData.Width, SurfaceCapabilities.minImageExtent.width, SurfaceCapabilities.maxImageExtent.width);
 			Height = std::clamp(WindowData.Height, SurfaceCapabilities.minImageExtent.height, SurfaceCapabilities.maxImageExtent.height);
 		}
@@ -45,10 +44,10 @@ namespace Yuki::RHI {
 			.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
 			.pNext = nullptr,
 			.flags = 0,
-			.surface = InSwapchain.Surface,
+			.surface = m_Impl->Surface,
 			.minImageCount = std::min(SurfaceCapabilities.minImageCount + 1, SurfaceCapabilities.maxImageCount),
-			.imageFormat = InSwapchain.SurfaceFormat.format,
-			.imageColorSpace = InSwapchain.SurfaceFormat.colorSpace,
+			.imageFormat = m_Impl->SurfaceFormat.format,
+			.imageColorSpace = m_Impl->SurfaceFormat.colorSpace,
 			.imageExtent = { Width, Height },
 			.imageArrayLayers = 1,
 			.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
@@ -61,74 +60,73 @@ namespace Yuki::RHI {
 			.clipped = VK_TRUE,
 			.oldSwapchain = OldSwapchain,
 		};
-		YUKI_VERIFY(vkCreateSwapchainKHR(m_Device, &SwapchainInfo, nullptr, &InSwapchain.Handle) == VK_SUCCESS);
+		YUKI_VERIFY(vkCreateSwapchainKHR(m_Impl->Ctx->Device, &SwapchainInfo, nullptr, &m_Impl->Handle) == VK_SUCCESS);
 
-		for (auto ImageHandle : InSwapchain.Images)
+		for (auto ImageHandle : m_Impl->Images)
 		{
-			auto& Image = m_Images[ImageHandle];
-			Image.Handle = VK_NULL_HANDLE;
-			m_Images.Return(ImageHandle);
+			delete ImageHandle.m_Impl;
 		}
 
 		DynamicArray<VkImage> Images;
-		Vulkan::Enumerate(vkGetSwapchainImagesKHR, Images, m_Device, InSwapchain.Handle);
+		Vulkan::Enumerate(vkGetSwapchainImagesKHR, Images, m_Impl->Ctx->Device, m_Impl->Handle);
 
-		InSwapchain.Images.resize(Images.size());
+		m_Impl->Images.resize(Images.size());
 
 		for (size_t Index = 0; Index < Images.size(); Index++)
 		{
-			auto[ImageHandle, ImageData] = m_Images.Acquire();
-			ImageData.Handle = Images[Index];
-			ImageData.Width = Width;
-			ImageData.Height = Height;
-			ImageData.Format = InSwapchain.SurfaceFormat.format;
-			ImageData.AspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			ImageData.Layout = VK_IMAGE_LAYOUT_UNDEFINED;
-			ImageData.OldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			InSwapchain.Images[Index] = ImageHandle;
+			auto ImageData = new Image::Impl();
+			ImageData->Handle = Images[Index];
+			ImageData->Width = Width;
+			ImageData->Height = Height;
+			ImageData->Format = m_Impl->SurfaceFormat.format;
+			ImageData->AspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			ImageData->Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+			ImageData->OldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			m_Impl->Images[Index] = { ImageData };
 		}
 
-		InSwapchain.ImageViews.resize(InSwapchain.Images.size());
-		for (size_t Index = 0; Index < InSwapchain.Images.size(); Index++)
-			InSwapchain.ImageViews[Index] = ImageViewCreate(InSwapchain.Images[Index]);
+		m_Impl->ImageViews.resize(m_Impl->Images.size());
+		for (size_t Index = 0; Index < m_Impl->Images.size(); Index++)
+		{
+			m_Impl->ImageViews[Index] = ImageView::Create(m_Impl->Ctx, m_Impl->Images[Index]);
+		}
 
-		while (InSwapchain.Semaphores.size() < InSwapchain.Images.size() * 2)
+		while (m_Impl->Semaphores.size() < m_Impl->Images.size() * 2)
 		{
 			VkSemaphoreCreateInfo SemaphoreInfo = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 			VkSemaphore Semaphore;
-			YUKI_VERIFY(vkCreateSemaphore(m_Device, &SemaphoreInfo, nullptr, &Semaphore) == VK_SUCCESS);
-			InSwapchain.Semaphores.push_back(Semaphore);
+			YUKI_VERIFY(vkCreateSemaphore(m_Impl->Ctx->Device, &SemaphoreInfo, nullptr, &Semaphore) == VK_SUCCESS);
+			m_Impl->Semaphores.push_back(Semaphore);
 		}
 
 		if (OldSwapchain != VK_NULL_HANDLE)
-			vkDestroySwapchainKHR(m_Device, OldSwapchain, nullptr);
-	}*/
+			vkDestroySwapchainKHR(m_Impl->Ctx->Device, OldSwapchain, nullptr);
+	}
 
 	Swapchain Swapchain::Create(Context InContext, const WindowSystem& InWindowSystem, UniqueID InWindowHandle)
 	{
-		auto Swapchain = new Swapchain::Impl();
-		Swapchain->WindowingSystem = &InWindowSystem;
-		Swapchain->TargetWindow = InWindowHandle;
-		Swapchain->Surface = Vulkan::CreateSurface(InContext->Instance, InWindowSystem, InWindowHandle);
+		auto swapchain = new Swapchain::Impl();
+		swapchain->Ctx = InContext;
+		swapchain->WindowingSystem = &InWindowSystem;
+		swapchain->TargetWindow = InWindowHandle;
+		swapchain->Surface = Vulkan::CreateSurface(InContext->Instance, InWindowSystem, InWindowHandle);
 
-		//SwapchainRecreate(Swapchain);
-
-		return { Swapchain };
+		Swapchain Result = { swapchain };
+		Result.Recreate();
+		return Result;
 	}
 
-	/*ImageRH VulkanRenderDevice::SwapchainGetCurrentImage(SwapchainRH InSwapchain)
+	ImageRH Swapchain::GetCurrentImage()
 	{
-		const auto& Swapchain = m_Swapchains[InSwapchain];
-		return Swapchain.Images[Swapchain.CurrentImageIndex];
+		return m_Impl->Images[m_Impl->CurrentImageIndex];
 	}
 
-	ImageViewRH VulkanRenderDevice::SwapchainGetCurrentImageView(SwapchainRH InSwapchain)
+	ImageViewRH Swapchain::GetCurrentImageView()
 	{
-		const auto& Swapchain = m_Swapchains[InSwapchain];
-		return Swapchain.ImageViews[Swapchain.CurrentImageIndex];
+		return m_Impl->ImageViews[m_Impl->CurrentImageIndex];
 	}
 
-	void VulkanRenderDevice::SwapchainDestroy(SwapchainRH InSwapchain)
+	/*void VulkanRenderDevice::SwapchainDestroy(SwapchainRH InSwapchain)
 	{
 
 	}*/

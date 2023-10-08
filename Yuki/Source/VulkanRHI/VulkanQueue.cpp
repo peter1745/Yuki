@@ -1,9 +1,8 @@
 #include "VulkanRHI.hpp"
-#include "VulkanRenderDevice.hpp"
 
 namespace Yuki::RHI {
 
-	QueueRH Context::RequestQueue(QueueType InType) const
+	Queue Context::RequestQueue(QueueType InType) const
 	{
 		uint32_t BestScore = std::numeric_limits<uint32_t>::max();
 		QueueRH BestQueue = {};
@@ -12,7 +11,7 @@ namespace Yuki::RHI {
 		{
 			VkQueueFlags Flags = std::to_underlying(InType);
 			if ((Queue->Flags & Flags) != Flags)
-				return {};
+				continue;
 
 			uint32_t Score = std::popcount(Queue->Flags & ~Cast<uint32_t>(Flags));
 
@@ -23,10 +22,10 @@ namespace Yuki::RHI {
 			}
 		}
 
-		return BestQueue;
+		return { BestQueue };
 	}
 
-	static VkResult AcquireNextImage(VkDevice InLogicalDevice, SwapchainRH InSwapchain)
+	static VkResult AcquireNextImage(VkDevice InLogicalDevice, Swapchain InSwapchain)
 	{
 		VkAcquireNextImageInfoKHR acquireImageInfo =
 		{
@@ -41,17 +40,17 @@ namespace Yuki::RHI {
 		return vkAcquireNextImage2KHR(InLogicalDevice, &acquireImageInfo, &InSwapchain->CurrentImageIndex);
 	}
 
-	void Queue::AcquireImages(Span<SwapchainRH> InSwapchains, Span<FenceRH> InFences)
+	void Queue::AcquireImages(Span<Swapchain> InSwapchains, Span<Fence> InFences)
 	{
 		if (InSwapchains.IsEmpty())
 			return;
 
 		for (auto SwapchainHandle : InSwapchains)
 		{
-			//if (AcquireNextImage(m_Device, SwapchainHandle) == VK_ERROR_OUT_OF_DATE_KHR)
+			if (AcquireNextImage(m_Impl->Ctx->Device, SwapchainHandle) == VK_ERROR_OUT_OF_DATE_KHR)
 			{
-				//SwapchainRecreate(Swapchain);
-				//YUKI_VERIFY(AcquireNextImage(m_Device, Swapchain) == VK_SUCCESS);
+				SwapchainHandle.Recreate();
+				YUKI_VERIFY(AcquireNextImage(m_Impl->Ctx->Device, SwapchainHandle) == VK_SUCCESS);
 			}
 		}
 
@@ -152,7 +151,7 @@ namespace Yuki::RHI {
 		YUKI_VERIFY(vkQueueSubmit2(m_Impl->Handle, 1, &SubmitInfo, VK_NULL_HANDLE) == VK_SUCCESS);
 	}
 
-	void Queue::Present(Span<SwapchainRH> InSwapchains, Span<FenceRH> InFences)
+	void Queue::Present(Span<Swapchain> InSwapchains, Span<Fence> InFences)
 	{
 		if (InSwapchains.IsEmpty())
 			return;
@@ -237,7 +236,7 @@ namespace Yuki::RHI {
 			if (PresentResults[Index] != VK_ERROR_OUT_OF_DATE_KHR)
 				continue;
 
-			//SwapchainRecreate(m_Swapchains.Get(InSwapchains[Index]));
+			InSwapchains[Index].Recreate();
 		}
 	}
 

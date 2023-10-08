@@ -44,14 +44,12 @@ public:
 			.Title = "My Window"
 		});
 
-		/*auto& RenderDevice = m_RHIContext->GetRenderDevice();
+			m_GraphicsQueue = m_RHIContext.RequestQueue(Yuki::RHI::QueueType::Graphics);
 
-		m_GraphicsQueue = RenderDevice.QueueRequest(Yuki::RHI::QueueType::Graphics);
+		m_Swapchain = Yuki::RHI::Swapchain::Create(m_RHIContext, m_WindowSystem, m_Window);
 
-		m_Swapchain = RenderDevice.SwapchainCreate(m_WindowSystem, m_Window);
-
-		m_Fence = RenderDevice.FenceCreate();
-		m_CommandPool = RenderDevice.CommandPoolCreate(m_GraphicsQueue);*/
+		m_Fence = Yuki::RHI::Fence::Create(m_RHIContext);
+		m_CommandPool = Yuki::RHI::CommandPool::Create(m_RHIContext, m_GraphicsQueue);
 
 		std::array Vertices =
 		{
@@ -65,35 +63,35 @@ public:
 			0U, 1U, 2U
 		};
 
-		/*auto StagingBuffer = RenderDevice.BufferCreate(Vertices.size() * sizeof(Vertex), Yuki::RHI::BufferUsage::TransferSrc, true);
-		RenderDevice.BufferSetData(StagingBuffer, Vertices.data());
+		auto StagingBuffer = Yuki::RHI::Buffer::Create(m_RHIContext, Vertices.size() * sizeof(Vertex), Yuki::RHI::BufferUsage::TransferSrc, true);
+		StagingBuffer.SetData(Vertices.data());
 
-		m_VertexBuffer = RenderDevice.BufferCreate(Vertices.size() * sizeof(Vertex), Yuki::RHI::BufferUsage::Storage | Yuki::RHI::BufferUsage::AccelerationStructureBuildInput | Yuki::RHI::BufferUsage::TransferDst);
-		m_IndexBuffer = RenderDevice.BufferCreate(3 * sizeof(uint32_t), Yuki::RHI::BufferUsage::Index | Yuki::RHI::BufferUsage::AccelerationStructureBuildInput | Yuki::RHI::BufferUsage::TransferDst);
+		m_VertexBuffer = Yuki::RHI::Buffer::Create(m_RHIContext, Vertices.size() * sizeof(Vertex), Yuki::RHI::BufferUsage::Storage | Yuki::RHI::BufferUsage::AccelerationStructureBuildInput | Yuki::RHI::BufferUsage::TransferDst);
+		m_IndexBuffer = Yuki::RHI::Buffer::Create(m_RHIContext, 3 * sizeof(uint32_t), Yuki::RHI::BufferUsage::Index | Yuki::RHI::BufferUsage::AccelerationStructureBuildInput | Yuki::RHI::BufferUsage::TransferDst);
 
-		auto CmdList = RenderDevice.CommandPoolNewList(m_CommandPool);
-		RenderDevice.CommandListBegin(CmdList);
-		RenderDevice.CommandListCopyBuffer(CmdList, m_VertexBuffer, StagingBuffer);
-		RenderDevice.CommandListEnd(CmdList);
-		RenderDevice.QueueSubmit(m_GraphicsQueue, { CmdList }, {}, { m_Fence });
+		auto CmdList = m_CommandPool.NewList();
+		CmdList.Begin();
+		CmdList.CopyBuffer(m_VertexBuffer, StagingBuffer);
+		CmdList.End();
+		m_GraphicsQueue.Submit({ CmdList }, {}, { m_Fence });
 
-		RenderDevice.FenceWait(m_Fence);
+		m_Fence.Wait();
 
-		RenderDevice.BufferSetData(StagingBuffer, Indices.data());
+		StagingBuffer.SetData(Indices.data());
 
-		CmdList = RenderDevice.CommandPoolNewList(m_CommandPool);
-		RenderDevice.CommandListBegin(CmdList);
-		RenderDevice.CommandListCopyBuffer(CmdList, m_IndexBuffer, StagingBuffer);
-		RenderDevice.CommandListEnd(CmdList);
-		RenderDevice.QueueSubmit(m_GraphicsQueue, { CmdList }, {}, { m_Fence });
+		CmdList = m_CommandPool.NewList();
+		CmdList.Begin();
+		CmdList.CopyBuffer(m_IndexBuffer, StagingBuffer);
+		CmdList.End();
+		m_GraphicsQueue.Submit({ CmdList }, {}, { m_Fence });
 
-		RenderDevice.FenceWait(m_Fence);
+		m_Fence.Wait();
 
-		RenderDevice.BufferDestroy(StagingBuffer);
+		//StagingBuffer.Destroy();
 
-		m_AccelerationStructure = RenderDevice.AccelerationStructureCreate(m_VertexBuffer, m_IndexBuffer);
+		m_AccelerationStructure = Yuki::RHI::AccelerationStructure::Create(m_RHIContext, m_VertexBuffer, m_IndexBuffer);
 
-		m_DescriptorLayout = RenderDevice.DescriptorSetLayoutCreate({
+		m_DescriptorLayout = Yuki::RHI::DescriptorSetLayout::Create(m_RHIContext, {
 			.Stages = Yuki::RHI::ShaderStage::RayGeneration,
 			.Descriptors = {
 				{ 1, Yuki::RHI::DescriptorType::StorageImage },
@@ -101,10 +99,10 @@ public:
 		});
 
 		Yuki::RHI::DescriptorCount DC = { Yuki::RHI::DescriptorType::StorageImage, 1 };
-		m_DescriptorPool = RenderDevice.DescriptorPoolCreate({ DC });
-		m_DescriptorSet = RenderDevice.DescriptorPoolAllocateDescriptorSet(m_DescriptorPool, m_DescriptorLayout);
+		m_DescriptorPool = Yuki::RHI::DescriptorPool::Create(m_RHIContext, { DC });
+		m_DescriptorSet = m_DescriptorPool.AllocateDescriptorSet(m_DescriptorLayout);
 
-		m_Pipeline = RenderDevice.RayTracingPipelineCreate({
+		m_Pipeline = Yuki::RHI::RayTracingPipeline::Create(m_RHIContext, {
 			.Shaders = {
 				{ "Shaders/Raytracing.glsl", Yuki::RHI::ShaderStage::RayGeneration },
 				{ "Shaders/Raytracing.glsl", Yuki::RHI::ShaderStage::RayMiss },
@@ -116,11 +114,11 @@ public:
 			}
 		});
 
-		m_RasterDescriptorLayout = RenderDevice.DescriptorSetLayoutCreate({
+		m_RasterDescriptorLayout = Yuki::RHI::DescriptorSetLayout::Create(m_RHIContext, {
 			.Stages = Yuki::RHI::ShaderStage::Vertex | Yuki::RHI::ShaderStage::Fragment
 		});
 
-		m_RasterizationPipeline = RenderDevice.PipelineCreate({
+		m_RasterizationPipeline = Yuki::RHI::Pipeline::Create(m_RHIContext, {
 			.Shaders = {
 				{ "Shaders/Raster.glsl", Yuki::RHI::ShaderStage::Vertex },
 				{ "Shaders/Raster.glsl", Yuki::RHI::ShaderStage::Fragment },
@@ -131,7 +129,7 @@ public:
 			}
 		});
 
-		c_PushConstants.CameraZOffset = 1.0f / std::tanf(0.5f * 1.22173048f);*/
+		c_PushConstants.CameraZOffset = 1.0f / std::tanf(0.5f * 1.22173048f);
 
 		/*m_CameraInput.Bind<Yuki::RangedInput>(Yuki::RangedInput{
 			{
@@ -166,19 +164,17 @@ public:
 		//m_WindowSystem.AddInputContext(m_Window, &m_CameraInput);
 	}
 
-	inline static bool s_RayTrace = true;
+	inline static bool s_RayTrace = false;
 
 	void Update() override
 	{
 		m_WindowSystem.PollMessages();
 
-		/*auto& RenderDevice = m_RHIContext->GetRenderDevice();
+		m_Fence.Wait();
+		
+		m_GraphicsQueue.AcquireImages({ m_Swapchain }, { m_Fence });
 
-		RenderDevice.FenceWait(m_Fence);
-
-		RenderDevice.QueueAcquireImages(m_GraphicsQueue, { m_Swapchain }, { m_Fence });
-
-		auto SwapchainImage = RenderDevice.SwapchainGetCurrentImage(m_Swapchain);
+		auto SwapchainImage = m_Swapchain.GetCurrentImage();
 
 		Yuki::Vec3 Translation = {};
 
@@ -222,9 +218,9 @@ public:
 
 		const auto& WindowData = m_WindowSystem.GetWindowData(m_Window);
 
-		RenderDevice.CommandPoolReset(m_CommandPool);
-		auto CmdList = RenderDevice.CommandPoolNewList(m_CommandPool);
-		RenderDevice.CommandListBegin(CmdList);
+		m_CommandPool.Reset();
+		auto CmdList = m_CommandPool.NewList();
+		CmdList.Begin();
 
 		if (s_RayTrace)
 		{
@@ -232,77 +228,77 @@ public:
 			c_PushConstants.CameraX = m_Rotation * Yuki::Vec3{ 1.0f, 0.0f, 0.0f };
 			c_PushConstants.CameraY = m_Rotation * Yuki::Vec3{ 0.0f, 1.0f, 0.0f };
 
-			RenderDevice.DescriptorSetWrite(m_DescriptorSet, 0, { RenderDevice.SwapchainGetCurrentImageView(m_Swapchain) }, 0);
+			m_DescriptorSet.Write(0, { m_Swapchain.GetCurrentImageView() }, 0);
 
-			RenderDevice.CommandListImageBarrier(CmdList, { .Images = { SwapchainImage }, .Layouts = { Yuki::RHI::ImageLayout::General } });
+			CmdList.ImageBarrier({ .Images = { SwapchainImage }, .Layouts = { Yuki::RHI::ImageLayout::General } });
 
-			c_PushConstants.TopLevelAS = RenderDevice.AccelerationStructureGetTopLevelAddress(m_AccelerationStructure);
-			RenderDevice.CommandListPushConstants(CmdList, m_Pipeline, Yuki::RHI::ShaderStage::RayGeneration, &c_PushConstants, sizeof(c_PushConstants));
+			c_PushConstants.TopLevelAS = m_AccelerationStructure.GetTopLevelAddress();
+			CmdList.PushConstants(m_Pipeline, Yuki::RHI::ShaderStage::RayGeneration, &c_PushConstants, sizeof(c_PushConstants));
 
-			RenderDevice.CommandListBindDescriptorSets(CmdList, m_Pipeline, { m_DescriptorSet });
-			RenderDevice.CommandListBindPipeline(CmdList, m_Pipeline);
+			CmdList.BindDescriptorSets(m_Pipeline, { m_DescriptorSet });
+			CmdList.BindPipeline(m_Pipeline);
 
-			RenderDevice.CommandListTraceRay(CmdList, m_Pipeline, WindowData.Width, WindowData.Height);
+			CmdList.TraceRay(m_Pipeline, WindowData.Width, WindowData.Height);
 		}
 		else
 		{
 			static Yuki::Vec3 Position;
 			Position += (m_Rotation * Translation) * Yuki::EngineTime::DeltaTime<float>();
-			c_RasterPushConstants.VertexBuffer = RenderDevice.BufferGetDeviceAddress(m_VertexBuffer);
+			c_RasterPushConstants.VertexBuffer = m_VertexBuffer.GetDeviceAddress();
 			c_RasterPushConstants.ViewProjection = Yuki::PerspectiveInfReversedZ(glm::radians(90.0f), Yuki::Cast<float>(WindowData.Width) / Yuki::Cast<float>(WindowData.Height), 0.001f)
 				* glm::inverse(glm::translate(glm::mat4(1.0f), Position) * glm::toMat4(m_Rotation));
 
-			RenderDevice.CommandListImageBarrier(CmdList, { .Images = { SwapchainImage }, .Layouts = { Yuki::RHI::ImageLayout::Attachment } });
-			RenderDevice.CommandListPushConstants(CmdList, m_RasterizationPipeline, Yuki::RHI::ShaderStage::Vertex, &c_RasterPushConstants, sizeof(c_RasterPushConstants));
-			RenderDevice.CommandListBindPipeline(CmdList, m_RasterizationPipeline);
-			RenderDevice.CommandListBindIndexBuffer(CmdList, m_IndexBuffer);
-			RenderDevice.CommandListSetViewport(CmdList, {
+			CmdList.ImageBarrier({ .Images = { SwapchainImage }, .Layouts = { Yuki::RHI::ImageLayout::Attachment } });
+			CmdList.PushConstants(m_RasterizationPipeline, Yuki::RHI::ShaderStage::Vertex, &c_RasterPushConstants, sizeof(c_RasterPushConstants));
+			CmdList.BindPipeline(m_RasterizationPipeline);
+			CmdList.BindIndexBuffer(m_IndexBuffer);
+			CmdList.SetViewport({
 				.X = 0.0f,
 				.Y = 0.0f,
 				.Width = Yuki::Cast<float>(WindowData.Width),
 				.Height = Yuki::Cast<float>(WindowData.Height),
 			});
 
-			RenderDevice.CommandListBeginRendering(CmdList, {
+			CmdList.BeginRendering({
 				.ColorAttachments = {
 					{
-						.ImageView = RenderDevice.SwapchainGetCurrentImageView(m_Swapchain),
+						.ImageView = m_Swapchain.GetCurrentImageView(),
 						.LoadOp = Yuki::RHI::AttachmentLoadOp::Clear,
 						.StoreOp = Yuki::RHI::AttachmentStoreOp::Store
 					}
 				}
 			});
 
-			RenderDevice.CommandListDrawIndexed(CmdList, 3, 0, 0);
-			RenderDevice.CommandListEndRendering(CmdList);
+			CmdList.DrawIndexed(3, 0, 0);
+			CmdList.EndRendering();
 		}
 
-		RenderDevice.CommandListImageBarrier(CmdList, { .Images = { SwapchainImage }, .Layouts = { Yuki::RHI::ImageLayout::Present } });
-		RenderDevice.CommandListEnd(CmdList);
-		RenderDevice.QueueSubmit(m_GraphicsQueue, { CmdList }, { m_Fence }, { m_Fence });
-		RenderDevice.QueuePresent(m_GraphicsQueue, { m_Swapchain }, { m_Fence });*/
+		CmdList.ImageBarrier({ .Images = { SwapchainImage }, .Layouts = { Yuki::RHI::ImageLayout::Present } });
+		CmdList.End();
+		m_GraphicsQueue.Submit({ CmdList }, { m_Fence }, { m_Fence });
+		m_GraphicsQueue.Present({ m_Swapchain }, { m_Fence });
 	}
 
 private:
 	Yuki::RHI::Context m_RHIContext;
 	Yuki::WindowSystem m_WindowSystem;
 	Yuki::WindowHandle m_Window;
-	Yuki::RHI::SwapchainRH m_Swapchain;
-	Yuki::RHI::QueueRH m_GraphicsQueue;
-	Yuki::RHI::FenceRH m_Fence;
-	Yuki::RHI::CommandPoolRH m_CommandPool;
-	Yuki::RHI::BufferRH m_VertexBuffer;
-	Yuki::RHI::BufferRH m_IndexBuffer;
-	Yuki::RHI::RayTracingPipelineRH m_Pipeline;
-	Yuki::RHI::DescriptorSetLayoutRH m_DescriptorLayout;
-	Yuki::RHI::DescriptorPoolRH m_DescriptorPool;
-	Yuki::RHI::DescriptorSetRH m_DescriptorSet;
-	Yuki::RHI::AccelerationStructureRH m_AccelerationStructure;
+	Yuki::RHI::Swapchain m_Swapchain;
+	Yuki::RHI::Queue m_GraphicsQueue;
+	Yuki::RHI::Fence m_Fence;
+	Yuki::RHI::CommandPool m_CommandPool;
+	Yuki::RHI::Buffer m_VertexBuffer;
+	Yuki::RHI::Buffer m_IndexBuffer;
+	Yuki::RHI::RayTracingPipeline m_Pipeline;
+	Yuki::RHI::DescriptorSetLayout m_DescriptorLayout;
+	Yuki::RHI::DescriptorPool m_DescriptorPool;
+	Yuki::RHI::DescriptorSet m_DescriptorSet;
+	Yuki::RHI::AccelerationStructure m_AccelerationStructure;
 
-	Yuki::RHI::PipelineRH m_RasterizationPipeline;
-	Yuki::RHI::DescriptorSetLayoutRH m_RasterDescriptorLayout;
-	Yuki::RHI::DescriptorPoolRH m_RasterDescriptorPool;
-	Yuki::RHI::DescriptorSetRH m_RasterDescriptorSet;
+	Yuki::RHI::Pipeline m_RasterizationPipeline;
+	Yuki::RHI::DescriptorSetLayout m_RasterDescriptorLayout;
+	Yuki::RHI::DescriptorPool m_RasterDescriptorPool;
+	Yuki::RHI::DescriptorSet m_RasterDescriptorSet;
 
 	Yuki::InputContext m_CameraInput;
 

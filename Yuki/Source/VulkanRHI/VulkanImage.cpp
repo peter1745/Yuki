@@ -1,5 +1,4 @@
 #include "VulkanRHI.hpp"
-#include "VulkanRenderDevice.hpp"
 
 namespace Yuki::RHI {
 
@@ -9,7 +8,7 @@ namespace Yuki::RHI {
 	ImageView ImageView::Create(Context InContext, ImageRH InImage)
 	{
 		auto ImageView = new Impl();
-
+		ImageView->Ctx = InContext;
 		ImageView->Image = InImage;
 
 		VkImageViewCreateInfo ImageViewInfo =
@@ -33,11 +32,10 @@ namespace Yuki::RHI {
 		return { ImageView };
 	}
 
-	/*void VulkanRenderDevice::ImageViewDestroy(ImageViewRH InImageView)
+	void ImageView::Destroy()
 	{
-		auto& ImageView = m_ImageViews[InImageView];
-		vkDestroyImageView(m_Device, ImageView.Handle, nullptr);
-		m_ImageViews.Return(InImageView);
-	}*/
+		vkDestroyImageView(m_Impl->Ctx->Device, m_Impl->Handle, nullptr);
+		delete m_Impl;
+	}
 
 }
