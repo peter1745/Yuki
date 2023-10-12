@@ -8,112 +8,112 @@ namespace Yuki::RHI {
 
 	void Swapchain::Recreate() const
 	{
-		auto OldSwapchain = m_Impl->Handle;
+		auto oldSwapchain = m_Impl->Handle;
 
-		if (OldSwapchain != VK_NULL_HANDLE)
+		if (oldSwapchain != VK_NULL_HANDLE)
 		{
-			for (auto ImageView : m_Impl->ImageViews)
-				ImageView.Destroy();
+			for (auto imageView : m_Impl->ImageViews)
+				imageView.Destroy();
 		}
 
-		VkSurfaceCapabilitiesKHR SurfaceCapabilities;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_Impl->Ctx->PhysicalDevice, m_Impl->Surface, &SurfaceCapabilities);
+		VkSurfaceCapabilitiesKHR surfaceCapabilities;
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_Impl->Ctx->PhysicalDevice, m_Impl->Surface, &surfaceCapabilities);
 
-		DynamicArray<VkSurfaceFormatKHR> SurfaceFormats;
-		Vulkan::Enumerate(vkGetPhysicalDeviceSurfaceFormatsKHR, SurfaceFormats, m_Impl->Ctx->PhysicalDevice, m_Impl->Surface);
-		for (auto Format : SurfaceFormats)
+		DynamicArray<VkSurfaceFormatKHR> surfaceFormats;
+		Vulkan::Enumerate(vkGetPhysicalDeviceSurfaceFormatsKHR, surfaceFormats, m_Impl->Ctx->PhysicalDevice, m_Impl->Surface);
+		for (auto format : surfaceFormats)
 		{
-			if (Format.format == VK_FORMAT_R8G8B8A8_UNORM || Format.format == VK_FORMAT_B8G8R8A8_UNORM)
+			if (format.format == VK_FORMAT_R8G8B8A8_UNORM || format.format == VK_FORMAT_B8G8R8A8_UNORM)
 			{
-				m_Impl->SurfaceFormat = Format;
+				m_Impl->SurfaceFormat = format;
 				break;
 			}
 		}
 
-		uint32_t Width = SurfaceCapabilities.currentExtent.width;
-		uint32_t Height = SurfaceCapabilities.currentExtent.height;
-		if (Width == std::numeric_limits<uint32_t>::max())
+		uint32_t width = surfaceCapabilities.currentExtent.width;
+		uint32_t height = surfaceCapabilities.currentExtent.height;
+		if (width == std::numeric_limits<uint32_t>::max())
 		{
-			const auto& WindowData = m_Impl->WindowingSystem->GetWindowData(m_Impl->TargetWindow);
-			Width = std::clamp(WindowData.Width, SurfaceCapabilities.minImageExtent.width, SurfaceCapabilities.maxImageExtent.width);
-			Height = std::clamp(WindowData.Height, SurfaceCapabilities.minImageExtent.height, SurfaceCapabilities.maxImageExtent.height);
+			const auto& windowData = m_Impl->WindowingSystem->GetWindowData(m_Impl->TargetWindow);
+			width = std::clamp(windowData.Width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+			height = std::clamp(windowData.Height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 		}
 
-		VkSwapchainCreateInfoKHR SwapchainInfo =
+		VkSwapchainCreateInfoKHR swapchainInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
 			.pNext = nullptr,
 			.flags = 0,
 			.surface = m_Impl->Surface,
-			.minImageCount = std::min(SurfaceCapabilities.minImageCount + 1, SurfaceCapabilities.maxImageCount),
+			.minImageCount = std::min(surfaceCapabilities.minImageCount + 1, surfaceCapabilities.maxImageCount),
 			.imageFormat = m_Impl->SurfaceFormat.format,
 			.imageColorSpace = m_Impl->SurfaceFormat.colorSpace,
-			.imageExtent = { Width, Height },
+			.imageExtent = { width, height },
 			.imageArrayLayers = 1,
-			.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+			.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 			.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 0,
 			.pQueueFamilyIndices = nullptr,
-			.preTransform = SurfaceCapabilities.currentTransform,
+			.preTransform = surfaceCapabilities.currentTransform,
 			.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
 			.presentMode = VK_PRESENT_MODE_MAILBOX_KHR,
 			.clipped = VK_TRUE,
-			.oldSwapchain = OldSwapchain,
+			.oldSwapchain = oldSwapchain,
 		};
-		YUKI_VERIFY(vkCreateSwapchainKHR(m_Impl->Ctx->Device, &SwapchainInfo, nullptr, &m_Impl->Handle) == VK_SUCCESS);
+		YUKI_VK_CHECK(vkCreateSwapchainKHR(m_Impl->Ctx->Device, &swapchainInfo, nullptr, &m_Impl->Handle));
 
-		for (auto ImageHandle : m_Impl->Images)
+		for (auto imageHandle : m_Impl->Images)
 		{
-			delete ImageHandle.m_Impl;
+			delete imageHandle.m_Impl;
 		}
 
-		DynamicArray<VkImage> Images;
-		Vulkan::Enumerate(vkGetSwapchainImagesKHR, Images, m_Impl->Ctx->Device, m_Impl->Handle);
+		DynamicArray<VkImage> images;
+		Vulkan::Enumerate(vkGetSwapchainImagesKHR, images, m_Impl->Ctx->Device, m_Impl->Handle);
 
-		m_Impl->Images.resize(Images.size());
+		m_Impl->Images.resize(images.size());
 
-		for (size_t Index = 0; Index < Images.size(); Index++)
+		for (size_t i = 0; i < images.size(); i++)
 		{
-			auto ImageData = new Image::Impl();
-			ImageData->Handle = Images[Index];
-			ImageData->Width = Width;
-			ImageData->Height = Height;
-			ImageData->Format = m_Impl->SurfaceFormat.format;
-			ImageData->AspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			ImageData->Layout = VK_IMAGE_LAYOUT_UNDEFINED;
-			ImageData->OldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			m_Impl->Images[Index] = { ImageData };
+			auto imageData = new Image::Impl();
+			imageData->Handle = images[i];
+			imageData->Width = width;
+			imageData->Height = height;
+			imageData->Format = m_Impl->SurfaceFormat.format;
+			imageData->AspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageData->Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageData->OldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			m_Impl->Images[i] = { imageData };
 		}
 
 		m_Impl->ImageViews.resize(m_Impl->Images.size());
-		for (size_t Index = 0; Index < m_Impl->Images.size(); Index++)
+		for (size_t i = 0; i < m_Impl->Images.size(); i++)
 		{
-			m_Impl->ImageViews[Index] = ImageView::Create(m_Impl->Ctx, m_Impl->Images[Index]);
+			m_Impl->ImageViews[i] = ImageView::Create(m_Impl->Ctx, m_Impl->Images[i]);
 		}
 
 		while (m_Impl->Semaphores.size() < m_Impl->Images.size() * 2)
 		{
-			VkSemaphoreCreateInfo SemaphoreInfo = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-			VkSemaphore Semaphore;
-			YUKI_VERIFY(vkCreateSemaphore(m_Impl->Ctx->Device, &SemaphoreInfo, nullptr, &Semaphore) == VK_SUCCESS);
-			m_Impl->Semaphores.push_back(Semaphore);
+			VkSemaphoreCreateInfo semaphoreInfo = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+			VkSemaphore semaphore;
+			YUKI_VK_CHECK(vkCreateSemaphore(m_Impl->Ctx->Device, &semaphoreInfo, nullptr, &semaphore));
+			m_Impl->Semaphores.push_back(semaphore);
 		}
 
-		if (OldSwapchain != VK_NULL_HANDLE)
-			vkDestroySwapchainKHR(m_Impl->Ctx->Device, OldSwapchain, nullptr);
+		if (oldSwapchain != VK_NULL_HANDLE)
+			vkDestroySwapchainKHR(m_Impl->Ctx->Device, oldSwapchain, nullptr);
 	}
 
-	Swapchain Swapchain::Create(Context InContext, const WindowSystem& InWindowSystem, UniqueID InWindowHandle)
+	Swapchain Swapchain::Create(Context context, const WindowSystem& windowSystem, UniqueID windowHandle)
 	{
 		auto swapchain = new Swapchain::Impl();
-		swapchain->Ctx = InContext;
-		swapchain->WindowingSystem = &InWindowSystem;
-		swapchain->TargetWindow = InWindowHandle;
-		swapchain->Surface = Vulkan::CreateSurface(InContext->Instance, InWindowSystem, InWindowHandle);
+		swapchain->Ctx = context;
+		swapchain->WindowingSystem = &windowSystem;
+		swapchain->TargetWindow = windowHandle;
+		swapchain->Surface = Vulkan::CreateSurface(context->Instance, windowSystem, windowHandle);
 
-		Swapchain Result = { swapchain };
-		Result.Recreate();
-		return Result;
+		Swapchain result = { swapchain };
+		result.Recreate();
+		return result;
 	}
 
 	ImageRH Swapchain::GetCurrentImage()

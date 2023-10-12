@@ -2,241 +2,241 @@
 
 namespace Yuki::RHI {
 
-	Queue Context::RequestQueue(QueueType InType) const
+	Queue Context::RequestQueue(QueueType type) const
 	{
-		uint32_t BestScore = std::numeric_limits<uint32_t>::max();
-		QueueRH BestQueue = {};
+		uint32_t bestScore = std::numeric_limits<uint32_t>::max();
+		QueueRH bestQueue = {};
 
-		for (auto Queue : m_Impl->Queues)
+		for (auto queue : m_Impl->Queues)
 		{
-			VkQueueFlags Flags = std::to_underlying(InType);
-			if ((Queue->Flags & Flags) != Flags)
+			VkQueueFlags flags = std::to_underlying(type);
+			if ((queue->Flags & flags) != flags)
 				continue;
 
-			uint32_t Score = std::popcount(Queue->Flags & ~Cast<uint32_t>(Flags));
+			uint32_t score = std::popcount(queue->Flags & ~Cast<uint32_t>(flags));
 
-			if (Score < BestScore)
+			if (score < bestScore)
 			{
-				BestScore = Score;
-				BestQueue = Queue;
+				bestScore = score;
+				bestQueue = queue;
 			}
 		}
 
-		return { BestQueue };
+		return { bestQueue };
 	}
 
-	static VkResult AcquireNextImage(VkDevice InLogicalDevice, Swapchain InSwapchain)
+	static VkResult AcquireNextImage(VkDevice device, Swapchain swapchain)
 	{
 		VkAcquireNextImageInfoKHR acquireImageInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
-			.swapchain = InSwapchain->Handle,
+			.swapchain = swapchain->Handle,
 			.timeout = UINT64_MAX,
-			.semaphore = InSwapchain->Semaphores[InSwapchain->CurrentSemaphoreIndex],
+			.semaphore = swapchain->Semaphores[swapchain->CurrentSemaphoreIndex],
 			.fence = VK_NULL_HANDLE,
 			.deviceMask = 1
 		};
 
-		return vkAcquireNextImage2KHR(InLogicalDevice, &acquireImageInfo, &InSwapchain->CurrentImageIndex);
+		return vkAcquireNextImage2KHR(device, &acquireImageInfo, &swapchain->CurrentImageIndex);
 	}
 
-	void Queue::AcquireImages(Span<Swapchain> InSwapchains, Span<Fence> InFences)
+	void Queue::AcquireImages(Span<Swapchain> swapchains, Span<Fence> fences) const
 	{
-		if (InSwapchains.IsEmpty())
+		if (swapchains.IsEmpty())
 			return;
 
-		for (auto SwapchainHandle : InSwapchains)
+		for (auto swapchainHandle : swapchains)
 		{
-			if (AcquireNextImage(m_Impl->Ctx->Device, SwapchainHandle) == VK_ERROR_OUT_OF_DATE_KHR)
+			if (AcquireNextImage(m_Impl->Ctx->Device, swapchainHandle) == VK_ERROR_OUT_OF_DATE_KHR)
 			{
-				SwapchainHandle.Recreate();
-				YUKI_VERIFY(AcquireNextImage(m_Impl->Ctx->Device, SwapchainHandle) == VK_SUCCESS);
+				swapchainHandle.Recreate();
+				YUKI_VK_CHECK(AcquireNextImage(m_Impl->Ctx->Device, swapchainHandle));
 			}
 		}
 
-		if (!InFences.IsEmpty())
+		if (!fences.IsEmpty())
 		{
-			DynamicArray<VkSemaphoreSubmitInfo> WaitInfos;
-			WaitInfos.resize(InSwapchains.Count());
-			for (size_t Index = 0; Index < InSwapchains.Count(); Index++)
+			DynamicArray<VkSemaphoreSubmitInfo> waitInfos;
+			waitInfos.resize(swapchains.Count());
+			for (size_t i = 0; i < swapchains.Count(); i++)
 			{
-				auto Swapchain = InSwapchains[Index];
+				auto swapchain = swapchains[i];
 
-				WaitInfos[Index] =
+				waitInfos[i] =
 				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = Swapchain->Semaphores[Swapchain->CurrentSemaphoreIndex],
+					.semaphore = swapchain->Semaphores[swapchain->CurrentSemaphoreIndex],
 				};
 
-				Swapchain->CurrentSemaphoreIndex = (Swapchain->CurrentSemaphoreIndex + 1) % uint32_t(Swapchain->Semaphores.size());
+				swapchain->CurrentSemaphoreIndex = (swapchain->CurrentSemaphoreIndex + 1) % Cast<uint32_t>(swapchain->Semaphores.size());
 			}
 
-			DynamicArray<VkSemaphoreSubmitInfo> SignalInfos;
-			SignalInfos.resize(InFences.Count());
-			for (size_t Index = 0; Index < InFences.Count(); Index++)
+			DynamicArray<VkSemaphoreSubmitInfo> signalInfos;
+			signalInfos.resize(fences.Count());
+			for (size_t i = 0; i < fences.Count(); i++)
 			{
-				auto Fence = InFences[Index];
+				auto fence = fences[i];
 
-				SignalInfos[Index] =
+				signalInfos[i] =
 				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = Fence->Handle,
-					.value = ++Fence->Value,
+					.semaphore = fence->Handle,
+					.value = ++fence->Value,
 					.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
 				};
 			}
 
-			VkSubmitInfo2 SubmitInfo =
+			VkSubmitInfo2 submitInfo =
 			{
 				.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-				.waitSemaphoreInfoCount = uint32_t(WaitInfos.size()),
-				.pWaitSemaphoreInfos = WaitInfos.data(),
-				.signalSemaphoreInfoCount = uint32_t(SignalInfos.size()),
-				.pSignalSemaphoreInfos = SignalInfos.data()
+				.waitSemaphoreInfoCount = uint32_t(waitInfos.size()),
+				.pWaitSemaphoreInfos = waitInfos.data(),
+				.signalSemaphoreInfoCount = uint32_t(signalInfos.size()),
+				.pSignalSemaphoreInfos = signalInfos.data()
 			};
-			YUKI_VERIFY(vkQueueSubmit2(m_Impl->Handle, 1, &SubmitInfo, VK_NULL_HANDLE) == VK_SUCCESS);
+			YUKI_VK_CHECK(vkQueueSubmit2(m_Impl->Handle, 1, &submitInfo, VK_NULL_HANDLE));
 		}
 	}
 
-	void Queue::Submit(Span<CommandListRH> InCommandLists, Span<FenceRH> InWaits, Span<FenceRH> InSignals)
+	void Queue::Submit(Span<CommandListRH> commandLists, Span<FenceRH> waits, Span<FenceRH> signals) const
 	{
-		DynamicArray<VkCommandBufferSubmitInfo> CommandListSubmitInfos;
-		CommandListSubmitInfos.resize(InCommandLists.Count());
-		for (size_t Index = 0; Index < InCommandLists.Count(); Index++)
+		DynamicArray<VkCommandBufferSubmitInfo> commandListSubmitInfos;
+		commandListSubmitInfos.resize(commandLists.Count());
+		for (size_t i = 0; i < commandLists.Count(); i++)
 		{
-			CommandListSubmitInfos[Index].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-			CommandListSubmitInfos[Index].commandBuffer = InCommandLists[Index]->Handle;
+			commandListSubmitInfos[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+			commandListSubmitInfos[i].commandBuffer = commandLists[i]->Handle;
 		}
 
-		DynamicArray<VkSemaphoreSubmitInfo> WaitSemaphores;
-		WaitSemaphores.resize(InWaits.Count());
-		for (size_t Index = 0; Index < InWaits.Count(); Index++)
+		DynamicArray<VkSemaphoreSubmitInfo> waitSemaphores;
+		waitSemaphores.resize(waits.Count());
+		for (size_t i = 0; i < waits.Count(); i++)
 		{
-			auto& Fence = InWaits[Index];
-			WaitSemaphores[Index] =
+			auto& fence = waits[i];
+			waitSemaphores[i] =
 			{
 				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-				.semaphore = Fence->Handle,
-				.value = Fence->Value,
+				.semaphore = fence->Handle,
+				.value = fence->Value,
 				.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
 			};
 		}
 
-		DynamicArray<VkSemaphoreSubmitInfo> SignalSemaphores;
-		SignalSemaphores.resize(InSignals.Count());
-		for (size_t Index = 0; Index < InSignals.Count(); Index++)
+		DynamicArray<VkSemaphoreSubmitInfo> signalSemaphores;
+		signalSemaphores.resize(signals.Count());
+		for (size_t i = 0; i < signals.Count(); i++)
 		{
-			auto& Fence = InSignals[Index];
+			auto& fence = signals[i];
 
-			SignalSemaphores[Index] =
+			signalSemaphores[i] =
 			{
 				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-				.semaphore = Fence->Handle,
-				.value = ++Fence->Value,
+				.semaphore = fence->Handle,
+				.value = ++fence->Value,
 				.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
 			};
 		}
 
-		VkSubmitInfo2 SubmitInfo =
+		VkSubmitInfo2 submitInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-			.waitSemaphoreInfoCount = uint32_t(WaitSemaphores.size()),
-			.pWaitSemaphoreInfos = WaitSemaphores.data(),
-			.commandBufferInfoCount = uint32_t(CommandListSubmitInfos.size()),
-			.pCommandBufferInfos = CommandListSubmitInfos.data(),
-			.signalSemaphoreInfoCount = uint32_t(SignalSemaphores.size()),
-			.pSignalSemaphoreInfos = SignalSemaphores.data(),
+			.waitSemaphoreInfoCount = Cast<uint32_t>(waitSemaphores.size()),
+			.pWaitSemaphoreInfos = waitSemaphores.data(),
+			.commandBufferInfoCount = Cast<uint32_t>(commandListSubmitInfos.size()),
+			.pCommandBufferInfos = commandListSubmitInfos.data(),
+			.signalSemaphoreInfoCount = Cast<uint32_t>(signalSemaphores.size()),
+			.pSignalSemaphoreInfos = signalSemaphores.data(),
 		};
 
-		YUKI_VERIFY(vkQueueSubmit2(m_Impl->Handle, 1, &SubmitInfo, VK_NULL_HANDLE) == VK_SUCCESS);
+		YUKI_VK_CHECK(vkQueueSubmit2(m_Impl->Handle, 1, &submitInfo, VK_NULL_HANDLE));
 	}
 
-	void Queue::Present(Span<Swapchain> InSwapchains, Span<Fence> InFences)
+	void Queue::Present(Span<Swapchain> swapchains, Span<Fence> fences) const
 	{
-		if (InSwapchains.IsEmpty())
+		if (swapchains.IsEmpty())
 			return;
 
-		std::vector<VkResult> PresentResults(InSwapchains.Count());
-		std::vector<VkSemaphore> BinaryWaits;
+		std::vector<VkResult> presentResults(swapchains.Count());
+		std::vector<VkSemaphore> binaryWaits;
 
-		if (!InFences.IsEmpty())
+		if (!fences.IsEmpty())
 		{
-			std::vector<VkSemaphoreSubmitInfo> WaitInfos;
-			WaitInfos.resize(InFences.Count());
+			std::vector<VkSemaphoreSubmitInfo> waitInfos;
+			waitInfos.resize(fences.Count());
 
-			for (size_t Index = 0; Index < InFences.Count(); Index++)
+			for (size_t i = 0; i < fences.Count(); i++)
 			{
-				auto Fence = InFences[Index];
+				auto fence = fences[i];
 
-				WaitInfos[Index] =
+				waitInfos[i] =
 				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = Fence->Handle,
-					.value = Fence->Value,
+					.semaphore = fence->Handle,
+					.value = fence->Value,
 					.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
 				};
 			}
 
-			std::vector<VkSemaphoreSubmitInfo> SignalInfos;
-			SignalInfos.resize(InSwapchains.Count());
-			for (size_t Index = 0; Index < InSwapchains.Count(); Index++)
+			std::vector<VkSemaphoreSubmitInfo> signalInfos;
+			signalInfos.resize(swapchains.Count());
+			for (size_t i = 0; i < swapchains.Count(); i++)
 			{
-				auto Swapchain = InSwapchains[Index];
-				SignalInfos[Index] =
+				auto swapchain = swapchains[i];
+				signalInfos[i] =
 				{
 					.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-					.semaphore = Swapchain->Semaphores[Swapchain->CurrentSemaphoreIndex],
+					.semaphore = swapchain->Semaphores[swapchain->CurrentSemaphoreIndex],
 				};
 			}
 
-			VkSubmitInfo2 SubmitInfo =
+			VkSubmitInfo2 submitInfo =
 			{
 				.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-				.waitSemaphoreInfoCount = uint32_t(WaitInfos.size()),
-				.pWaitSemaphoreInfos = WaitInfos.data(),
-				.signalSemaphoreInfoCount = uint32_t(SignalInfos.size()),
-				.pSignalSemaphoreInfos = SignalInfos.data()
+				.waitSemaphoreInfoCount = Cast<uint32_t>(waitInfos.size()),
+				.pWaitSemaphoreInfos = waitInfos.data(),
+				.signalSemaphoreInfoCount = Cast<uint32_t>(signalInfos.size()),
+				.pSignalSemaphoreInfos = signalInfos.data()
 			};
-			vkQueueSubmit2(m_Impl->Handle, 1, &SubmitInfo, VK_NULL_HANDLE);
+			vkQueueSubmit2(m_Impl->Handle, 1, &submitInfo, VK_NULL_HANDLE);
 
-			BinaryWaits.resize(InSwapchains.Count());
-			for (size_t Index = 0; Index < InSwapchains.Count(); Index++)
+			binaryWaits.resize(swapchains.Count());
+			for (size_t i = 0; i < swapchains.Count(); i++)
 			{
-				auto Swapchain = InSwapchains[Index];
-				BinaryWaits[Index] = Swapchain->Semaphores[Swapchain->CurrentSemaphoreIndex];
-				Swapchain->CurrentSemaphoreIndex = (Swapchain->CurrentSemaphoreIndex + 1) % uint32_t(Swapchain->Semaphores.size());
+				auto swapchain = swapchains[i];
+				binaryWaits[i] = swapchain->Semaphores[swapchain->CurrentSemaphoreIndex];
+				swapchain->CurrentSemaphoreIndex = (swapchain->CurrentSemaphoreIndex + 1) % Cast<uint32_t>(swapchain->Semaphores.size());
 			}
 		}
 
-		std::vector<VkSwapchainKHR> Swapchains;
-		std::vector<uint32_t> ImageIndices;
-		Swapchains.resize(InSwapchains.Count());
-		ImageIndices.resize(InSwapchains.Count());
-		for (size_t Index = 0; Index < InSwapchains.Count(); Index++)
+		std::vector<VkSwapchainKHR> swapchainHandles;
+		std::vector<uint32_t> imageIndices;
+		swapchainHandles.resize(swapchains.Count());
+		imageIndices.resize(swapchains.Count());
+		for (size_t i = 0; i < swapchains.Count(); i++)
 		{
-			auto Swapchain = InSwapchains[Index];
-			Swapchains[Index] = Swapchain->Handle;
-			ImageIndices[Index] = Swapchain->CurrentImageIndex;
+			auto swapchain = swapchains[i];
+			swapchainHandles[i] = swapchain->Handle;
+			imageIndices[i] = swapchain->CurrentImageIndex;
 		}
 
-		VkPresentInfoKHR PresentInfo =
+		VkPresentInfoKHR presentInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-			.waitSemaphoreCount = uint32_t(BinaryWaits.size()),
-			.pWaitSemaphores = BinaryWaits.data(),
-			.swapchainCount = uint32_t(Swapchains.size()),
-			.pSwapchains = Swapchains.data(),
-			.pImageIndices = ImageIndices.data(),
-			.pResults = PresentResults.data(),
+			.waitSemaphoreCount = Cast<uint32_t>(binaryWaits.size()),
+			.pWaitSemaphores = binaryWaits.data(),
+			.swapchainCount = Cast<uint32_t>(swapchainHandles.size()),
+			.pSwapchains = swapchainHandles.data(),
+			.pImageIndices = imageIndices.data(),
+			.pResults = presentResults.data(),
 		};
-		vkQueuePresentKHR(m_Impl->Handle, &PresentInfo);
+		vkQueuePresentKHR(m_Impl->Handle, &presentInfo);
 
-		for (size_t Index = 0; Index < PresentResults.size(); Index++)
+		for (size_t i = 0; i < presentResults.size(); i++)
 		{
-			if (PresentResults[Index] != VK_ERROR_OUT_OF_DATE_KHR)
+			if (presentResults[i] != VK_ERROR_OUT_OF_DATE_KHR)
 				continue;
 
-			InSwapchains[Index].Recreate();
+			swapchains[i].Recreate();
 		}
 	}
 

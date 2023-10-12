@@ -6,7 +6,7 @@
 
 namespace Yuki::Vulkan {
 
-	void AddPlatformInstanceExtensions(DynamicArray<const char*>& InExtensions);
-	VkSurfaceKHR CreateSurface(VkInstance InInstance, const WindowSystem& InWindowSystem, WindowHandle InWindowHandle);
+	void AddPlatformInstanceExtensions(DynamicArray<const char*>& extensions);
+	VkSurfaceKHR CreateSurface(VkInstance instance, const WindowSystem& windowSystem, WindowHandle windowHandle);
 
 }

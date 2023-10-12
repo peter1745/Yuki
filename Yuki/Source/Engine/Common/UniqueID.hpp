@@ -8,7 +8,7 @@ namespace Yuki {
 	{
 	public:
 		UniqueID();
-		UniqueID(uint64_t InValue);
+		UniqueID(uint64_t value);
 
 		operator uint64_t() { return m_Value; }
 		operator const uint64_t() const { return m_Value; }
@@ -24,9 +24,9 @@ namespace std {
 	template<>
 	struct hash<Yuki::UniqueID>
 	{
-		size_t operator()(const Yuki::UniqueID& InID) const
+		size_t operator()(const Yuki::UniqueID& id) const
 		{
-			return static_cast<size_t>(InID);
+			return static_cast<size_t>(id);
 		}
 	};
 

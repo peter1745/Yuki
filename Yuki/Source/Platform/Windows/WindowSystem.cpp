@@ -11,67 +11,67 @@ namespace Yuki {
 	static std::array<KeyCode, 512> s_KeyLookup;
 	static std::array<RAWINPUT, 1000> s_RawInputBuffer;
 
-	LRESULT CALLBACK WindowProc(HWND InHWND, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
+	LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
-		auto* Data = reinterpret_cast<WindowSystem::WindowData*>(GetWindowLongPtr(InHWND, GWLP_USERDATA));
+		auto* data = reinterpret_cast<WindowSystem::WindowData*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
-		switch (InMessage)
+		switch (message)
 		{
 		case WM_NCCREATE:
 		case WM_CREATE:
 		{
-			auto UserData = reinterpret_cast<LONG_PTR>(reinterpret_cast<CREATESTRUCT*>(InLParam)->lpCreateParams);
-			SetWindowLongPtr(InHWND, GWLP_USERDATA, UserData);
+			auto UserData = reinterpret_cast<LONG_PTR>(reinterpret_cast<CREATESTRUCT*>(lParam)->lpCreateParams);
+			SetWindowLongPtr(hwnd, GWLP_USERDATA, UserData);
 			break;
 		}
 		case WM_SIZE:
 		{
-			Data->Width = LOWORD(InLParam);
-			Data->Height = HIWORD(InLParam);
+			data->Width = LOWORD(lParam);
+			data->Height = HIWORD(lParam);
 			break;
 		}
 		case WM_CLOSE:
 		{
 			EngineMessages::Get().Post<WindowCloseMessage>({
-				.Handle = Data->Handle,
-				.IsPrimaryWindow = Data->IsPrimary
+				.Handle = data->Handle,
+				.IsPrimaryWindow = data->IsPrimary
 			});
 			break;
 		}
 		case WM_LBUTTONDOWN:
 		{
-			Data->MouseButtonStates[MouseButton::Left] = true;
+			data->MouseButtonStates[MouseButton::Left] = true;
 			break;
 		}
 		case WM_MBUTTONDOWN:
 		{
-			Data->MouseButtonStates[MouseButton::Middle] = true;
+			data->MouseButtonStates[MouseButton::Middle] = true;
 			break;
 		}
 		case WM_RBUTTONDOWN:
 		{
-			Data->MouseButtonStates[MouseButton::Right] = true;
+			data->MouseButtonStates[MouseButton::Right] = true;
 			break;
 		}
 		case WM_LBUTTONUP:
 		{
-			Data->MouseButtonStates[MouseButton::Left] = false;
+			data->MouseButtonStates[MouseButton::Left] = false;
 			break;
 		}
 		case WM_MBUTTONUP:
 		{
-			Data->MouseButtonStates[MouseButton::Middle] = false;
+			data->MouseButtonStates[MouseButton::Middle] = false;
 			break;
 		}
 		case WM_RBUTTONUP:
 		{
-			Data->MouseButtonStates[MouseButton::Right] = false;
+			data->MouseButtonStates[MouseButton::Right] = false;
 			break;
 		}
 		case WM_MOUSEMOVE:
 		{
-			Data->MouseX = int32_t(LOWORD(InLParam));
-			Data->MouseY = int32_t(HIWORD(InLParam));
+			data->MouseX = int32_t(LOWORD(lParam));
+			data->MouseY = int32_t(HIWORD(lParam));
 			break;
 		}
 		case WM_KEYDOWN:
@@ -79,19 +79,19 @@ namespace Yuki {
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
 		{
-			bool State = !(HIWORD(InLParam) & KF_UP);
+			bool state = !(HIWORD(lParam) & KF_UP);
 
-			int ScanCode = (HIWORD(InLParam) & (KF_EXTENDED | 0xff));
-			if (ScanCode == 0)
-				ScanCode = MapVirtualKeyW((UINT)InWParam, MAPVK_VK_TO_VSC);
+			int scancode = (HIWORD(lParam) & (KF_EXTENDED | 0xff));
+			if (scancode == 0)
+				scancode = MapVirtualKeyW((UINT)wParam, MAPVK_VK_TO_VSC);
 
-			KeyCode Key = s_KeyLookup[ScanCode];
+			KeyCode key = s_KeyLookup[scancode];
 
-			if (InWParam == VK_CONTROL)
+			if (wParam == VK_CONTROL)
 			{
-				if (HIWORD(InLParam) & KF_EXTENDED)
+				if (HIWORD(lParam) & KF_EXTENDED)
 				{
-					Key = KeyCode::RightControl;
+					key = KeyCode::RightControl;
 				}
 				else
 				{
@@ -99,14 +99,14 @@ namespace Yuki {
 					// HACK: We only want one event for Alt Gr, so if we detect
 					//       this sequence we discard this Left Ctrl message now
 					//       and later report Right Alt normally
-					MSG Next;
-					const DWORD Time = GetMessageTime();
+					MSG next;
+					const DWORD time = GetMessageTime();
 
-					if (PeekMessageW(&Next, NULL, 0, 0, PM_NOREMOVE))
+					if (PeekMessageW(&next, NULL, 0, 0, PM_NOREMOVE))
 					{
-						if (Next.message == WM_KEYDOWN || Next.message == WM_SYSKEYDOWN || Next.message == WM_KEYUP || Next.message == WM_SYSKEYUP)
+						if (next.message == WM_KEYDOWN || next.message == WM_SYSKEYDOWN || next.message == WM_KEYUP || next.message == WM_SYSKEYUP)
 						{
-							if (Next.wParam == VK_MENU && (HIWORD(Next.lParam) & KF_EXTENDED) && Next.time == Time)
+							if (next.wParam == VK_MENU && (HIWORD(next.lParam) & KF_EXTENDED) && next.time == time)
 							{
 								// Next message is Right Alt down so discard this
 								break;
@@ -114,16 +114,16 @@ namespace Yuki {
 						}
 					}
 
-					Key = KeyCode::LeftControl;
+					key = KeyCode::LeftControl;
 				}
 			}
 
-			Data->KeyStates[Key] = State;
+			data->KeyStates[key] = state;
 
 			/*if (!State)
 				break;
 
-			for (const auto* Context : Data->InputContexts)
+			for (const auto* Context : data->InputContexts)
 			{
 				Context->ProcessInput(KeyInputEvent{ Key });
 			}*/
@@ -134,18 +134,18 @@ namespace Yuki {
 			break;
 		}
 
-		return DefWindowProc(InHWND, InMessage, InWParam, InLParam);
+		return DefWindowProc(hwnd, message, wParam, lParam);
 	}
 
 	WindowSystem::WindowSystem()
 	{
-		WNDCLASSEXW WndClass = {};
-		WndClass.cbSize = sizeof(WNDCLASSEXW);
-		WndClass.lpszClassName = WindowClassName;
-		WndClass.hInstance = GetModuleHandle(NULL);
-		WndClass.lpfnWndProc = WindowProc;
-		WndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-		RegisterClassExW(&WndClass);
+		WNDCLASSEXW wndClass = {};
+		wndClass.cbSize = sizeof(WNDCLASSEXW);
+		wndClass.lpszClassName = WindowClassName;
+		wndClass.hInstance = GetModuleHandle(NULL);
+		wndClass.lpfnWndProc = WindowProc;
+		wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+		RegisterClassExW(&wndClass);
 		
 		{
 			s_KeyLookup.fill(KeyCode::Unknown);
@@ -279,63 +279,63 @@ namespace Yuki {
 		UnregisterClassW(WindowClassName, GetModuleHandle(NULL));
 	}
 
-	WindowHandle WindowSystem::NewWindow(WindowInfo InInfo)
+	WindowHandle WindowSystem::NewWindow(WindowInfo info)
 	{
 		//YUKI_VERIFY(!m_WindowHandle, "Cannot create window multiple times!");
 
-		HMODULE Module = GetModuleHandle(NULL);
+		HMODULE module = GetModuleHandle(NULL);
 
-		auto Title = StringHelper::WideFromUTF8(InInfo.Title);
-		WindowHandle Handle;
+		auto title = StringHelper::WideFromUTF8(info.Title);
+		WindowHandle handle;
 
-		auto& Window = m_Windows[Handle];
-		Window.Handle = Handle;
-		Window.IsPrimary = m_NextWindowIndex - 1 == 0;
+		auto& window = m_Windows[handle];
+		window.Handle = handle;
+		window.IsPrimary = m_NextWindowIndex - 1 == 0;
 
-		auto NativeHandle = CreateWindowExW(
+		auto nativeHandle = CreateWindowExW(
 			0,
 			WindowClassName,
-			Title.c_str(),
+			title.c_str(),
 
 			WS_OVERLAPPEDWINDOW,
 
-			(GetSystemMetrics(SM_CXSCREEN) / 2) - InInfo.Width / 2,
-			(GetSystemMetrics(SM_CYSCREEN) / 2) - InInfo.Height / 2,
-			InInfo.Width, InInfo.Height,
+			(GetSystemMetrics(SM_CXSCREEN) / 2) - info.Width / 2,
+			(GetSystemMetrics(SM_CYSCREEN) / 2) - info.Height / 2,
+			info.Width, info.Height,
 
 			nullptr,
 			nullptr,
-			Module,
-			&Window);
+			module,
+			&window);
 
-		ShowWindow(NativeHandle, SW_SHOWNORMAL);
+		ShowWindow(nativeHandle, SW_SHOWNORMAL);
 
-		RECT ClientRect;
-		GetClientRect(NativeHandle, &ClientRect);
-		Window.Width = ClientRect.right;
-		Window.Height = ClientRect.bottom;
+		RECT clientRect;
+		GetClientRect(nativeHandle, &clientRect);
+		window.Width = clientRect.right;
+		window.Height = clientRect.bottom;
 
-		const RAWINPUTDEVICE RawMouseInputDevice =
+		const RAWINPUTDEVICE rawMouseInputDevice =
 		{
 			.usUsagePage = HID_USAGE_PAGE_GENERIC,
 			.usUsage = HID_USAGE_GENERIC_MOUSE,
 			.dwFlags = 0,
-			.hwndTarget = NativeHandle
+			.hwndTarget = nativeHandle
 		};
-		YUKI_VERIFY(RegisterRawInputDevices(&RawMouseInputDevice, 1, sizeof(RAWINPUTDEVICE)) != FALSE);
+		YUKI_VERIFY(RegisterRawInputDevices(&rawMouseInputDevice, 1, sizeof(RAWINPUTDEVICE)) != FALSE);
 
-		POINT CursorPos;
-		GetCursorPos(&CursorPos);
-		Window.LastMouseDeltaX = CursorPos.x;
-		Window.LastMouseDeltaY = CursorPos.y;
+		POINT cursorPos;
+		GetCursorPos(&cursorPos);
+		window.LastMouseDeltaX = cursorPos.x;
+		window.LastMouseDeltaY = cursorPos.y;
 
-		Window.NativeHandle = NativeHandle;
-		return Handle;
+		window.NativeHandle = nativeHandle;
+		return handle;
 	}
 
 	void WindowSystem::PollMessages()
 	{
-		MSG Message = {};
+		MSG message = {};
 
 		UINT cbSize;
 
@@ -357,47 +357,47 @@ namespace Yuki {
 			PRAWINPUT current = s_RawInputBuffer.data();
 			for (UINT i = 0; i < nInput; ++i)
 			{
-				for (auto& Data : m_Windows | std::views::values)
+				for (auto& data : m_Windows | std::views::values)
 				{
-					Data.LastMouseDeltaX += current->data.mouse.lLastX;
-					Data.LastMouseDeltaY += current->data.mouse.lLastY;
+					data.LastMouseDeltaX += current->data.mouse.lLastX;
+					data.LastMouseDeltaY += current->data.mouse.lLastY;
 				}
 				current = YUKI_NEXTRAWINPUTBLOCK(current);
 			}
 		}
 
-		for (const auto& Data : m_Windows | std::views::values)
+		for (const auto& data : m_Windows | std::views::values)
 		{
-			if (Data.Locked)
-				SetCursorPos(Data.LockedMouseX, Data.LockedMouseY);
+			if (data.Locked)
+				SetCursorPos(data.LockedMouseX, data.LockedMouseY);
 
-			while (PeekMessage(&Message, Cast<HWND>(Data.NativeHandle), 0, 0, PM_REMOVE))
+			while (PeekMessage(&message, Cast<HWND>(data.NativeHandle), 0, 0, PM_REMOVE))
 			{
-				TranslateMessage(&Message);
-				DispatchMessage(&Message);
+				TranslateMessage(&message);
+				DispatchMessage(&message);
 			}
 		}
 	}
 
-	void WindowSystem::SetCursorLock(WindowHandle InHandle, bool InLock)
+	void WindowSystem::SetCursorLock(WindowHandle handle, bool lock)
 	{
-		if (m_Windows[InHandle].Locked == InLock)
+		if (m_Windows[handle].Locked == lock)
 			return;
 
-		HWND NativeHandle = Cast<HWND>(m_Windows[InHandle].NativeHandle);
+		auto nativeHandle = Cast<HWND>(m_Windows[handle].NativeHandle);
 
-		if (InLock)
+		if (lock)
 		{
-			POINT LockPos;
-			GetCursorPos(&LockPos);
-			m_Windows[InHandle].LockedMouseX = LockPos.x;
-			m_Windows[InHandle].LockedMouseY = LockPos.y;
+			POINT lockPos;
+			GetCursorPos(&lockPos);
+			m_Windows[handle].LockedMouseX = lockPos.x;
+			m_Windows[handle].LockedMouseY = lockPos.y;
 
-			RECT ClipRect;
-			GetClientRect(NativeHandle, &ClipRect);
-			ClientToScreen(NativeHandle, reinterpret_cast<POINT*>(&ClipRect.left));
-			ClientToScreen(NativeHandle, reinterpret_cast<POINT*>(&ClipRect.right));
-			ClipCursor(&ClipRect);
+			RECT clipRect;
+			GetClientRect(nativeHandle, &clipRect);
+			ClientToScreen(nativeHandle, reinterpret_cast<POINT*>(&clipRect.left));
+			ClientToScreen(nativeHandle, reinterpret_cast<POINT*>(&clipRect.right));
+			ClipCursor(&clipRect);
 			ShowCursor(FALSE);
 		}
 		else
@@ -406,7 +406,7 @@ namespace Yuki {
 			ShowCursor(TRUE);
 		}
 
-		m_Windows[InHandle].Locked = InLock;
+		m_Windows[handle].Locked = lock;
 	}
 
 }

@@ -7,4 +7,3 @@
 #endif
 
 #include <volk/volk.h>
-

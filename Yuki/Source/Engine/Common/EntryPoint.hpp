@@ -23,14 +23,14 @@ namespace Yuki {
 			return true;
 		}
 
-		int operator()(int ArgC, char* ArgV[])
+		int operator()(int argc, char* argv[])
 		{
 			if (!Initialize())
 				return YUKI_EXIT_FAILURE;
 
 			App->Run();
 
-			int ExitCode = YUKI_EXIT_SUCCESS;
+			int exitCode = YUKI_EXIT_SUCCESS;
 
 			/*if (App->ErrorReporter.HasError())
 			{
@@ -42,13 +42,13 @@ namespace Yuki {
 				} while (App->ErrorReporter.HasError());
 			}*/
 
-			return ExitCode;
+			return exitCode;
 		}
 	};
 }
 
 #define YUKI_DECLARE_APPLICATION(AppClass)			\
-int main(int ArgC, char* ArgV[])					\
+int main(int argc, char* argv[])					\
 {													\
-	return Yuki::AppRunner<AppClass>()(ArgC, ArgV);	\
+	return Yuki::AppRunner<AppClass>()(argc, argv);	\
 }													\

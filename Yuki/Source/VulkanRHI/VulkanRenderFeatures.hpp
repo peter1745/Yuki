@@ -5,10 +5,10 @@
 
 namespace Yuki::Vulkan {
 
-	inline Unique<VulkanFeature> GetVulkanFeature(RHI::RendererFeature InFeature)
+	inline Unique<VulkanFeature> GetVulkanFeature(RHI::RendererFeature feature)
 	{
 		using enum RHI::RendererFeature;
-		switch (InFeature)
+		switch (feature)
 		{
 		case RayTracing: return Unique<VulkanRaytracingFeature>::New();
 		}

@@ -9,9 +9,9 @@ namespace Yuki {
 	{
 		EngineTime::GetInternal().m_LastTime = EngineTime::Clock::now();
 
-		EngineMessages::Get().AddListener<WindowCloseMessage>([this](const auto& InMessage)
+		EngineMessages::Get().AddListener<WindowCloseMessage>([this](const auto& message)
 		{
-			ShouldClose = InMessage.IsPrimaryWindow;
+			ShouldClose = message.IsPrimaryWindow;
 		});
 
 		while (!ShouldClose)

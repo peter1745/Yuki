@@ -2,47 +2,47 @@
 
 namespace Yuki::RHI {
 
-	CommandPool CommandPool::Create(Context InContext, QueueRH InQueue)
+	CommandPool CommandPool::Create(Context context, QueueRH queue)
 	{
-		auto Pool = new Impl();
-		Pool->Ctx = InContext;
+		auto pool = new Impl();
+		pool->Ctx = context;
 
-		VkCommandPoolCreateInfo PoolInfo =
+		VkCommandPoolCreateInfo poolInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.queueFamilyIndex = InQueue->Family
+			.queueFamilyIndex = queue->Family
 		};
-		YUKI_VERIFY(vkCreateCommandPool(InContext->Device, &PoolInfo, nullptr, &Pool->Handle) == VK_SUCCESS);
+		YUKI_VK_CHECK(vkCreateCommandPool(context->Device, &poolInfo, nullptr, &pool->Handle));
 
-		return { Pool };
+		return { pool };
 	}
 
 	void CommandPool::Destroy()
 	{
-		for (auto List : m_Impl->AllocatedLists)
-			delete List.m_Impl;
+		for (auto list : m_Impl->AllocatedLists)
+			delete list.m_Impl;
 
 		vkDestroyCommandPool(m_Impl->Ctx->Device, m_Impl->Handle, nullptr);
 		delete m_Impl;
 	}
 
-	void CommandPool::Reset()
+	void CommandPool::Reset() const
 	{
-		YUKI_VERIFY(vkResetCommandPool(m_Impl->Ctx->Device, m_Impl->Handle, 0) == VK_SUCCESS);
+		YUKI_VK_CHECK(vkResetCommandPool(m_Impl->Ctx->Device, m_Impl->Handle, 0));
 		m_Impl->NextList = 0;
 	}
 
-	CommandList CommandPool::NewList()
+	CommandList CommandPool::NewList() const
 	{
 		if (m_Impl->NextList >= m_Impl->AllocatedLists.size())
 		{
 			// TODO(Peter): Maybe consider growing by 50% each time?
 
-			auto List = new CommandList::Impl();
+			auto list = new CommandList::Impl();
 
-			VkCommandBufferAllocateInfo AllocInfo =
+			VkCommandBufferAllocateInfo allocInfo =
 			{
 				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 				.pNext = nullptr,
@@ -50,9 +50,9 @@ namespace Yuki::RHI {
 				.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 				.commandBufferCount = 1,
 			};
-			YUKI_VERIFY(vkAllocateCommandBuffers(m_Impl->Ctx->Device, &AllocInfo, &List->Handle) == VK_SUCCESS);
+			YUKI_VK_CHECK(vkAllocateCommandBuffers(m_Impl->Ctx->Device, &allocInfo, &list->Handle));
 
-			m_Impl->AllocatedLists.push_back({ List });
+			m_Impl->AllocatedLists.push_back({ list });
 		}
 
 		return m_Impl->AllocatedLists[m_Impl->NextList++];
@@ -60,131 +60,87 @@ namespace Yuki::RHI {
 
 	void CommandList::Begin()
 	{
-		VkCommandBufferBeginInfo BeginInfo =
+		VkCommandBufferBeginInfo beginInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 			.pNext = nullptr,
 			.flags = 0,
 			.pInheritanceInfo = nullptr,
 		};
-		YUKI_VERIFY(vkBeginCommandBuffer(m_Impl->Handle, &BeginInfo) == VK_SUCCESS);
+		YUKI_VK_CHECK(vkBeginCommandBuffer(m_Impl->Handle, &beginInfo));
 	}
 
-	void CommandList::ImageBarrier(RHI::ImageBarrier InBarrier)
+	void CommandList::BeginRendering(RenderTarget renderTarget)
 	{
-		YUKI_VERIFY(InBarrier.Images.Count() == InBarrier.Layouts.Count());
+		DynamicArray<VkRenderingAttachmentInfo> colorAttachmentInfos(renderTarget.ColorAttachments.Count(), { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO });
 
-		DynamicArray<VkImageMemoryBarrier2> Barriers(InBarrier.Images.Count(), { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 });
+		VkRect2D renderArea = { { 0, 0 }, { 0, 0 } };
 
-		for (size_t Index = 0; Index < InBarrier.Images.Count(); Index++)
+		for (size_t i = 0; i < renderTarget.ColorAttachments.Count(); i++)
 		{
-			auto Image = InBarrier.Images[Index];
-			auto NewLayout = Image::Impl::ImageLayoutToVkImageLayout(InBarrier.Layouts[Index]);
+			const auto& attachment = renderTarget.ColorAttachments[i];
 
-			Image->OldLayout = Image->Layout;
+			renderArea.offset = { 0, 0 };
+			renderArea.extent = { attachment.ImageView->Image->Width, attachment.ImageView->Image->Height };
 
-			Barriers[Index].srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-			Barriers[Index].srcAccessMask = 0;
-			Barriers[Index].dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-			Barriers[Index].dstAccessMask = 0;
-			Barriers[Index].oldLayout = Image->OldLayout;
-			Barriers[Index].newLayout = NewLayout;
-			Barriers[Index].image = Image->Handle;
-			Barriers[Index].subresourceRange =
-			{
-				.aspectMask = Image->AspectMask,
-				.baseMipLevel = 0,
-				.levelCount = 1,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
-			};
-
-			Image->Layout = NewLayout;
-		}
-
-		VkDependencyInfo DependencyInfo =
-		{
-			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-			.pNext = nullptr,
-			.imageMemoryBarrierCount = Cast<uint32_t>(Barriers.size()),
-			.pImageMemoryBarriers = Barriers.data(),
-		};
-		vkCmdPipelineBarrier2(m_Impl->Handle, &DependencyInfo);
-	}
-
-	void CommandList::BeginRendering(RenderTarget InRenderTarget)
-	{
-		DynamicArray<VkRenderingAttachmentInfo> ColorAttachmentInfos(InRenderTarget.ColorAttachments.Count(), { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO });
-
-		VkRect2D RenderArea;
-
-		for (size_t Index = 0; Index < InRenderTarget.ColorAttachments.Count(); Index++)
-		{
-			const auto& Attachment = InRenderTarget.ColorAttachments[Index];
-
-			RenderArea.offset = { 0, 0 };
-			RenderArea.extent = { Attachment.ImageView->Image->Width, Attachment.ImageView->Image->Height };
-
-			VkAttachmentLoadOp LoadOp = VK_ATTACHMENT_LOAD_OP_NONE_EXT;
-			switch (Attachment.LoadOp)
+			VkAttachmentLoadOp loadOp = VK_ATTACHMENT_LOAD_OP_NONE_EXT;
+			switch (attachment.LoadOp)
 			{
 			case AttachmentLoadOp::Load:
 			{
-				LoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+				loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 				break;
 			}
 			case AttachmentLoadOp::Clear:
 			{
-				LoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+				loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 				break;
 			}
 			case AttachmentLoadOp::DontCare:
 			{
-				LoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+				loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 				break;
 			}
 			}
 
-			VkAttachmentStoreOp StoreOp = VK_ATTACHMENT_STORE_OP_NONE;
-			switch (Attachment.StoreOp)
+			VkAttachmentStoreOp storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+			switch (attachment.StoreOp)
 			{
 			case AttachmentStoreOp::Store:
 			{
-				StoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+				storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 				break;
 			}
 			case AttachmentStoreOp::DontCare:
 			{
-				StoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+				storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 				break;
 			}
 			}
 
-			ColorAttachmentInfos[Index].imageView = Attachment.ImageView->Handle;
-			ColorAttachmentInfos[Index].imageLayout = Attachment.ImageView->Image->Layout;
-			ColorAttachmentInfos[Index].loadOp = LoadOp;
-			ColorAttachmentInfos[Index].storeOp = StoreOp;
-			ColorAttachmentInfos[Index].clearValue.color.float32[0] = 0.1f;
-			ColorAttachmentInfos[Index].clearValue.color.float32[1] = 0.1f;
-			ColorAttachmentInfos[Index].clearValue.color.float32[2] = 0.1f;
-			ColorAttachmentInfos[Index].clearValue.color.float32[3] = 1.0f;
+			colorAttachmentInfos[i].imageView = attachment.ImageView->Handle;
+			colorAttachmentInfos[i].imageLayout = attachment.ImageView->Image->Layout;
+			colorAttachmentInfos[i].loadOp = loadOp;
+			colorAttachmentInfos[i].storeOp = storeOp;
+			colorAttachmentInfos[i].clearValue.color.float32[0] = 0.1f;
+			colorAttachmentInfos[i].clearValue.color.float32[1] = 0.1f;
+			colorAttachmentInfos[i].clearValue.color.float32[2] = 0.1f;
+			colorAttachmentInfos[i].clearValue.color.float32[3] = 1.0f;
 		}
 
-		VkRenderingInfo RenderingInfo =
+		VkRenderingInfo renderingInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.renderArea = RenderArea,
+			.renderArea = renderArea,
 			.layerCount = 1,
 			.viewMask = 0,
-			.colorAttachmentCount = Cast<uint32_t>(ColorAttachmentInfos.size()),
-			.pColorAttachments = ColorAttachmentInfos.data(),
-			//.pDepthAttachment,
-			//.pStencilAttachment,
+			.colorAttachmentCount = Cast<uint32_t>(colorAttachmentInfos.size()),
+			.pColorAttachments = colorAttachmentInfos.data(),
 		};
 
-		vkCmdBeginRendering(m_Impl->Handle, &RenderingInfo);
+		vkCmdBeginRendering(m_Impl->Handle, &renderingInfo);
 	}
 
 	void CommandList::EndRendering()
@@ -192,29 +148,29 @@ namespace Yuki::RHI {
 		vkCmdEndRendering(m_Impl->Handle);
 	}
 
-	void CommandList::CopyBuffer(BufferRH InDest, BufferRH InSrc)
+	void CommandList::CopyBuffer(BufferRH dest, BufferRH src)
 	{
-		uint64_t Size = std::min(InDest->Size, InSrc->Size);
+		uint64_t size = std::min(dest->Size, src->Size);
 
-		VkBufferCopy2 Region =
+		VkBufferCopy2 region =
 		{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
 			.pNext = nullptr,
 			.srcOffset = 0,
 			.dstOffset = 0,
-			.size = Size,
+			.size = size,
 		};
 
-		VkCopyBufferInfo2 CopyInfo =
+		VkCopyBufferInfo2 copyInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
 			.pNext = nullptr,
-			.srcBuffer = InSrc->Handle,
-			.dstBuffer = InDest->Handle,
+			.srcBuffer = src->Handle,
+			.dstBuffer = dest->Handle,
 			.regionCount = 1,
-			.pRegions = &Region,
+			.pRegions = &region,
 		};
-		vkCmdCopyBuffer2(m_Impl->Handle, &CopyInfo);
+		vkCmdCopyBuffer2(m_Impl->Handle, &copyInfo);
 	}
 
 	/*static VkShaderStageFlags ShaderStagesToVkShaderStageFlags(ShaderStage InStages)
@@ -230,83 +186,81 @@ namespace Yuki::RHI {
 		return Result;
 	}*/
 
-	void CommandList::PushConstants(PipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize)
+	void CommandList::PushConstants(PipelineLayout layout, ShaderStage stages, const void* data, uint32_t dataSize)
 	{
-		vkCmdPushConstants(m_Impl->Handle, InPipeline->Layout, VK_SHADER_STAGE_ALL, 0, InDataSize, InData);
+		vkCmdPushConstants(m_Impl->Handle, layout->Handle, VK_SHADER_STAGE_ALL, 0, dataSize, data);
 	}
 
-	void CommandList::PushConstants(RayTracingPipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize)
+	void CommandList::BindDescriptorSets(PipelineLayout layout, PipelineBindPoint bindPoint, Span<DescriptorSetRH> descriptorSets)
 	{
-		vkCmdPushConstants(m_Impl->Handle, InPipeline->Layout, VK_SHADER_STAGE_ALL, 0, InDataSize, InData);
-	}
+		DynamicArray<VkDescriptorSet> sets(descriptorSets.Count());
+		for (size_t i = 0; i < descriptorSets.Count(); i++)
+			sets[i] = descriptorSets[i]->Handle;
 
-	void CommandList::BindDescriptorSets(PipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets)
-	{
-		DynamicArray<VkDescriptorSet> Sets(InDescriptorSets.Count());
-		for (size_t Index = 0; Index < InDescriptorSets.Count(); Index++)
-			Sets[Index] = InDescriptorSets[Index]->Handle;
+		VkPipelineBindPoint pipelineBindPoint = VK_PIPELINE_BIND_POINT_MAX_ENUM;
 
-		vkCmdBindDescriptorSets(m_Impl->Handle, VK_PIPELINE_BIND_POINT_GRAPHICS, InPipeline->Layout, 0, Cast<uint32_t>(InDescriptorSets.Count()), Sets.data(), 0, nullptr);
-	}
-
-	void CommandList::BindDescriptorSets(RayTracingPipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets)
-	{
-		DynamicArray<VkDescriptorSet> Sets(InDescriptorSets.Count());
-		for (size_t Index = 0; Index < InDescriptorSets.Count(); Index++)
-			Sets[Index] = InDescriptorSets[Index]->Handle;
-
-		vkCmdBindDescriptorSets(m_Impl->Handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, InPipeline->Layout, 0, Cast<uint32_t>(InDescriptorSets.Count()), Sets.data(), 0, nullptr);
-	}
-
-	void CommandList::BindPipeline(PipelineRH InPipeline)
-	{
-		vkCmdBindPipeline(m_Impl->Handle, VK_PIPELINE_BIND_POINT_GRAPHICS, InPipeline->Handle);
-	}
-
-	void CommandList::BindPipeline(RayTracingPipelineRH InPipeline)
-	{
-		vkCmdBindPipeline(m_Impl->Handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, InPipeline->Handle);
-	}
-
-	void CommandList::BindIndexBuffer(BufferRH InBuffer)
-	{
-		vkCmdBindIndexBuffer(m_Impl->Handle, InBuffer->Handle, 0, VK_INDEX_TYPE_UINT32);
-	}
-
-	void CommandList::SetViewport(Viewport InViewport)
-	{
-		VkViewport Viewport =
+		switch (bindPoint)
 		{
-			.x = InViewport.X,
-			.y = InViewport.Y,
-			.width = InViewport.Width,
-			.height = InViewport.Height,
+		case PipelineBindPoint::Graphics:
+			pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+			break;
+		case PipelineBindPoint::RayTracing:
+			pipelineBindPoint = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+			break;
+		}
+
+		vkCmdBindDescriptorSets(m_Impl->Handle, pipelineBindPoint, layout->Handle, 0, Cast<uint32_t>(descriptorSets.Count()), sets.data(), 0, nullptr);
+	}
+
+	void CommandList::BindPipeline(PipelineRH pipeline)
+	{
+		vkCmdBindPipeline(m_Impl->Handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->Handle);
+	}
+
+	void CommandList::BindPipeline(RayTracingPipelineRH pipeline)
+	{
+		vkCmdBindPipeline(m_Impl->Handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline->Handle);
+	}
+
+	void CommandList::BindIndexBuffer(BufferRH buffer)
+	{
+		vkCmdBindIndexBuffer(m_Impl->Handle, buffer->Handle, 0, VK_INDEX_TYPE_UINT32);
+	}
+
+	void CommandList::SetViewport(Viewport viewport)
+	{
+		VkViewport v =
+		{
+			.x = viewport.X,
+			.y = viewport.Y,
+			.width = viewport.Width,
+			.height = viewport.Height,
 			.minDepth = 0.0f,
 			.maxDepth = 1.0f
 		};
-		vkCmdSetViewport(m_Impl->Handle, 0, 1, &Viewport);
+		vkCmdSetViewport(m_Impl->Handle, 0, 1, &v);
 
-		VkRect2D Scissor =
+		VkRect2D scissor =
 		{
 			.offset = { 0, 0 },
-			.extent = { Cast<uint32_t>(InViewport.Width), Cast<uint32_t>(InViewport.Height) }
+			.extent = { Cast<uint32_t>(viewport.Width), Cast<uint32_t>(viewport.Height) }
 		};
-		vkCmdSetScissor(m_Impl->Handle, 0, 1, &Scissor);
+		vkCmdSetScissor(m_Impl->Handle, 0, 1, &scissor);
 	}
 
-	void CommandList::DrawIndexed(uint32_t InIndexCount, uint32_t InIndexOffset, uint32_t InInstanceIndex)
+	void CommandList::DrawIndexed(uint32_t indexCount, uint32_t indexOffset, uint32_t instanceIndex)
 	{
-		vkCmdDrawIndexed(m_Impl->Handle, InIndexCount, 1, 0, 0, InInstanceIndex);
+		vkCmdDrawIndexed(m_Impl->Handle, indexCount, 1, 0, 0, instanceIndex);
 	}
 
-	void CommandList::TraceRay(RayTracingPipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight)
+	void CommandList::TraceRays(RayTracingPipelineRH pipeline, uint32_t width, uint32_t height)
 	{
-		vkCmdTraceRaysKHR(m_Impl->Handle, &InPipeline->RayGenRegion, &InPipeline->MissGenRegion, &InPipeline->ClosestHitGenRegion, &InPipeline->CallableGenRegion, InWidth, InHeight, 1);
+		vkCmdTraceRaysKHR(m_Impl->Handle, &pipeline->RayGenRegion, &pipeline->MissGenRegion, &pipeline->ClosestHitGenRegion, &pipeline->CallableGenRegion, width, height, 1);
 	}
 
 	void CommandList::End()
 	{
-		YUKI_VERIFY(vkEndCommandBuffer(m_Impl->Handle) == VK_SUCCESS);
+		YUKI_VK_CHECK(vkEndCommandBuffer(m_Impl->Handle));
 	}
 
 }

@@ -2,9 +2,9 @@
 
 namespace Yuki::RHI {
 
-	static VkDescriptorType DescriptorTypeToVkDescriptorType(DescriptorType InType)
+	static VkDescriptorType DescriptorTypeToVkDescriptorType(DescriptorType type)
 	{
-		switch (InType)
+		switch (type)
 		{
 		case DescriptorType::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
 		case DescriptorType::CombinedImageSampler: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -23,57 +23,57 @@ namespace Yuki::RHI {
 		return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 	}
 
-	static VkShaderStageFlags ShaderStagesToVkShaderStageFlags(ShaderStage InStages)
+	static VkShaderStageFlags ShaderStagesToVkShaderStageFlags(ShaderStage stages)
 	{
-		VkShaderStageFlags Result = 0;
+		VkShaderStageFlags result = 0;
 
-		if (InStages & ShaderStage::Vertex) Result |= VK_SHADER_STAGE_VERTEX_BIT;
-		if (InStages & ShaderStage::Fragment) Result |= VK_SHADER_STAGE_FRAGMENT_BIT;
-		if (InStages & ShaderStage::RayGeneration) Result |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-		if (InStages & ShaderStage::RayMiss) Result |= VK_SHADER_STAGE_MISS_BIT_KHR;
-		if (InStages & ShaderStage::RayClosestHit) Result |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+		if (stages & ShaderStage::Vertex)			result |= VK_SHADER_STAGE_VERTEX_BIT;
+		if (stages & ShaderStage::Fragment)			result |= VK_SHADER_STAGE_FRAGMENT_BIT;
+		if (stages & ShaderStage::RayGeneration)	result |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+		if (stages & ShaderStage::RayMiss)			result |= VK_SHADER_STAGE_MISS_BIT_KHR;
+		if (stages & ShaderStage::RayClosestHit)	result |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
-		return Result;
+		return result;
 	}
 
-	DescriptorSetLayout DescriptorSetLayout::Create(Context InContext, const DescriptorSetLayoutInfo& InLayoutInfo)
+	DescriptorSetLayout DescriptorSetLayout::Create(Context context, const DescriptorSetLayoutInfo& info)
 	{
-		auto Layout = new Impl();
+		auto layout = new Impl();
 
-		DynamicArray<VkDescriptorSetLayoutBinding> Bindings(InLayoutInfo.Descriptors.size());
-		for (uint32_t Index = 0; Index < InLayoutInfo.Descriptors.size(); Index++)
+		DynamicArray<VkDescriptorSetLayoutBinding> bindings(info.Descriptors.size());
+		for (uint32_t i = 0; i < info.Descriptors.size(); i++)
 		{
-			const auto& BindingInfo = InLayoutInfo.Descriptors.at(Index);
-			Bindings[Index] =
+			const auto& bindingInfo = info.Descriptors.at(i);
+			bindings[i] =
 			{
-				.binding = Index,
-				.descriptorType = DescriptorTypeToVkDescriptorType(BindingInfo.Type),
-				.descriptorCount = BindingInfo.Count,
-				.stageFlags = ShaderStagesToVkShaderStageFlags(InLayoutInfo.Stages),
+				.binding = i,
+				.descriptorType = DescriptorTypeToVkDescriptorType(bindingInfo.Type),
+				.descriptorCount = bindingInfo.Count,
+				.stageFlags = ShaderStagesToVkShaderStageFlags(info.Stages),
 				.pImmutableSamplers = nullptr,
 			};
 		}
 
-		DynamicArray<VkDescriptorBindingFlags> BindingFlags(InLayoutInfo.Descriptors.size(), VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
-		VkDescriptorSetLayoutBindingFlagsCreateInfo BindingFlagsInfo =
+		DynamicArray<VkDescriptorBindingFlags> bindingFlags(info.Descriptors.size(), VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
+		VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
 			.pNext = nullptr,
-			.bindingCount = Cast<uint32_t>(BindingFlags.size()),
-			.pBindingFlags = BindingFlags.data(),
+			.bindingCount = Cast<uint32_t>(bindingFlags.size()),
+			.pBindingFlags = bindingFlags.data(),
 		};
 
-		VkDescriptorSetLayoutCreateInfo LayoutInfo =
+		VkDescriptorSetLayoutCreateInfo layoutInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-			.pNext = &BindingFlagsInfo,
+			.pNext = &bindingFlagsInfo,
 			.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
-			.bindingCount = Cast<uint32_t>(Bindings.size()),
-			.pBindings = Bindings.data(),
+			.bindingCount = Cast<uint32_t>(bindings.size()),
+			.pBindings = bindings.data(),
 		};
 
-		vkCreateDescriptorSetLayout(InContext->Device, &LayoutInfo, nullptr, &Layout->Handle);
-		return { Layout };
+		vkCreateDescriptorSetLayout(context->Device, &layoutInfo, nullptr, &layout->Handle);
+		return { layout };
 	}
 
 	/*void VulkanRenderDevice::DescriptorSetLayoutDestroy(DescriptorSetLayoutRH InLayout)
@@ -83,36 +83,36 @@ namespace Yuki::RHI {
 		m_DescriptorSetLayouts.Return(InLayout);
 	}*/
 
-	DescriptorPool DescriptorPool::Create(Context InContext, Span<DescriptorCount> InDescriptorCounts)
+	DescriptorPool DescriptorPool::Create(Context context, Span<DescriptorCount> descriptorCounts)
 	{
-		auto Pool = new Impl();
-		Pool->Ctx = InContext;
+		auto pool = new Impl();
+		pool->Ctx = context;
 
-		DynamicArray<VkDescriptorPoolSize> DescriptorSizes;
-		DescriptorSizes.reserve(InDescriptorCounts.Count());
-		for (const auto& DescriptorCount : InDescriptorCounts)
+		DynamicArray<VkDescriptorPoolSize> descriptorSizes;
+		descriptorSizes.reserve(descriptorCounts.Count());
+		for (const auto& descriptorCount : descriptorCounts)
 		{
-			VkDescriptorPoolSize Size =
+			VkDescriptorPoolSize size =
 			{
-				.type = DescriptorTypeToVkDescriptorType(DescriptorCount.Type),
-				.descriptorCount = DescriptorCount.Count,
+				.type = DescriptorTypeToVkDescriptorType(descriptorCount.Type),
+				.descriptorCount = descriptorCount.Count,
 			};
-			DescriptorSizes.emplace_back(std::move(Size));
+			descriptorSizes.emplace_back(std::move(size));
 		}
 
-		VkDescriptorPoolCreateInfo DescriptorPoolInfo =
+		VkDescriptorPoolCreateInfo descriptorPoolInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT | VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
 			.maxSets = 1000,
-			.poolSizeCount = uint32_t(DescriptorSizes.size()),
-			.pPoolSizes = DescriptorSizes.data(),
+			.poolSizeCount = uint32_t(descriptorSizes.size()),
+			.pPoolSizes = descriptorSizes.data(),
 		};
 
-		vkCreateDescriptorPool(InContext->Device, &DescriptorPoolInfo, nullptr, &Pool->Handle);
+		vkCreateDescriptorPool(context->Device, &descriptorPoolInfo, nullptr, &pool->Handle);
 
-		return { Pool };
+		return { pool };
 	}
 
 	/*void VulkanRenderDevice::DescriptorPoolDestroy(DescriptorPoolRH InPool)
@@ -122,42 +122,42 @@ namespace Yuki::RHI {
 		m_DescriptorPools.Return(InPool);
 	}*/
 
-	DescriptorSet DescriptorPool::AllocateDescriptorSet(DescriptorSetLayoutRH InLayout)
+	DescriptorSet DescriptorPool::AllocateDescriptorSet(DescriptorSetLayoutRH layout)
 	{
-		auto Set = new DescriptorSet::Impl();
-		Set->Ctx = m_Impl->Ctx;
-		Set->Layout = InLayout;
+		auto set = new DescriptorSet::Impl();
+		set->Ctx = m_Impl->Ctx;
+		set->Layout = layout;
 
-		VkDescriptorSetAllocateInfo AllocateInfo =
+		VkDescriptorSetAllocateInfo allocateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
 			.pNext = nullptr,
 			.descriptorPool = m_Impl->Handle,
 			.descriptorSetCount = 1,
-			.pSetLayouts = &InLayout->Handle,
+			.pSetLayouts = &layout->Handle,
 		};
 
-		vkAllocateDescriptorSets(m_Impl->Ctx->Device, &AllocateInfo, &Set->Handle);
+		vkAllocateDescriptorSets(m_Impl->Ctx->Device, &allocateInfo, &set->Handle);
 
-		DescriptorSet Result = { Set };
-		m_Impl->AllocatedSets.push_back(Result);
-		return Result;
+		DescriptorSet result = { set };
+		m_Impl->AllocatedSets.push_back(result);
+		return result;
 	}
 
-	void DescriptorSet::Write(uint32_t InBinding, Span<ImageViewRH> InImageViews, uint32_t InArrayOffset)
+	void DescriptorSet::Write(uint32_t binding, Span<ImageViewRH> imageViews, uint32_t arrayOffset)
 	{
-		if (InImageViews.IsEmpty())
+		if (imageViews.IsEmpty())
 			return;
 
-		DynamicArray<VkDescriptorImageInfo> DescriptorImageInfos;
-		DescriptorImageInfos.reserve(InImageViews.Count());
+		DynamicArray<VkDescriptorImageInfo> descriptorImageInfos;
+		descriptorImageInfos.reserve(imageViews.Count());
 
-		for (auto View : InImageViews)
+		for (auto view : imageViews)
 		{
-			auto& DescriptorImageInfo = DescriptorImageInfos.emplace_back();
-			DescriptorImageInfo.sampler = VK_NULL_HANDLE;
-			DescriptorImageInfo.imageView = View->Handle;
-			DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+			auto& descriptorImageInfo = descriptorImageInfos.emplace_back();
+			descriptorImageInfo.sampler = VK_NULL_HANDLE;
+			descriptorImageInfo.imageView = view->Handle;
+			descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 		}
 
 		VkWriteDescriptorSet writeDescriptor =
@@ -165,11 +165,11 @@ namespace Yuki::RHI {
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 			.pNext = nullptr,
 			.dstSet = m_Impl->Handle,
-			.dstBinding = InBinding,
-			.dstArrayElement = InArrayOffset,
-			.descriptorCount = uint32_t(DescriptorImageInfos.size()),
+			.dstBinding = binding,
+			.dstArrayElement = arrayOffset,
+			.descriptorCount = uint32_t(descriptorImageInfos.size()),
 			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-			.pImageInfo = DescriptorImageInfos.data(),
+			.pImageInfo = descriptorImageInfos.data(),
 		};
 
 		vkUpdateDescriptorSets(m_Impl->Ctx->Device, 1, &writeDescriptor, 0, nullptr);

@@ -17,25 +17,24 @@ namespace Yuki {
 
 	public:
 		template<MessageClass TMessageClass>
-		void Post(TMessageClass InMessage)
+		void Post(TMessageClass message)
 		{
-			auto Message = Unique<TMessageClass>::New(InMessage);
 			size_t Index = MessageTraits::Index<TMessageClass>();
-			m_MessageQueue[Index].emplace_back(std::move(Message));
+			m_MessageQueue[Index].emplace_back(std::move(Unique<TMessageClass>::New(message)));
 		}
 
 		template<typename TMessageClass>
-		void AddListener(Function<void(const TMessageClass&)> InFunc)
+		void AddListener(Function<void(const TMessageClass&)> func)
 		{
-			auto Listener = Unique<MessageListenerLambdaFunc<TMessageClass>>::New(std::move(InFunc));
-			m_Listeners[Listener->GetMessageType()].emplace_back(std::move(Listener));
+			auto listener = Unique<MessageListenerLambdaFunc<TMessageClass>>::New(std::move(func));
+			m_Listeners[listener->GetMessageType()].emplace_back(std::move(listener));
 		}
 
 		template<typename TListenerClass, typename TMessageClass>
-		void AddListener(TListenerClass* InListenerInstance, void(TListenerClass::*ListenerFunc)(const TMessageClass&))
+		void AddListener(TListenerClass* listenerInstance, void(TListenerClass::*listenerFunc)(const TMessageClass&))
 		{
-			auto Listener = Unique<MessageListenerMemberFunc<TListenerClass, TMessageClass>>::New(InListenerInstance, ListenerFunc);
-			m_Listeners[Listener->GetMessageType()].emplace_back(std::move(Listener));
+			auto listener = Unique<MessageListenerMemberFunc<TListenerClass, TMessageClass>>::New(listenerInstance, listenerFunc);
+			m_Listeners[listener->GetMessageType()].emplace_back(std::move(listener));
 		}
 
 		void ProcessMessages()
@@ -56,7 +55,7 @@ namespace Yuki {
 		public:
 			virtual ~MessageListenerFunc() = default;
 
-			virtual void Call(MessageBase* InMessage) = 0;
+			virtual void Call(MessageBase* message) = 0;
 			virtual size_t GetMessageType() const = 0;
 		};
 
@@ -67,14 +66,14 @@ namespace Yuki {
 			using ListenerFunc = void(TListenerClass::*)(const TMessageClass&);
 
 		public:
-			MessageListenerMemberFunc(TListenerClass* InListenerInstance, ListenerFunc InListenerFunc)
-				: m_ListenerInstance(InListenerInstance), m_ListenerFunc(InListenerFunc)
+			MessageListenerMemberFunc(TListenerClass* listenerInstance, ListenerFunc listenerFunc)
+				: m_ListenerInstance(listenerInstance), m_ListenerFunc(listenerFunc)
 			{
 			}
 
-			void Call(MessageBase* InMessage) override
+			void Call(MessageBase* message) override
 			{
-				(m_ListenerInstance->*m_ListenerFunc)(*static_cast<TMessageClass*>(InMessage));
+				(m_ListenerInstance->*m_ListenerFunc)(*static_cast<TMessageClass*>(message));
 			}
 
 			size_t GetMessageType() const override { return MessageTraits::Index<TMessageClass>(); }
@@ -91,14 +90,14 @@ namespace Yuki {
 			using ListenerFunc = Function<void(const TMessageClass&)>;
 
 		public:
-			MessageListenerLambdaFunc(ListenerFunc InListenerFunc)
-				: m_ListenerFunc(std::move(InListenerFunc))
+			MessageListenerLambdaFunc(ListenerFunc listenerFunc)
+				: m_ListenerFunc(std::move(listenerFunc))
 			{
 			}
 
-			void Call(MessageBase* InMessage) override
+			void Call(MessageBase* message) override
 			{
-				m_ListenerFunc(*static_cast<TMessageClass*>(InMessage));
+				m_ListenerFunc(*static_cast<TMessageClass*>(message));
 			}
 
 			size_t GetMessageType() const override { return MessageTraits::Index<TMessageClass>(); }

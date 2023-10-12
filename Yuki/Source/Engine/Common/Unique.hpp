@@ -7,9 +7,9 @@ namespace Yuki {
 	template<typename T>
 	struct DefaultDeleter
 	{
-		void operator()(T* InInstance) const
+		void operator()(T* instance) const
 		{
-			delete InInstance;
+			delete instance;
 		}
 	};
 
@@ -19,40 +19,40 @@ namespace Yuki {
 	public:
 		Unique() = default;
 
-		Unique(T* InInstance) noexcept
-			: m_Instance(InInstance) {}
+		Unique(T* instance) noexcept
+			: m_Instance(instance) {}
 
-		Unique(Unique&& InOther) noexcept
-			: m_Instance(std::exchange(InOther.m_Instance, nullptr))
+		Unique(Unique&& other) noexcept
+			: m_Instance(std::exchange(other.m_Instance, nullptr))
 		{
 		}
 
 		template<typename U>
-		Unique(Unique<U>&& InOther) noexcept
-			: m_Instance(static_cast<T*>(std::exchange(InOther.m_Instance, nullptr)))
+		Unique(Unique<U>&& other) noexcept
+			: m_Instance(static_cast<T*>(std::exchange(other.m_Instance, nullptr)))
 		{
 		}
 
-		Unique& operator=(Unique&& InOther) noexcept
+		Unique& operator=(Unique&& other) noexcept
 		{
-			m_Instance = std::exchange(InOther.m_Instance, nullptr);
+			m_Instance = std::exchange(other.m_Instance, nullptr);
 			return *this;
 		}
 
-		Unique& operator=(T* InPointer)
+		Unique& operator=(T* instance)
 		{
-			auto* Old = std::exchange(m_Instance, InPointer);
+			auto* old = std::exchange(m_Instance, instance);
 
-			if (Old)
-				TDeleter()(Old);
+			if (old)
+				TDeleter()(old);
 
 			return *this;
 		}
 
 		template<typename U>
-		Unique& operator=(Unique<U>&& InOther) noexcept
+		Unique& operator=(Unique<U>&& other) noexcept
 		{
-			m_Instance = static_cast<T*>(std::exchange(InOther.m_Instance, nullptr));
+			m_Instance = static_cast<T*>(std::exchange(other.m_Instance, nullptr));
 			return *this;
 		}
 
@@ -77,13 +77,13 @@ namespace Yuki {
 		T* operator->() const { return m_Instance; }
 
 		template<typename TOther>
-		operator TOther& () const& { return *static_cast<TOther*>(m_Instance); }
+		operator TOther&() const& { return *static_cast<TOther*>(m_Instance); }
 
 	public:
 		template<typename... TArgs>
-		static Unique<T> New(TArgs&&... InArgs)
+		static Unique<T> New(TArgs&&... args)
 		{
-			return Unique<T>(new T(std::forward<TArgs>(InArgs)...));
+			return Unique<T>(new T(std::forward<TArgs>(args)...));
 		}
 
 	private:

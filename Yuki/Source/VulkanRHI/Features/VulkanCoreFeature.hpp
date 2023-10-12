@@ -10,7 +10,7 @@ namespace Yuki {
 		VulkanCoreFeature();
 
 		const DynamicArray<std::string_view> GetRequiredExtensions() const override;
-		void PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& InDeviceFeatures) override;
+		void PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& deviceFeatures) override;
 
 	public:
 		YUKI_VULKAN_FEATURE_IMPL(Core)

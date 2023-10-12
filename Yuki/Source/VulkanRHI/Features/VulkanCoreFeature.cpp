@@ -14,7 +14,7 @@ namespace Yuki {
 		};
 	}
 
-	void VulkanCoreFeature::PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& InDeviceFeatures)
+	void VulkanCoreFeature::PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& deviceFeatures)
 	{
 		m_Vulkan12Features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
 		m_Vulkan12Features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
@@ -26,11 +26,11 @@ namespace Yuki {
 		m_Vulkan12Features.imagelessFramebuffer = VK_TRUE;
 		m_Vulkan12Features.timelineSemaphore = VK_TRUE;
 		m_Vulkan12Features.bufferDeviceAddress = VK_TRUE;
-		AddToPNext(InDeviceFeatures, m_Vulkan12Features);
+		AddToPNext(deviceFeatures, m_Vulkan12Features);
 
 		m_Vulkan13Features.synchronization2 = VK_TRUE;
 		m_Vulkan13Features.dynamicRendering = VK_TRUE;
-		AddToPNext(InDeviceFeatures, m_Vulkan13Features);
+		AddToPNext(deviceFeatures, m_Vulkan13Features);
 
 		/*m_Maintenance5Features.maintenance5 = VK_TRUE;
 		AddToPNext(InDeviceFeatures, m_Maintenance5Features);*/

@@ -16,19 +16,19 @@ namespace Yuki {
 		};
 	}
 
-	void VulkanRaytracingFeature::PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& InDeviceFeatures)
+	void VulkanRaytracingFeature::PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& deviceFeatures)
 	{
 		m_AccelerationStructureFeatures.accelerationStructure = VK_TRUE;
-		AddToPNext(InDeviceFeatures, m_AccelerationStructureFeatures);
+		AddToPNext(deviceFeatures, m_AccelerationStructureFeatures);
 
 		m_RayTracingPipelineFeatures.rayTracingPipeline = VK_TRUE;
-		AddToPNext(InDeviceFeatures, m_RayTracingPipelineFeatures);
+		AddToPNext(deviceFeatures, m_RayTracingPipelineFeatures);
 	}
 
-	void VulkanRaytracingFeature::PopulateProperties(VkPhysicalDeviceProperties2& InProperties)
+	void VulkanRaytracingFeature::PopulateProperties(VkPhysicalDeviceProperties2& properties)
 	{
-		AddToPNext(InProperties, m_RayTracingProperties);
-		AddToPNext(InProperties, m_AccelerationStructureProperties);
+		AddToPNext(properties, m_RayTracingProperties);
+		AddToPNext(properties, m_AccelerationStructureProperties);
 	}
 
 }

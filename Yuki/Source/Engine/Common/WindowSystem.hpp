@@ -44,36 +44,36 @@ namespace Yuki {
 		WindowSystem();
 		~WindowSystem();
 
-		WindowHandle NewWindow(WindowInfo InInfo);
-		const WindowData& GetWindowData(WindowHandle InHandle) const { return m_Windows.at(InHandle); }
+		WindowHandle NewWindow(WindowInfo info);
+		const WindowData& GetWindowData(WindowHandle handle) const { return m_Windows.at(handle); }
 
 		void PollMessages();
 
-		void AddInputContext(WindowHandle InHandle, const InputContext* InContext)
+		void AddInputContext(WindowHandle handle, const InputContext* context)
 		{
-			m_Windows[InHandle].InputContexts.push_back(InContext);
+			m_Windows[handle].InputContexts.push_back(context);
 		}
 
-		bool GetKeyState(WindowHandle InHandle, KeyCode InKey) { return m_Windows.at(InHandle).KeyStates[InKey]; }
-		bool GetMouseButtonState(WindowHandle InHandle, MouseButton InButton) { return m_Windows.at(InHandle).MouseButtonStates[InButton]; }
-		int32_t GetMousePositionX(WindowHandle InHandle) { return m_Windows.at(InHandle).MouseX; }
-		int32_t GetMousePositionY(WindowHandle InHandle) { return m_Windows.at(InHandle).MouseY; }
+		bool GetKeyState(WindowHandle handle, KeyCode key) { return m_Windows.at(handle).KeyStates[key]; }
+		bool GetMouseButtonState(WindowHandle handle, MouseButton button) { return m_Windows.at(handle).MouseButtonStates[button]; }
+		int32_t GetMousePositionX(WindowHandle handle) { return m_Windows.at(handle).MouseX; }
+		int32_t GetMousePositionY(WindowHandle handle) { return m_Windows.at(handle).MouseY; }
 
-		int64_t GetRawMouseDeltaX(WindowHandle InHandle)
+		int64_t GetRawMouseDeltaX(WindowHandle handle)
 		{
-			int64_t delta = m_Windows[InHandle].LastMouseDeltaX;
-			m_Windows[InHandle].LastMouseDeltaX = 0;
+			int64_t delta = m_Windows[handle].LastMouseDeltaX;
+			m_Windows[handle].LastMouseDeltaX = 0;
 			return delta;
 		}
 
-		int64_t GetRawMouseDeltaY(WindowHandle InHandle)
+		int64_t GetRawMouseDeltaY(WindowHandle handle)
 		{
-			int64_t delta = m_Windows[InHandle].LastMouseDeltaY;
-			m_Windows[InHandle].LastMouseDeltaY = 0;
+			int64_t delta = m_Windows[handle].LastMouseDeltaY;
+			m_Windows[handle].LastMouseDeltaY = 0;
 			return delta;
 		}
 
-		void SetCursorLock(WindowHandle InHandle, bool InLock);
+		void SetCursorLock(WindowHandle handle, bool lock);
 
 	private:
 		HashMap<WindowHandle, WindowData> m_Windows;

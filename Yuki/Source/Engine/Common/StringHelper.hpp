@@ -7,8 +7,8 @@ namespace Yuki {
 	class StringHelper
 	{
 	public:
-		static std::wstring WideFromUTF8(std::string_view InString);
-		static std::string_view TrimWhitespace(std::string_view InString);
+		static std::wstring WideFromUTF8(std::string_view string);
+		static std::string_view TrimWhitespace(std::string_view string);
 
 	public:
 		StringHelper() = delete;

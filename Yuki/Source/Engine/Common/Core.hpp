@@ -9,12 +9,12 @@
 namespace Yuki {
 
 	template<typename T>
-	inline T Cast(auto InValue) { return static_cast<T>(InValue); }
+	inline T Cast(auto value) { return static_cast<T>(value); }
 
 	template<typename T>
-	inline T AlignUp(T InValue, T InAlignment)
+	inline T AlignUp(T value, T alignment)
 	{
-		return (InValue + InAlignment - 1) & ~(InAlignment - 1);
+		return (value + alignment - 1) & ~(alignment - 1);
 	}
 
 	using Vec3 = glm::vec3;
@@ -22,17 +22,17 @@ namespace Yuki {
 	using Quat = glm::quat;
 	using Mat4 = glm::mat4;
 	
-	inline Mat4 PerspectiveInfReversedZ(float InFovY, float InAspect, float InNearZ)
+	inline Mat4 PerspectiveInfReversedZ(float fovy, float aspect, float nearZ)
 	{
-		float F = 1.0f / std::tanf(InFovY / 2.0f);
+		float f = 1.0f / std::tanf(fovy / 2.0f);
 
-		Mat4 Result{};
-		Result[0][0] = F / InAspect;
-		Result[1][1] = F;
-		Result[3][2] = InNearZ;
-		Result[2][3] = -1.0f;
+		Mat4 result{};
+		result[0][0] = f / aspect;
+		result[1][1] = f;
+		result[3][2] = nearZ;
+		result[2][3] = -1.0f;
 
-		return Result;
+		return result;
 	}
 
 }
@@ -90,11 +90,11 @@ private:												\
 
 #define YUKI_ENUM_HASH(Enum)													\
 	template<>																	\
-	struct std::hash<Enum>															\
+	struct std::hash<Enum>														\
 	{																			\
-		size_t operator()(Enum InValue) const									\
+		size_t operator()(Enum value) const										\
 		{																		\
-			auto Hash = std::hash<std::underlying_type_t<decltype(InValue)>>();	\
-			return Hash(std::to_underlying(InValue));							\
+			auto hash = std::hash<std::underlying_type_t<decltype(value)>>();	\
+			return hash(std::to_underlying(value));								\
 		}																		\
 	}

@@ -4,6 +4,6 @@
 
 namespace Yuki::FileIO {
 
-	bool ReadText(const std::filesystem::path& InFilePath, std::string& OutText);
+	bool ReadText(const std::filesystem::path& filepath, std::string& text);
 
 }

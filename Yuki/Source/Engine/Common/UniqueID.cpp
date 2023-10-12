@@ -12,8 +12,8 @@ namespace Yuki {
 
 	}
 
-	UniqueID::UniqueID(uint64_t InValue)
-		: m_Value(InValue)
+	UniqueID::UniqueID(uint64_t value)
+		: m_Value(value)
 	{
 
 	}

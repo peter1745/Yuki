@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Engine/RHI/PipelineInfo.hpp"
-
 #include "VulkanInclude.hpp"
+
+#include "Engine/RHI/RenderHandles.hpp"
 
 namespace Yuki::RHI {
 
@@ -19,12 +19,12 @@ namespace Yuki::RHI {
 		VulkanShaderCompiler();
 		~VulkanShaderCompiler();
 
-		VkShaderModule CompileOrGetModule(VkDevice InDevice, const std::filesystem::path& InFilePath, ShaderStage InStage);
+		VkShaderModule CompileOrGetModule(VkDevice device, const std::filesystem::path& filepath, ShaderStage stage);
 
 	private:
-		HashMap<ShaderStage, std::string> PreProcessSource(std::string_view InSource) const;
-		DynamicArray<uint32_t> CompileStage(const std::filesystem::path& InFilePath, ShaderStage InStage, std::string_view InSource) const;
-		void CompileModules(VkDevice InDevice, const std::filesystem::path& InFilePath);
+		HashMap<ShaderStage, std::string> PreProcessSource(std::string_view source) const;
+		DynamicArray<uint32_t> CompileStage(const std::filesystem::path& filepath, ShaderStage stage, std::string_view source) const;
+		void CompileModules(VkDevice device, const std::filesystem::path& filepath);
 
 	private:
 		HashMap<std::filesystem::path, VulkanShaderFile> m_CompiledFiles;

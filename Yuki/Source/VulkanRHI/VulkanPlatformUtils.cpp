@@ -1,30 +1,31 @@
 #include "VulkanPlatformUtils.hpp"
+#include "VulkanUtils.hpp"
 
 namespace Yuki::Vulkan {
 
-	void AddPlatformInstanceExtensions(DynamicArray<const char*>& InExtensions)
+	void AddPlatformInstanceExtensions(DynamicArray<const char*>& extensions)
 	{
 #if defined(YUKI_PLATFORM_WINDOWS)
-		InExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+		extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #endif
 	}
 
-	VkSurfaceKHR CreateSurface(VkInstance InInstance, const WindowSystem& InWindowSystem, WindowHandle InWindowHandle)
+	VkSurfaceKHR CreateSurface(VkInstance instance, const WindowSystem& windowSystem, WindowHandle windowHandle)
 	{
-		VkSurfaceKHR Result = VK_NULL_HANDLE;
+		VkSurfaceKHR result = VK_NULL_HANDLE;
 
 #if defined(YUKI_PLATFORM_WINDOWS)
-		VkWin32SurfaceCreateInfoKHR SurfaceInfo =
+		VkWin32SurfaceCreateInfoKHR surfaceInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
 			.hinstance = GetModuleHandle(nullptr),
-			.hwnd = Cast<HWND>(InWindowSystem.GetWindowData(InWindowHandle).NativeHandle),
+			.hwnd = Cast<HWND>(windowSystem.GetWindowData(windowHandle).NativeHandle),
 		};
 
-		YUKI_VERIFY(vkCreateWin32SurfaceKHR(InInstance, &SurfaceInfo, nullptr, &Result) == VK_SUCCESS);
+		YUKI_VK_CHECK(vkCreateWin32SurfaceKHR(instance, &surfaceInfo, nullptr, &result));
 #endif
 
-		return Result;
+		return result;
 	}
 
 }

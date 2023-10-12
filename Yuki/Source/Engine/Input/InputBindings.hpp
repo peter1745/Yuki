@@ -10,21 +10,21 @@ namespace Yuki {
 	{
 		InputEventType Type;
 
-		InputEvent(InputEventType InType)
-			: Type(InType) {}
+		InputEvent(InputEventType type)
+			: Type(type) {}
 	};
 
 	struct KeyInputEvent : public InputEvent
 	{
 		KeyCode Key;
 
-		KeyInputEvent(KeyCode InKey)
-			: InputEvent(InputEventType::Key), Key(InKey) {}
+		KeyInputEvent(KeyCode key)
+			: InputEvent(InputEventType::Key), Key(key) {}
 	};
 
 	struct InputBinding
 	{
-		virtual bool TryHandle(const InputEvent* InEvent) const = 0;
+		virtual bool TryHandle(const InputEvent* event) const = 0;
 	};
 
 	struct RangedInput : public InputBinding
@@ -40,22 +40,22 @@ namespace Yuki {
 		Binding Positive;
 		Function<void(float)> Handler;
 
-		RangedInput(const Binding& InNegative, const Binding& InPositive, Function<void(float)> InHandler)
-			: Negative(InNegative), Positive(InPositive), Handler(InHandler) {}
+		RangedInput(const Binding& negative, const Binding& positive, Function<void(float)> handler)
+			: Negative(negative), Positive(positive), Handler(handler) {}
 
-		bool TryHandle(const InputEvent* InEvent) const override
+		bool TryHandle(const InputEvent* event) const override
 		{
-			switch (InEvent->Type)
+			switch (event->Type)
 			{
 			case InputEventType::Key:
 			{
-				const auto* KeyEvent = Cast<const KeyInputEvent*>(InEvent);
-				if (KeyEvent->Key == Negative.Key)
+				const auto* keyEvent = Cast<const KeyInputEvent*>(event);
+				if (keyEvent->Key == Negative.Key)
 				{
 					Handler(Negative.Value);
 					return true;
 				}
-				else if (KeyEvent->Key == Positive.Key)
+				else if (keyEvent->Key == Positive.Key)
 				{
 					Handler(Positive.Value);
 					return true;

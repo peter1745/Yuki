@@ -6,50 +6,50 @@
 
 namespace Yuki::RHI {
 
-	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT InSeverity, VkDebugUtilsMessageTypeFlagsEXT InType, const VkDebugUtilsMessengerCallbackDataEXT* InCallbackData, void* InUserData)
+	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData)
 	{
-		if (InSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+		if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
 		{
-			Logging::Info("{}", InCallbackData->pMessage);
+			Logging::Info("{}", callbackData->pMessage);
 		}
-		else if (InSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 		{
-			Logging::Warn("{}", InCallbackData->pMessage);
+			Logging::Warn("{}", callbackData->pMessage);
 		}
-		else if (InSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 		{
-			Logging::Error("{}", InCallbackData->pMessage);
+			Logging::Error("{}", callbackData->pMessage);
 			YUKI_VERIFY(false);
 		}
 
 		return VK_FALSE;
 	}
 
-	DynamicArray<const char*> GetDeviceSupportedExtensions(VkPhysicalDevice InPhysicalDevice, const HashMap<RendererFeature, Unique<VulkanFeature>>& InRequestedFeatures)
+	DynamicArray<const char*> GetDeviceSupportedExtensions(VkPhysicalDevice physicalDevice, const HashMap<RendererFeature, Unique<VulkanFeature>>& requestedFeatures)
 	{
-		DynamicArray<const char*> Result;
+		DynamicArray<const char*> result;
 
-		DynamicArray<VkExtensionProperties> DeviceExtensions;
-		Vulkan::Enumerate(vkEnumerateDeviceExtensionProperties, DeviceExtensions, InPhysicalDevice, nullptr);
+		DynamicArray<VkExtensionProperties> deviceExtensions;
+		Vulkan::Enumerate(vkEnumerateDeviceExtensionProperties, deviceExtensions, physicalDevice, nullptr);
 
-		for (const auto& Feature : InRequestedFeatures | std::views::values)
+		for (const auto& feature : requestedFeatures | std::views::values)
 		{
-			for (const auto& Extension : Feature->GetRequiredExtensions())
+			for (const auto& extension : feature->GetRequiredExtensions())
 			{
-				std::ranges::for_each(DeviceExtensions, [&Extension, &Result](const auto& InDeviceExtension)
-					{
-						if (Extension == InDeviceExtension.extensionName)
-							Result.push_back(Extension.data());
-					});
+				std::ranges::for_each(deviceExtensions, [&extension, &result](const auto& deviceExtension)
+				{
+					if (extension == deviceExtension.extensionName)
+						result.push_back(extension.data());
+				});
 			}
 		}
 
-		return Result;
+		return result;
 	}
 
-	uint32_t CalculateScoreForDeviceType(const VkPhysicalDeviceProperties& InProperties)
+	uint32_t CalculateScoreForDeviceType(const VkPhysicalDeviceProperties& properties)
 	{
-		switch (InProperties.deviceType)
+		switch (properties.deviceType)
 		{
 		case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return 5;
 		case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: return 10;
@@ -59,36 +59,36 @@ namespace Yuki::RHI {
 		}
 	}
 
-	void RemoveUnsupportedFeatures(VkPhysicalDevice InPhysicalDevice, HashMap<RendererFeature, Unique<VulkanFeature>>& InFeatures)
+	void RemoveUnsupportedFeatures(VkPhysicalDevice physicalDevice, HashMap<RendererFeature, Unique<VulkanFeature>>& features)
 	{
-		DynamicArray<VkExtensionProperties> DeviceExtensions;
-		Vulkan::Enumerate(vkEnumerateDeviceExtensionProperties, DeviceExtensions, InPhysicalDevice, nullptr);
+		DynamicArray<VkExtensionProperties> deviceExtensions;
+		Vulkan::Enumerate(vkEnumerateDeviceExtensionProperties, deviceExtensions, physicalDevice, nullptr);
 
-		for (auto It = InFeatures.begin(); It != InFeatures.end(); It++)
+		for (auto it = features.begin(); it != features.end(); it++)
 		{
-			for (const auto& Extension : It->second->GetRequiredExtensions())
+			for (const auto& extension : it->second->GetRequiredExtensions())
 			{
-				bool IsSupported = false;
+				bool supported = false;
 
-				for (const auto& DeviceExtension : DeviceExtensions)
+				for (const auto& deviceExtension : deviceExtensions)
 				{
-					if (Extension == DeviceExtension.extensionName)
+					if (extension == deviceExtension.extensionName)
 					{
-						IsSupported = true;
+						supported = true;
 						break;
 					}
 				}
 
-				if (!IsSupported)
+				if (!supported)
 				{
-					It = InFeatures.erase(It);
+					it = features.erase(it);
 					break;
 				}
 			}
 		}
 	}
 
-	Context Context::Create(Config InConfig)
+	Context Context::Create(Config config)
 	{
 		auto context = new Impl();
 
@@ -96,37 +96,37 @@ namespace Yuki::RHI {
 
 		// Check if validation is available, disable if it's not
 		{
-			bool ValidationSupported = false;
+			bool validationSupported = false;
 
-			DynamicArray<VkLayerProperties> Layers;
-			Vulkan::Enumerate(vkEnumerateInstanceLayerProperties, Layers);
-			for (const auto& Layer : Layers)
+			DynamicArray<VkLayerProperties> layers;
+			Vulkan::Enumerate(vkEnumerateInstanceLayerProperties, layers);
+			for (const auto& layer : layers)
 			{
-				if (std::string_view(Layer.layerName) == "VK_LAYER_KHRONOS_validation")
+				if (std::string_view(layer.layerName) == "VK_LAYER_KHRONOS_validation")
 				{
-					ValidationSupported = true;
+					validationSupported = true;
 					break;
 				}
 			}
 
-			context->ValidationSupport = ValidationSupported;
+			context->ValidationSupport = validationSupported;
 		}
 
-		VkDebugUtilsMessengerCreateInfoEXT MessengerCreateInfo =
+		VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT
 		};
 
 		{
-			DynamicArray<const char*> EnabledInstanceLayers;
-			DynamicArray<const char*> EnabledInstanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, };
+			DynamicArray<const char*> enabledInstanceLayers;
+			DynamicArray<const char*> enabledInstanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, };
 
-			Vulkan::AddPlatformInstanceExtensions(EnabledInstanceExtensions);
+			Vulkan::AddPlatformInstanceExtensions(enabledInstanceExtensions);
 
 			if (context->ValidationSupport)
 			{
-				EnabledInstanceLayers.emplace_back("VK_LAYER_KHRONOS_validation");
-				EnabledInstanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+				enabledInstanceLayers.emplace_back("VK_LAYER_KHRONOS_validation");
+				enabledInstanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 				constexpr uint32_t MessageSeverities =
 					VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
@@ -137,168 +137,168 @@ namespace Yuki::RHI {
 					VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
 					VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
-				MessengerCreateInfo.messageSeverity = MessageSeverities;
-				MessengerCreateInfo.messageType = MessageTypes;
-				MessengerCreateInfo.pfnUserCallback = DebugMessengerCallback;
+				messengerCreateInfo.messageSeverity = MessageSeverities;
+				messengerCreateInfo.messageType = MessageTypes;
+				messengerCreateInfo.pfnUserCallback = DebugMessengerCallback;
 			}
 
-			VkApplicationInfo AppInfo =
+			VkApplicationInfo appInfo =
 			{
 				.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 				.apiVersion = VK_API_VERSION_1_3
 			};
 
-			VkInstanceCreateInfo InstanceInfo =
+			VkInstanceCreateInfo instanceInfo =
 			{
 				.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-				.pNext = &MessengerCreateInfo,
+				.pNext = &messengerCreateInfo,
 				.flags = 0,
-				.pApplicationInfo = &AppInfo,
-				.enabledLayerCount = static_cast<uint32_t>(EnabledInstanceLayers.size()),
-				.ppEnabledLayerNames = EnabledInstanceLayers.data(),
-				.enabledExtensionCount = static_cast<uint32_t>(EnabledInstanceExtensions.size()),
-				.ppEnabledExtensionNames = EnabledInstanceExtensions.data(),
+				.pApplicationInfo = &appInfo,
+				.enabledLayerCount = static_cast<uint32_t>(enabledInstanceLayers.size()),
+				.ppEnabledLayerNames = enabledInstanceLayers.data(),
+				.enabledExtensionCount = static_cast<uint32_t>(enabledInstanceExtensions.size()),
+				.ppEnabledExtensionNames = enabledInstanceExtensions.data(),
 			};
 
-			vkCreateInstance(&InstanceInfo, nullptr, &context->Instance);
+			vkCreateInstance(&instanceInfo, nullptr, &context->Instance);
 
 			volkLoadInstanceOnly(context->Instance);
 		}
 
 		if (context->ValidationSupport)
-			vkCreateDebugUtilsMessengerEXT(context->Instance, &MessengerCreateInfo, nullptr, &context->DebugMessengerHandle);
+			vkCreateDebugUtilsMessengerEXT(context->Instance, &messengerCreateInfo, nullptr, &context->DebugMessengerHandle);
 
 		{
 			context->EnabledFeatures[RendererFeature::Core] = std::move(Unique<VulkanCoreFeature>::New());
 
-			for (auto RequestedFeature : InConfig.RequestedFeatures)
-				context->EnabledFeatures[RequestedFeature] = std::move(Vulkan::GetVulkanFeature(RequestedFeature));
+			for (auto requestedFeature : config.RequestedFeatures)
+				context->EnabledFeatures[requestedFeature] = std::move(Vulkan::GetVulkanFeature(requestedFeature));
 
 			{
-				DynamicArray<VkPhysicalDevice> Devices;
-				Vulkan::Enumerate(vkEnumeratePhysicalDevices, Devices, context->Instance);
+				DynamicArray<VkPhysicalDevice> devices;
+				Vulkan::Enumerate(vkEnumeratePhysicalDevices, devices, context->Instance);
 
-				auto SupportedExtensions = DynamicArray<const char*>{};
+				auto supportedExtensions = DynamicArray<const char*>{};
 
-				uint32_t MaxScore = 0;
-				size_t BestDeviceIndex = std::numeric_limits<size_t>::max();
+				uint32_t maxScore = 0;
+				size_t bestDeviceIndex = std::numeric_limits<size_t>::max();
 
-				for (size_t Index = 0; Index < Devices.size(); Index++)
+				for (size_t i = 0; i < devices.size(); i++)
 				{
-					auto Device = Devices[Index];
+					auto device = devices[i];
 
-					VkPhysicalDeviceProperties Properties;
-					vkGetPhysicalDeviceProperties(Device, &Properties);
+					VkPhysicalDeviceProperties properties;
+					vkGetPhysicalDeviceProperties(device, &properties);
 
-					SupportedExtensions = GetDeviceSupportedExtensions(Device, context->EnabledFeatures);
+					supportedExtensions = GetDeviceSupportedExtensions(device, context->EnabledFeatures);
 
-					uint32_t Score = CalculateScoreForDeviceType(Properties);
-					Score += Cast<uint32_t>(SupportedExtensions.size());
+					uint32_t Score = CalculateScoreForDeviceType(properties);
+					Score += Cast<uint32_t>(supportedExtensions.size());
 
-					if (Score > MaxScore)
+					if (Score > maxScore)
 					{
-						MaxScore = Score;
-						BestDeviceIndex = Index;
+						maxScore = Score;
+						bestDeviceIndex = i;
 					}
 				}
 
-				YUKI_VERIFY(BestDeviceIndex < Devices.size());
+				YUKI_VERIFY(bestDeviceIndex < devices.size());
 
-				context->PhysicalDevice = Devices[BestDeviceIndex];
+				context->PhysicalDevice = devices[bestDeviceIndex];
 
 				RemoveUnsupportedFeatures(context->PhysicalDevice, context->EnabledFeatures);
 			}
 
 			{
-				DynamicArray<VkDeviceQueueCreateInfo> QueueCreateInfos;
-				DynamicArray<float> QueuePriorities;
+				DynamicArray<VkDeviceQueueCreateInfo> queueCreateInfos;
+				DynamicArray<float> queuePriorities;
 
-				DynamicArray<VkQueueFamilyProperties> QueueFamilies;
-				Vulkan::Enumerate(vkGetPhysicalDeviceQueueFamilyProperties, QueueFamilies, context->PhysicalDevice);
-				uint32_t QueueFamilyIndex = 0;
-				for (const auto& QueueFamily : QueueFamilies)
+				DynamicArray<VkQueueFamilyProperties> queueFamilies;
+				Vulkan::Enumerate(vkGetPhysicalDeviceQueueFamilyProperties, queueFamilies, context->PhysicalDevice);
+				uint32_t queueFamilyIndex = 0;
+				for (const auto& queueFamily : queueFamilies)
 				{
-					for (uint32_t Index = 0; Index < QueueFamily.queueCount; Index++)
+					for (uint32_t i = 0; i < queueFamily.queueCount; i++)
 					{
-						auto Queue = new QueueRH::Impl();
-						Queue->Ctx = { context };
-						Queue->Family = QueueFamilyIndex;
-						Queue->Index = Index;
-						Queue->Flags = QueueFamily.queueFlags;
-						QueuePriorities.push_back(1.0f);
+						auto queue = new QueueRH::Impl();
+						queue->Ctx = { context };
+						queue->Family = queueFamilyIndex;
+						queue->Index = i;
+						queue->Flags = queueFamily.queueFlags;
+						queuePriorities.push_back(1.0f);
 
-						context->Queues.push_back(Queue);
+						context->Queues.push_back(queue);
 					}
 
-					QueueFamilyIndex++;
+					queueFamilyIndex++;
 				}
 
-				size_t QueuePrioritiesStart = 0;
-				for (uint32_t Index = 0; Index < QueueFamilyIndex; Index++)
+				size_t queuePrioritiesStart = 0;
+				for (uint32_t i = 0; i < queueFamilyIndex; i++)
 				{
-					QueueCreateInfos.push_back({
+					queueCreateInfos.push_back({
 						.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 						.pNext = nullptr,
 						.flags = 0,
-						.queueFamilyIndex = Index,
-						.queueCount = QueueFamilies[Index].queueCount,
-						.pQueuePriorities = &QueuePriorities[QueuePrioritiesStart],
+						.queueFamilyIndex = i,
+						.queueCount = queueFamilies[i].queueCount,
+						.pQueuePriorities = &queuePriorities[queuePrioritiesStart],
 					});
 
-					QueuePrioritiesStart += QueueFamilies[Index].queueCount;
+					queuePrioritiesStart += queueFamilies[i].queueCount;
 				}
 
-				VkPhysicalDeviceFeatures2 Features2{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, };
-				for (const auto& RequestedFeature : context->EnabledFeatures | std::views::values)
-					RequestedFeature->PopulatePhysicalDeviceFeatures(Features2);
+				VkPhysicalDeviceFeatures2 features2{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, };
+				for (const auto& requestedFeature : context->EnabledFeatures | std::views::values)
+					requestedFeature->PopulatePhysicalDeviceFeatures(features2);
 
-				DynamicArray<const char*> RequiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-				for (const auto& Feature : context->EnabledFeatures | std::views::values)
+				DynamicArray<const char*> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+				for (const auto& feature : context->EnabledFeatures | std::views::values)
 				{
-					for (auto Extension : Feature->GetRequiredExtensions())
-						RequiredExtensions.push_back(Extension.data());
+					for (auto extension : feature->GetRequiredExtensions())
+						requiredExtensions.push_back(extension.data());
 				}
 
-				VkDeviceCreateInfo DeviceInfo =
+				VkDeviceCreateInfo deviceInfo =
 				{
 					.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-					.pNext = &Features2,
+					.pNext = &features2,
 					.flags = 0,
-					.queueCreateInfoCount = Cast<uint32_t>(QueueCreateInfos.size()),
-					.pQueueCreateInfos = QueueCreateInfos.data(),
+					.queueCreateInfoCount = Cast<uint32_t>(queueCreateInfos.size()),
+					.pQueueCreateInfos = queueCreateInfos.data(),
 					.enabledLayerCount = 0,
 					.ppEnabledLayerNames = nullptr,
-					.enabledExtensionCount = Cast<uint32_t>(RequiredExtensions.size()),
-					.ppEnabledExtensionNames = RequiredExtensions.data(),
+					.enabledExtensionCount = Cast<uint32_t>(requiredExtensions.size()),
+					.ppEnabledExtensionNames = requiredExtensions.data(),
 					.pEnabledFeatures = nullptr,
 				};
-				YUKI_VERIFY(vkCreateDevice(context->PhysicalDevice, &DeviceInfo, nullptr, &context->Device) == VK_SUCCESS);
+				YUKI_VK_CHECK(vkCreateDevice(context->PhysicalDevice, &deviceInfo, nullptr, &context->Device));
 
 				volkLoadDevice(context->Device);
 
-				VkPhysicalDeviceProperties2 Properties2{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, };
-				for (const auto& RequestedFeature : context->EnabledFeatures | std::views::values)
-					RequestedFeature->PopulateProperties(Properties2);
-				vkGetPhysicalDeviceProperties2(context->PhysicalDevice, &Properties2);
+				VkPhysicalDeviceProperties2 properties2{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, };
+				for (const auto& requestedFeature : context->EnabledFeatures | std::views::values)
+					requestedFeature->PopulateProperties(properties2);
+				vkGetPhysicalDeviceProperties2(context->PhysicalDevice, &properties2);
 
-				for (auto Queue : context->Queues)
-					vkGetDeviceQueue(context->Device, Queue->Family, Queue->Index, &Queue->Handle);
+				for (auto queue : context->Queues)
+					vkGetDeviceQueue(context->Device, queue->Family, queue->Index, &queue->Handle);
 			}
 
-			VmaVulkanFunctions VulkanFunctions = {};
-			VulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
-			VulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+			VmaVulkanFunctions vulkanFunctions = {};
+			vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+			vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
 
-			VmaAllocatorCreateInfo AllocatorInfo =
+			VmaAllocatorCreateInfo allocatorInfo =
 			{
 				.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
 				.physicalDevice = context->PhysicalDevice,
 				.device = context->Device,
-				.pVulkanFunctions = &VulkanFunctions,
+				.pVulkanFunctions = &vulkanFunctions,
 				.instance = context->Instance,
 				.vulkanApiVersion = VK_API_VERSION_1_3,
 			};
-			YUKI_VERIFY(vmaCreateAllocator(&AllocatorInfo, &context->Allocator) == VK_SUCCESS);
+			YUKI_VK_CHECK(vmaCreateAllocator(&allocatorInfo, &context->Allocator));
 		}
 
 		context->ShaderCompiler = Unique<VulkanShaderCompiler>::New();

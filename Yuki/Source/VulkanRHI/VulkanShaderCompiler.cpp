@@ -36,42 +36,42 @@ namespace Yuki::RHI {
 		glslang::FinalizeProcess();
 	}
 
-	VkShaderModule VulkanShaderCompiler::CompileOrGetModule(VkDevice InDevice, const std::filesystem::path& InFilePath, ShaderStage InStage)
+	VkShaderModule VulkanShaderCompiler::CompileOrGetModule(VkDevice device, const std::filesystem::path& filepath, ShaderStage stage)
 	{
-		if (!m_CompiledFiles.contains(InFilePath))
-			CompileModules(InDevice, InFilePath);
+		if (!m_CompiledFiles.contains(filepath))
+			CompileModules(device, filepath);
 
-		return m_CompiledFiles.at(InFilePath).Modules.at(InStage);
+		return m_CompiledFiles.at(filepath).Modules.at(stage);
 	}
 
-	HashMap<ShaderStage, std::string> VulkanShaderCompiler::PreProcessSource(std::string_view InSource) const
+	HashMap<ShaderStage, std::string> VulkanShaderCompiler::PreProcessSource(std::string_view source) const
 	{
-		size_t StageStart = InSource.find("#stage");
-		YUKI_VERIFY(StageStart != std::string_view::npos);
+		size_t stageStart = source.find("#stage");
+		YUKI_VERIFY(stageStart != std::string_view::npos);
 
-		HashMap<ShaderStage, std::string> Result;
+		HashMap<ShaderStage, std::string> result;
 
-		while (StageStart != std::string_view::npos)
+		while (stageStart != std::string_view::npos)
 		{
-			size_t StageNameStart = StageStart + strlen("#stage");
-			size_t StageNameEnd = InSource.find_first_of("\n", StageNameStart);
-			std::string_view StageName = InSource.substr(StageNameStart, StageNameEnd - StageNameStart);
-			StageName = StringHelper::TrimWhitespace(StageName);
+			size_t stageNameStart = stageStart + strlen("#stage");
+			size_t stageNameEnd = source.find_first_of("\n", stageNameStart);
+			std::string_view stageName = source.substr(stageNameStart, stageNameEnd - stageNameStart);
+			stageName = StringHelper::TrimWhitespace(stageName);
 
-			YUKI_VERIFY(c_StageLookup.contains(StageName));
+			YUKI_VERIFY(c_StageLookup.contains(stageName));
 
-			ShaderStage Stage = c_StageLookup.at(StageName);
+			ShaderStage stage = c_StageLookup.at(stageName);
 
-			size_t StageEnd = InSource.find("#stage", StageNameEnd + 1);
-			if (StageEnd == std::string_view::npos)
-				StageEnd = InSource.length();
+			size_t stageEnd = source.find("#stage", stageNameEnd + 1);
+			if (stageEnd == std::string_view::npos)
+				stageEnd = source.length();
 
-			Result[Stage] = InSource.substr(StageNameEnd + 1, StageEnd - StageNameEnd - 1);
+			result[stage] = source.substr(stageNameEnd + 1, stageEnd - stageNameEnd - 1);
 
-			StageStart = InSource.find("#stage", StageNameEnd + 1);
+			stageStart = source.find("#stage", stageNameEnd + 1);
 		}
 
-		return Result;
+		return result;
 	}
 
 	class GlslIncluder : public glslang::TShader::Includer
@@ -93,58 +93,58 @@ namespace Yuki::RHI {
 		}
 	};
 
-	DynamicArray<uint32_t> VulkanShaderCompiler::CompileStage(const std::filesystem::path& InFilePath, ShaderStage InStage, std::string_view InSource) const
+	DynamicArray<uint32_t> VulkanShaderCompiler::CompileStage(const std::filesystem::path& filepath, ShaderStage stage, std::string_view source) const
 	{
-		YUKI_VERIFY(c_EShLanguageLookup.contains(InStage));
+		YUKI_VERIFY(c_EShLanguageLookup.contains(stage));
 
-		auto Lang = c_EShLanguageLookup.at(InStage);
+		auto lang = c_EShLanguageLookup.at(stage);
 
-		glslang::TShader Shader{Lang};
-		Shader.setEnvInput(glslang::EShSourceGlsl, Lang, glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3);
-		Shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3);
-		Shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_6);
+		glslang::TShader shader{ lang };
+		shader.setEnvInput(glslang::EShSourceGlsl, lang, glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3);
+		shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3);
+		shader.setEnvTarget(glslang::EshTargetSpv, glslang::EShTargetSpv_1_6);
 
-		const char* Source = InSource.data();
-		int32_t SourceLength = Cast<int32_t>(InSource.length());
-		auto FilePath = InFilePath.string();
+		const char* Source = source.data();
+		int32_t SourceLength = Cast<int32_t>(source.length());
+		auto FilePath = filepath.string();
 		const char* FilePathStr = FilePath.c_str();
-		Shader.setStringsWithLengthsAndNames(&Source, &SourceLength, &FilePathStr, 1);
+		shader.setStringsWithLengthsAndNames(&Source, &SourceLength, &FilePathStr, 1);
 
-		GlslIncluder Includer;
+		GlslIncluder includer;
 
-		const auto* Resource = GetDefaultResources();
+		const auto* resource = GetDefaultResources();
 
-		std::string PreProcessed;
-		if (!Shader.preprocess(Resource, 450, EEsProfile, false, false, EShMessages::EShMsgEnhanced, &PreProcessed, Includer))
+		std::string preProcessed;
+		if (!shader.preprocess(resource, 450, EEsProfile, false, false, EShMessages::EShMsgEnhanced, &preProcessed, includer))
 		{
-			Logging::Error("Failed to preprocess shader: {}!", InFilePath.string());
-			Logging::Error("Reason: {}\n{}", Shader.getInfoLog(), Shader.getInfoDebugLog());
+			Logging::Error("Failed to preprocess shader: {}!", filepath.string());
+			Logging::Error("Reason: {}\n{}", shader.getInfoLog(), shader.getInfoDebugLog());
 			YUKI_VERIFY(false);
 		}
 
-		const char* PreProcessedStr = PreProcessed.c_str();
-		Shader.setStrings(&PreProcessedStr, 1);
+		const char* preProcessedStr = preProcessed.c_str();
+		shader.setStrings(&preProcessedStr, 1);
 
-		if (!Shader.parse(Resource, 450, false, EShMessages::EShMsgDefault))
+		if (!shader.parse(resource, 450, false, EShMessages::EShMsgDefault))
 		{
-			Logging::Error("Failed to parse shader: {}!", InFilePath.string());
-			Logging::Error("Reason: {}\n{}", Shader.getInfoLog(), Shader.getInfoDebugLog());
+			Logging::Error("Failed to parse shader: {}!", filepath.string());
+			Logging::Error("Reason: {}\n{}", shader.getInfoLog(), shader.getInfoDebugLog());
 			YUKI_VERIFY(false);
 		}
 
-		glslang::TProgram Program;
-		Program.addShader(&Shader);
+		glslang::TProgram program;
+		program.addShader(&shader);
 
-		if (!Program.link(EShMessages(int(EShMessages::EShMsgSpvRules) | int(EShMessages::EShMsgVulkanRules))))
+		if (!program.link(EShMessages(int(EShMessages::EShMsgSpvRules) | int(EShMessages::EShMsgVulkanRules))))
 		{
-			Logging::Error("Failed to link shader: {}!", InFilePath.string());
-			Logging::Error("Reason: {}\n{}", Shader.getInfoLog(), Shader.getInfoDebugLog());
+			Logging::Error("Failed to link shader: {}!", filepath.string());
+			Logging::Error("Reason: {}\n{}", shader.getInfoLog(), shader.getInfoDebugLog());
 			YUKI_VERIFY(false);
 		}
 
 		constexpr bool c_IncludeDebugInfo = true;
 
-		glslang::SpvOptions SpvOptions =
+		glslang::SpvOptions spvOptions =
 		{
 			.generateDebugInfo = c_IncludeDebugInfo,
 			.stripDebugInfo = !c_IncludeDebugInfo,
@@ -155,43 +155,43 @@ namespace Yuki::RHI {
 			.emitNonSemanticShaderDebugSource = false,
 		};
 
-		const glslang::TIntermediate* Intermediate = Program.getIntermediate(Lang);
+		const glslang::TIntermediate* intermediate = program.getIntermediate(lang);
 
-		DynamicArray<uint32_t> Result;
-		spv::SpvBuildLogger BuildLogger;
-		glslang::GlslangToSpv(*Intermediate, Result, &BuildLogger, &SpvOptions);
+		DynamicArray<uint32_t> result;
+		spv::SpvBuildLogger buildLogger;
+		glslang::GlslangToSpv(*intermediate, result, &buildLogger, &spvOptions);
 
-		if (!BuildLogger.getAllMessages().empty())
+		if (!buildLogger.getAllMessages().empty())
 		{
-			Logging::Warn("SPIR-V messages generated for shader {}!", InFilePath.string());
-			Logging::Warn("Message: {}", BuildLogger.getAllMessages());
+			Logging::Warn("SPIR-V messages generated for shader {}!", filepath.string());
+			Logging::Warn("Message: {}", buildLogger.getAllMessages());
 		}
 
-		return Result;
+		return result;
 	}
 
-	void VulkanShaderCompiler::CompileModules(VkDevice InDevice, const std::filesystem::path& InFilePath)
+	void VulkanShaderCompiler::CompileModules(VkDevice device, const std::filesystem::path& filepath)
 	{
-		std::string Source;
-		YUKI_VERIFY(FileIO::ReadText(InFilePath, Source));
+		std::string source;
+		YUKI_VERIFY(FileIO::ReadText(filepath, source));
 
-		auto StageSources = PreProcessSource(Source);
+		auto stageSources = PreProcessSource(source);
 
-		auto& ShaderData = m_CompiledFiles[InFilePath];
-		ShaderData.Name = InFilePath.stem().string();
+		auto& shaderData = m_CompiledFiles[filepath];
+		shaderData.Name = filepath.stem().string();
 
-		for (const auto&[Stage, ModuleSource] : StageSources)
+		for (const auto&[stage, moduleSource] : stageSources)
 		{
-			auto Code = CompileStage(InFilePath, Stage, ModuleSource);
+			auto code = CompileStage(filepath, stage, moduleSource);
 
 			VkShaderModuleCreateInfo StageData =
 			{
 				.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-				.codeSize = Code.size() * sizeof(uint32_t),
-				.pCode = Code.data(),
+				.codeSize = code.size() * sizeof(uint32_t),
+				.pCode = code.data(),
 			};
 
-			vkCreateShaderModule(InDevice, &StageData, nullptr, &ShaderData.Modules[Stage]);
+			vkCreateShaderModule(device, &StageData, nullptr, &shaderData.Modules[stage]);
 		}
 	}
 

@@ -17,37 +17,37 @@ namespace Yuki {
 	{
 	public:
 		template<typename... TArgs>
-		static void Info(const std::format_string<TArgs...> InFormat, TArgs&&... InArgs)
+		static void Info(const std::format_string<TArgs...> format, TArgs&&... args)
 		{
-			auto Message = std::format(InFormat, std::forward<TArgs>(InArgs)...);
-			LogInternal(LogLevel::Info, Message);
+			auto message = std::format(format, std::forward<TArgs>(args)...);
+			LogInternal(LogLevel::Info, message);
 		}
 
 		template<typename... TArgs>
-		static void Warn(const std::format_string<TArgs...> InFormat, TArgs&&... InArgs)
+		static void Warn(const std::format_string<TArgs...> format, TArgs&&... args)
 		{
-			auto Message = std::format(InFormat, std::forward<TArgs>(InArgs)...);
-			LogInternal(LogLevel::Warn, Message);
+			auto message = std::format(format, std::forward<TArgs>(args)...);
+			LogInternal(LogLevel::Warn, message);
 		}
 
 		template<typename... TArgs>
-		static void Error(const std::format_string<TArgs...> InFormat, TArgs&&... InArgs)
+		static void Error(const std::format_string<TArgs...> format, TArgs&&... args)
 		{
-			auto Message = std::format(InFormat, std::forward<TArgs>(InArgs)...);
-			LogInternal(LogLevel::Error, Message);
+			auto message = std::format(format, std::forward<TArgs>(args)...);
+			LogInternal(LogLevel::Error, message);
 		}
 
 		template<typename... TArgs>
-		static void Fatal(const std::format_string<TArgs...> InFormat, TArgs&&... InArgs)
+		static void Fatal(const std::format_string<TArgs...> format, TArgs&&... args)
 		{
-			auto Message = std::format(InFormat, std::forward<TArgs>(InArgs)...);
-			LogInternal(LogLevel::Fatal, Message);
+			auto message = std::format(format, std::forward<TArgs>(args)...);
+			LogInternal(LogLevel::Fatal, message);
 		}
 
 	private:
 		static void Initialize();
 
-		static void LogInternal(LogLevel InLevel, std::string_view InMessage);
+		static void LogInternal(LogLevel level, std::string_view message);
 
 	private:
 		template<typename>

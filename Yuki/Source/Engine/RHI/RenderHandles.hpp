@@ -11,6 +11,7 @@
 namespace Yuki {
 
 	class WindowSystem;
+	class RenderGraph;
 
 }
 
@@ -22,8 +23,8 @@ namespace Yuki::RHI {
 		struct Impl;
 
 		RenderHandle() = default;
-		RenderHandle(Impl* InImpl)
-			: m_Impl(InImpl) {}
+		RenderHandle(Impl* impl)
+			: m_Impl(impl) {}
 
 		operator T() const noexcept { return T(m_Impl); }
 		T Unwrap() const noexcept { return T(m_Impl); }
@@ -39,6 +40,7 @@ namespace Yuki::RHI {
 	YUKI_RENDER_HANDLE(Context);
 	YUKI_RENDER_HANDLE(Queue);
 	YUKI_RENDER_HANDLE(Swapchain);
+	YUKI_RENDER_HANDLE(PipelineLayout);
 	YUKI_RENDER_HANDLE(Pipeline);
 	YUKI_RENDER_HANDLE(RayTracingPipeline);
 	YUKI_RENDER_HANDLE(DescriptorSetLayout);
@@ -51,6 +53,7 @@ namespace Yuki::RHI {
 	YUKI_RENDER_HANDLE(ImageView);
 	YUKI_RENDER_HANDLE(Buffer);
 	YUKI_RENDER_HANDLE(AccelerationStructure);
+	YUKI_RENDER_HANDLE(RenderPass);
 
 	YUKI_FLAG_ENUM(QueueType)
 	{
@@ -72,6 +75,7 @@ namespace Yuki::RHI {
 		Sampled			= 1 << 2,
 		TransferDest	= 1 << 3,
 		TransferSource	= 1 << 4,
+		Storage			= 1 << 5,
 	};
 
 	enum class ImageLayout
@@ -118,21 +122,24 @@ namespace Yuki::RHI {
 		ShaderStage Stage;
 	};
 
-	struct PipelineInfo
+	struct PipelineLayoutInfo
 	{
-		Span<PipelineShaderInfo> Shaders;
 		uint32_t PushConstantSize = 0;
 		Span<DescriptorSetLayoutRH> DescriptorLayouts;
+	};
 
+	struct PipelineInfo
+	{
+		PipelineLayoutRH Layout = {};
+		Span<PipelineShaderInfo> Shaders;
 		struct ColorAttachmentInfo { ImageFormat Format; };
 		DynamicArray<ColorAttachmentInfo> ColorAttachments;
 	};
 
 	struct RayTracingPipelineInfo
 	{
+		PipelineLayoutRH Layout = {};
 		Span<PipelineShaderInfo> Shaders;
-		uint32_t PushConstantSize = 0;
-		Span<DescriptorSetLayoutRH> DescriptorLayouts;
 	};
 
 	enum class DescriptorType
@@ -194,23 +201,23 @@ namespace Yuki::RHI {
 			DynamicArray<RendererFeature> RequestedFeatures;
 		};
 
-		static Context Create(Config InConfig);
+		static Context Create(Config config);
 
-		bool IsFeatureEnabled(RendererFeature InFeature) const;
+		bool IsFeatureEnabled(RendererFeature feature) const;
 
-		Queue RequestQueue(QueueType InType) const;
+		Queue RequestQueue(QueueType type) const;
 	};
 
 	struct Queue : RenderHandle<Queue>
 	{
-		void AcquireImages(Span<Swapchain> InSwapchains, Span<Fence> InFences);
-		void Submit(Span<CommandListRH> InCommandLists, Span<FenceRH> InWaits, Span<FenceRH> InSignals);
-		void Present(Span<Swapchain> InSwapchains, Span<Fence> InFences);
+		void AcquireImages(Span<Swapchain> swapchains, Span<Fence> fences) const;
+		void Submit(Span<CommandListRH> commandLists, Span<FenceRH> waits, Span<FenceRH> signals) const;
+		void Present(Span<Swapchain> swapchains, Span<Fence> fences) const;
 	};
 
 	struct Swapchain : RenderHandle<Swapchain>
 	{
-		static Swapchain Create(Context InContext, const WindowSystem& InWindowSystem, UniqueID InWindowHandle);
+		static Swapchain Create(Context context, const WindowSystem& windowSystem, UniqueID windowHandle);
 
 		void Recreate() const;
 
@@ -220,19 +227,19 @@ namespace Yuki::RHI {
 
 	struct Fence : RenderHandle<Fence>
 	{
-		static Fence Create(Context InContext);
+		static Fence Create(Context context);
 		void Destroy();
 
-		void Wait(uint64_t InValue = 0);
+		void Wait(uint64_t value = 0);
 	};
 
 	struct CommandPool : RenderHandle<CommandPool>
 	{
-		static CommandPool Create(Context InContext, QueueRH InQueue);
+		static CommandPool Create(Context context, QueueRH queue);
 		void Destroy();
 
-		void Reset();
-		CommandList NewList();
+		void Reset() const;
+		CommandList NewList() const;
 	};
 
 	struct Viewport
@@ -243,81 +250,110 @@ namespace Yuki::RHI {
 		float Height;
 	};
 
+	enum class PipelineBindPoint
+	{
+		Graphics, RayTracing,
+	};
+
 	struct CommandList : RenderHandle<CommandList>
 	{
 		friend CommandPool;
 
 		void Begin();
-		void ImageBarrier(ImageBarrier InBarrier);
-		void BeginRendering(RenderTarget InRenderTarget);
+		void ImageBarrier(ImageBarrier barrier);
+		void BeginRendering(RenderTarget renderTarget);
 		void EndRendering();
-		void CopyBuffer(BufferRH InDest, BufferRH InSrc);
-		void PushConstants(PipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize);
-		void PushConstants(RayTracingPipelineRH InPipeline, ShaderStage InStages, const void* InData, uint32_t InDataSize);
-		void BindDescriptorSets(PipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets);
-		void BindDescriptorSets(RayTracingPipelineRH InPipeline, Span<DescriptorSetRH> InDescriptorSets);
-		void BindPipeline(PipelineRH InPipeline);
-		void BindPipeline(RayTracingPipelineRH InPipeline);
-		void BindIndexBuffer(BufferRH InBuffer);
-		void SetViewport(Viewport InViewport);
-		void DrawIndexed(uint32_t InIndexCount, uint32_t InIndexOffset, uint32_t InInstanceIndex);
-		void TraceRay(RayTracingPipelineRH InPipeline, uint32_t InWidth, uint32_t InHeight);
+		void CopyBuffer(BufferRH dest, BufferRH src);
+		void CopyImage(Image dest, Image src) const;
+		void BlitImage(Image dest, Image src) const;
+		void PushConstants(PipelineLayout layout, ShaderStage stages, const void* data, uint32_t dataSize);
+		void BindDescriptorSets(PipelineLayout layout, PipelineBindPoint bindPoint, Span<DescriptorSetRH> descriptorSets);
+		void BindPipeline(PipelineRH pipeline);
+		void BindPipeline(RayTracingPipelineRH pipeline);
+		void BindIndexBuffer(BufferRH buffer);
+		void SetViewport(Viewport viewport);
+		void DrawIndexed(uint32_t indexCount, uint32_t indexOffset, uint32_t instanceIndex);
+		void TraceRays(RayTracingPipelineRH pipeline, uint32_t width, uint32_t height);
 		void End();
 	};
+
+	struct ImageView;
 
 	struct Image : RenderHandle<Image>
 	{
 		friend Swapchain;
+
+		static Image Create(Context context, uint32_t width, uint32_t height, ImageFormat format, ImageUsage usage);
+		void Destroy();
+
+		ImageView GetDefaultView() const;
 	};
 
 	struct ImageView : RenderHandle<ImageView>
 	{
-		static ImageView Create(Context InContext, ImageRH InImage);
+		static ImageView Create(Context context, ImageRH image);
 		void Destroy();
 	};
 
 	struct Buffer : RenderHandle<Buffer>
 	{
-		static Buffer Create(Context InContext, uint64_t InSize, BufferUsage InUsage, bool InHostAccess = false);
+		static Buffer Create(Context context, uint64_t size, BufferUsage usage, bool hostAccess = false);
 		void Destroy();
 
-		void SetData(const void* InData, uint64_t InDataSize = ~0);
+		void SetData(const void* data, uint64_t dataSize = ~0);
 		uint64_t GetDeviceAddress();
 		void* GetMappedMemory();
 	};
 
 	struct DescriptorSetLayout : RenderHandle<DescriptorSetLayout>
 	{
-		static DescriptorSetLayout Create(Context InContext, const DescriptorSetLayoutInfo& InInfo);
+		static DescriptorSetLayout Create(Context context, const DescriptorSetLayoutInfo& info);
 	};
 
 	struct DescriptorPool : RenderHandle<DescriptorPool>
 	{
-		static DescriptorPool Create(Context InContext, Span<DescriptorCount> InDescriptorCounts);
+		static DescriptorPool Create(Context context, Span<DescriptorCount> descriptorCounts);
 
-		DescriptorSet AllocateDescriptorSet(DescriptorSetLayoutRH InLayout);
+		DescriptorSet AllocateDescriptorSet(DescriptorSetLayoutRH layout);
 	};
 
 	struct DescriptorSet : RenderHandle<DescriptorSet>
 	{
-		void Write(uint32_t InBinding, Span<ImageViewRH> InImageViews, uint32_t InArrayOffset);
+		void Write(uint32_t binding, Span<ImageViewRH> imageViews, uint32_t arrayOffset);
+	};
+
+	struct PipelineLayout : RenderHandle<PipelineLayout>
+	{
+		static PipelineLayout Create(Context context, const PipelineLayoutInfo& layoutInfo);
 	};
 
 	struct Pipeline : RenderHandle<Pipeline>
 	{
-		static Pipeline Create(Context InContext, const PipelineInfo& InInfo);
+		static Pipeline Create(Context context, const PipelineInfo& info);
 	};
 
 	struct RayTracingPipeline : RenderHandle<RayTracingPipeline>
 	{
-		static RayTracingPipeline Create(Context InContext, const RayTracingPipelineInfo& InInfo);
+		static RayTracingPipeline Create(Context context, const RayTracingPipelineInfo& info);
 	};
 
 	struct AccelerationStructure : RenderHandle<AccelerationStructure>
 	{
-		static AccelerationStructure Create(Context InContext, BufferRH InVertexBuffer, BufferRH InIndexBuffer);
+		static AccelerationStructure Create(Context context, BufferRH vertexBuffer, BufferRH indexBuffer);
 
 		uint64_t GetTopLevelAddress();
+	};
+
+	struct RenderPass : RenderHandle<RenderPass>
+	{
+
+	};
+
+	template<>
+	struct RenderHandle<RenderPass>::Impl
+	{
+		Function<void(RenderGraph&, int32_t)> RunFunc;
+		Fence Fence;
 	};
 
 }

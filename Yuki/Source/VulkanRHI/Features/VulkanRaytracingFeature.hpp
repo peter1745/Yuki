@@ -10,8 +10,8 @@ namespace Yuki {
 		VulkanRaytracingFeature();
 
 		const DynamicArray<std::string_view> GetRequiredExtensions() const override;
-		void PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& InDeviceFeatures) override;
-		void PopulateProperties(VkPhysicalDeviceProperties2& InProperties) override;
+		void PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& deviceFeatures) override;
+		void PopulateProperties(VkPhysicalDeviceProperties2& properties) override;
 
 		const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& GetRayTracingProperties() const { return m_RayTracingProperties; }
 		const VkPhysicalDeviceAccelerationStructurePropertiesKHR& GetAccelerationStructureProperties() const { return m_AccelerationStructureProperties; }

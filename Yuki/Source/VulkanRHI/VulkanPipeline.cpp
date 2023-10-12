@@ -15,91 +15,99 @@ namespace Yuki::RHI {
 		{ ShaderStage::RayClosestHit,	VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR },
 	};
 
-	Pipeline Pipeline::Create(Context InContext, const PipelineInfo& InPipelineInfo)
+	PipelineLayout PipelineLayout::Create(Context context, const PipelineLayoutInfo& info)
 	{
-		auto Pipeline = new Pipeline::Impl();
+		auto layout = new Impl();
 
-		DynamicArray<VkPipelineShaderStageCreateInfo> ShaderStages;
+		DynamicArray<VkDescriptorSetLayout> descriptorSetLayouts;
+		descriptorSetLayouts.reserve(info.DescriptorLayouts.Count());
+		for (auto layoutHandle : info.DescriptorLayouts)
+			descriptorSetLayouts.emplace_back(layoutHandle->Handle);
 
-		ShaderStages.reserve(InPipelineInfo.Shaders.Count());
-
-		for (const auto& ShaderInfo : InPipelineInfo.Shaders)
-		{
-			if (!std::filesystem::exists(ShaderInfo.FilePath))
-				continue;
-
-			auto& Stage = ShaderStages.emplace_back();
-			Stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			Stage.pNext = nullptr;
-			Stage.module = InContext->ShaderCompiler->CompileOrGetModule(InContext->Device, ShaderInfo.FilePath, ShaderInfo.Stage);
-			Stage.stage = c_ShaderStageLookup.at(ShaderInfo.Stage);
-			Stage.pName = "main";
-		}
-
-		DynamicArray<VkDescriptorSetLayout> DescriptorSetLayouts;
-		DescriptorSetLayouts.reserve(InPipelineInfo.DescriptorLayouts.Count());
-		for (auto LayoutHandle : InPipelineInfo.DescriptorLayouts)
-			DescriptorSetLayouts.emplace_back(LayoutHandle->Handle);
-
-		VkPushConstantRange PushConstants =
+		VkPushConstantRange pushConstants =
 		{
 			.stageFlags = VK_SHADER_STAGE_ALL,
 			.offset = 0,
-			.size = InPipelineInfo.PushConstantSize,
+			.size = info.PushConstantSize,
 		};
 
-		VkPipelineLayoutCreateInfo LayoutInfo =
+		VkPipelineLayoutCreateInfo layoutInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
-			.setLayoutCount = Cast<uint32_t>(DescriptorSetLayouts.size()),
-			.pSetLayouts = DescriptorSetLayouts.data(),
-			.pushConstantRangeCount = InPipelineInfo.PushConstantSize > 0 ? 1U : 0U,
-			.pPushConstantRanges = InPipelineInfo.PushConstantSize > 0 ? &PushConstants : nullptr,
+			.setLayoutCount = Cast<uint32_t>(descriptorSetLayouts.size()),
+			.pSetLayouts = descriptorSetLayouts.data(),
+			.pushConstantRangeCount = info.PushConstantSize > 0 ? 1U : 0U,
+			.pPushConstantRanges = info.PushConstantSize > 0 ? &pushConstants : nullptr,
 		};
 
-		YUKI_VERIFY(vkCreatePipelineLayout(InContext->Device, &LayoutInfo, nullptr, &Pipeline->Layout) == VK_SUCCESS);
+		YUKI_VK_CHECK(vkCreatePipelineLayout(context->Device, &layoutInfo, nullptr, &layout->Handle));
 
-		DynamicArray<VkFormat> ColorAttachmentFormats;
-		DynamicArray<VkPipelineColorBlendAttachmentState> ColorAttachmentBlendStates;
-		for (const auto& ColorAttachmentInfo : InPipelineInfo.ColorAttachments)
+		return { layout };
+	}
+
+	Pipeline Pipeline::Create(Context context, const PipelineInfo& info)
+	{
+		auto pipeline = new Impl();
+		pipeline->Layout = info.Layout;
+
+		DynamicArray<VkPipelineShaderStageCreateInfo> shaderStages;
+
+		shaderStages.reserve(info.Shaders.Count());
+
+		for (const auto& shaderInfo : info.Shaders)
 		{
-			ColorAttachmentFormats.emplace_back(Vulkan::ImageFormatToVkFormat(ColorAttachmentInfo.Format));
+			if (!std::filesystem::exists(shaderInfo.FilePath))
+				continue;
 
-			auto& BlendStateInfo = ColorAttachmentBlendStates.emplace_back();
-			BlendStateInfo.blendEnable = VK_TRUE;
-			BlendStateInfo.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-			BlendStateInfo.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			BlendStateInfo.colorBlendOp = VK_BLEND_OP_ADD;
-			BlendStateInfo.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			BlendStateInfo.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			BlendStateInfo.alphaBlendOp = VK_BLEND_OP_ADD;
-			BlendStateInfo.colorWriteMask = 0xF;
+			auto& stage = shaderStages.emplace_back();
+			stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			stage.pNext = nullptr;
+			stage.module = context->ShaderCompiler->CompileOrGetModule(context->Device, shaderInfo.FilePath, shaderInfo.Stage);
+			stage.stage = c_ShaderStageLookup.at(shaderInfo.Stage);
+			stage.pName = "main";
 		}
 
-		VkPipelineRenderingCreateInfo RenderingCreateInfo =
+		DynamicArray<VkFormat> colorAttachmentFormats;
+		DynamicArray<VkPipelineColorBlendAttachmentState> colorAttachmentBlendStates;
+		for (const auto& colorAttachmentInfo : info.ColorAttachments)
+		{
+			colorAttachmentFormats.emplace_back(Image::Impl::ImageFormatToVkFormat(colorAttachmentInfo.Format));
+
+			auto& blendStateInfo = colorAttachmentBlendStates.emplace_back();
+			blendStateInfo.blendEnable = VK_TRUE;
+			blendStateInfo.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			blendStateInfo.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			blendStateInfo.colorBlendOp = VK_BLEND_OP_ADD;
+			blendStateInfo.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			blendStateInfo.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			blendStateInfo.alphaBlendOp = VK_BLEND_OP_ADD;
+			blendStateInfo.colorWriteMask = 0xF;
+		}
+
+		VkPipelineRenderingCreateInfo renderingCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-			.colorAttachmentCount = uint32_t(ColorAttachmentFormats.size()),
-			.pColorAttachmentFormats = ColorAttachmentFormats.data(),
+			.colorAttachmentCount = uint32_t(colorAttachmentFormats.size()),
+			.pColorAttachmentFormats = colorAttachmentFormats.data(),
 			.depthAttachmentFormat = VK_FORMAT_UNDEFINED,
 			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
 		};
 
-		VkPipelineInputAssemblyStateCreateInfo InputAssemblyStateCreateInfo =
+		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
 			.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
 		};
 
-		VkPipelineViewportStateCreateInfo ViewportStateCreateInfo =
+		VkPipelineViewportStateCreateInfo viewportStateCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
 			.viewportCount = 1,
 			.scissorCount = 1
 		};
 
-		VkPipelineRasterizationStateCreateInfo RasterizationStateCreateInfo =
+		VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 			.depthClampEnable = VK_FALSE,
@@ -114,14 +122,14 @@ namespace Yuki::RHI {
 			.lineWidth = 1.0f,
 		};
 
-		VkPipelineMultisampleStateCreateInfo MultisampleStateCreateInfo =
+		VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
 			.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
 			.sampleShadingEnable = VK_FALSE
 		};
 
-		VkPipelineDepthStencilStateCreateInfo DepthStencilCreateInfo =
+		VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 			.depthTestEnable = VK_FALSE,
@@ -151,210 +159,186 @@ namespace Yuki::RHI {
 			.maxDepthBounds = 0.0f,
 		};
 
-		VkPipelineColorBlendStateCreateInfo ColorBlendStateCreateInfo =
+		VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-			.attachmentCount = uint32_t(ColorAttachmentBlendStates.size()),
-			.pAttachments = ColorAttachmentBlendStates.data()
+			.attachmentCount = uint32_t(colorAttachmentBlendStates.size()),
+			.pAttachments = colorAttachmentBlendStates.data()
 		};
 
-		constexpr auto DynamicStates = std::array{ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+		constexpr auto dynamicStates = std::array{ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
 
-		VkPipelineDynamicStateCreateInfo DynamicStateCreateInfo =
+		VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-			.dynamicStateCount = uint32_t(DynamicStates.size()),
-			.pDynamicStates = DynamicStates.data()
+			.dynamicStateCount = uint32_t(dynamicStates.size()),
+			.pDynamicStates = dynamicStates.data()
 		};
 
-		VkPipelineVertexInputStateCreateInfo VertexInputStateCreateInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, };
-		VkGraphicsPipelineCreateInfo PipelineCreateInfo =
+		VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, };
+		VkGraphicsPipelineCreateInfo pipelineCreateInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-			.pNext = &RenderingCreateInfo,
-			.stageCount = uint32_t(ShaderStages.size()),
-			.pStages = ShaderStages.data(),
-			.pVertexInputState = &VertexInputStateCreateInfo,
-			.pInputAssemblyState = &InputAssemblyStateCreateInfo,
-			.pViewportState = &ViewportStateCreateInfo,
-			.pRasterizationState = &RasterizationStateCreateInfo,
-			.pMultisampleState = &MultisampleStateCreateInfo,
-			.pDepthStencilState = &DepthStencilCreateInfo,
-			.pColorBlendState = &ColorBlendStateCreateInfo,
-			.pDynamicState = &DynamicStateCreateInfo,
-			.layout = Pipeline->Layout,
+			.pNext = &renderingCreateInfo,
+			.stageCount = uint32_t(shaderStages.size()),
+			.pStages = shaderStages.data(),
+			.pVertexInputState = &vertexInputStateCreateInfo,
+			.pInputAssemblyState = &inputAssemblyStateCreateInfo,
+			.pViewportState = &viewportStateCreateInfo,
+			.pRasterizationState = &rasterizationStateCreateInfo,
+			.pMultisampleState = &multisampleStateCreateInfo,
+			.pDepthStencilState = &depthStencilCreateInfo,
+			.pColorBlendState = &colorBlendStateCreateInfo,
+			.pDynamicState = &dynamicStateCreateInfo,
+			.layout = pipeline->Layout->Handle,
 		};
 
-		YUKI_VERIFY(vkCreateGraphicsPipelines(InContext->Device, VK_NULL_HANDLE, 1, &PipelineCreateInfo, nullptr, &Pipeline->Handle) == VK_SUCCESS);
+		YUKI_VK_CHECK(vkCreateGraphicsPipelines(context->Device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline->Handle));
 
-		return { Pipeline };
+		return { pipeline };
 	}
 
 	/*void VulkanRenderDevice::PipelineDestroy(PipelineRH InPipeline)
 	{
-		auto& Pipeline = m_Pipelines[InPipeline];
-		vkDestroyPipeline(m_Device, Pipeline.Handle, nullptr);
-		vkDestroyPipelineLayout(m_Device, Pipeline.Layout, nullptr);
+		auto& pipeline = m_Pipelines[InPipeline];
+		vkDestroyPipeline(m_Device, pipeline.Handle, nullptr);
+		vkDestroyPipelineLayout(m_Device, pipeline.Layout, nullptr);
 		m_Pipelines.Return(InPipeline);
 	}*/
 
-	RayTracingPipeline RayTracingPipeline::Create(Context InContext, const RayTracingPipelineInfo& InPipelineInfo)
+	RayTracingPipeline RayTracingPipeline::Create(Context context, const RayTracingPipelineInfo& info)
 	{
-		auto Pipeline = new Impl();
+		auto pipeline = new Impl();
+		pipeline->Layout = info.Layout;
 
-		DynamicArray<VkPipelineShaderStageCreateInfo> ShaderStages;
+		DynamicArray<VkPipelineShaderStageCreateInfo> shaderStages;
 
-		ShaderStages.reserve(InPipelineInfo.Shaders.Count());
+		shaderStages.reserve(info.Shaders.Count());
 
-		for (const auto& ShaderInfo : InPipelineInfo.Shaders)
+		for (const auto& shaderInfo : info.Shaders)
 		{
-			YUKI_VERIFY(std::filesystem::exists(ShaderInfo.FilePath));
+			if (!std::filesystem::exists(shaderInfo.FilePath))
+				continue;
 
-			// TODO(Peter): Multiple Miss / Hit Shaders per pipeline
-
-			auto& Stage = ShaderStages.emplace_back();
-			Stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-			Stage.pNext = nullptr;
-			Stage.module = InContext->ShaderCompiler->CompileOrGetModule(InContext->Device, ShaderInfo.FilePath, ShaderInfo.Stage);
-			Stage.stage = c_ShaderStageLookup.at(ShaderInfo.Stage);
-			Stage.pName = "main";
+			auto& stage = shaderStages.emplace_back();
+			stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			stage.pNext = nullptr;
+			stage.module = context->ShaderCompiler->CompileOrGetModule(context->Device, shaderInfo.FilePath, shaderInfo.Stage);
+			stage.stage = c_ShaderStageLookup.at(shaderInfo.Stage);
+			stage.pName = "main";
 		}
 
-		DynamicArray<VkDescriptorSetLayout> DescriptorSetLayouts;
-		DescriptorSetLayouts.reserve(InPipelineInfo.DescriptorLayouts.Count());
-		for (auto LayoutHandle : InPipelineInfo.DescriptorLayouts)
-			DescriptorSetLayouts.emplace_back(LayoutHandle->Handle);
-
-		VkPushConstantRange PushConstants =
+		DynamicArray<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups;
+		for (uint32_t i = 0; i < shaderStages.size(); i++)
 		{
-			.stageFlags = VK_SHADER_STAGE_ALL,
-			.offset = 0,
-			.size = InPipelineInfo.PushConstantSize,
-		};
+			const auto& stageInfo = shaderStages[i];
 
-		VkPipelineLayoutCreateInfo LayoutInfo =
-		{
-			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-			.pNext = nullptr,
-			.setLayoutCount = Cast<uint32_t>(DescriptorSetLayouts.size()),
-			.pSetLayouts = DescriptorSetLayouts.data(),
-			.pushConstantRangeCount = InPipelineInfo.PushConstantSize > 0 ? 1U : 0U,
-			.pPushConstantRanges = InPipelineInfo.PushConstantSize > 0 ? &PushConstants : nullptr,
-		};
+			auto& group = shaderGroups.emplace_back();
+			group.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
 
-		YUKI_VERIFY(vkCreatePipelineLayout(InContext->Device, &LayoutInfo, nullptr, &Pipeline->Layout) == VK_SUCCESS);
-
-		DynamicArray<VkRayTracingShaderGroupCreateInfoKHR> ShaderGroups;
-		for (uint32_t Index = 0; Index < ShaderStages.size(); Index++)
-		{
-			const auto& StageInfo = ShaderStages[Index];
-
-			auto& Group = ShaderGroups.emplace_back();
-			Group.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-
-			switch (StageInfo.stage)
+			switch (stageInfo.stage)
 			{
 			case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
 			case VK_SHADER_STAGE_MISS_BIT_KHR:
 			{
-				Group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-				Group.generalShader = Index;
-				Group.closestHitShader = VK_SHADER_UNUSED_KHR;
-				Group.anyHitShader = VK_SHADER_UNUSED_KHR;
-				Group.intersectionShader = VK_SHADER_UNUSED_KHR;
+				group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+				group.generalShader = i;
+				group.closestHitShader = VK_SHADER_UNUSED_KHR;
+				group.anyHitShader = VK_SHADER_UNUSED_KHR;
+				group.intersectionShader = VK_SHADER_UNUSED_KHR;
 				break;
 			}
 			case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR:
 			{
-				Group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-				Group.generalShader = VK_SHADER_UNUSED_KHR;
-				Group.closestHitShader = Index;
-				Group.anyHitShader = VK_SHADER_UNUSED_KHR;
-				Group.intersectionShader = VK_SHADER_UNUSED_KHR;
+				group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+				group.generalShader = VK_SHADER_UNUSED_KHR;
+				group.closestHitShader = i;
+				group.anyHitShader = VK_SHADER_UNUSED_KHR;
+				group.intersectionShader = VK_SHADER_UNUSED_KHR;
 				break;
 			}
 			}
 		}
 
-		VkRayTracingPipelineCreateInfoKHR RayTracingPipelineInfo =
+		VkRayTracingPipelineCreateInfoKHR rayTracingPipelineInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR,
 			.pNext = nullptr,
-			.stageCount = Cast<uint32_t>(ShaderStages.size()),
-			.pStages = ShaderStages.data(),
-			.groupCount = Cast<uint32_t>(ShaderGroups.size()),
-			.pGroups = ShaderGroups.data(),
+			.stageCount = Cast<uint32_t>(shaderStages.size()),
+			.pStages = shaderStages.data(),
+			.groupCount = Cast<uint32_t>(shaderGroups.size()),
+			.pGroups = shaderGroups.data(),
 			.maxPipelineRayRecursionDepth = 1,
-			.layout = Pipeline->Layout,
+			.layout = pipeline->Layout->Handle,
 		};
-		YUKI_VERIFY(vkCreateRayTracingPipelinesKHR(InContext->Device, {}, {}, 1, &RayTracingPipelineInfo, nullptr, &Pipeline->Handle) == VK_SUCCESS);
+		YUKI_VK_CHECK(vkCreateRayTracingPipelinesKHR(context->Device, {}, {}, 1, &rayTracingPipelineInfo, nullptr, &pipeline->Handle));
 
-		const auto& RTProperties = InContext->GetFeature<VulkanRaytracingFeature>().GetRayTracingProperties();
+		const auto& rtProperties = context->GetFeature<VulkanRaytracingFeature>().GetRayTracingProperties();
 
-		uint32_t HandleCount = Cast<uint32_t>(InPipelineInfo.Shaders.Count());
-		uint32_t HandleSize = RTProperties.shaderGroupHandleSize;
-		uint32_t HandleSizeAligned = AlignUp(HandleSize, RTProperties.shaderGroupHandleAlignment);
+		uint32_t handleCount = Cast<uint32_t>(info.Shaders.Count());
+		uint32_t handleSize = rtProperties.shaderGroupHandleSize;
+		uint32_t handleSizeAligned = AlignUp(handleSize, rtProperties.shaderGroupHandleAlignment);
 
-		Pipeline->RayGenRegion = {
-			.stride = AlignUp(HandleSizeAligned, RTProperties.shaderGroupBaseAlignment),
-			.size = AlignUp(HandleSizeAligned, RTProperties.shaderGroupBaseAlignment),
-		};
-
-		Pipeline->MissGenRegion = {
-			.stride = HandleSizeAligned,
-			.size = AlignUp(1 * HandleSizeAligned, RTProperties.shaderGroupBaseAlignment),
+		pipeline->RayGenRegion = {
+			.stride = AlignUp(handleSizeAligned, rtProperties.shaderGroupBaseAlignment),
+			.size = AlignUp(handleSizeAligned, rtProperties.shaderGroupBaseAlignment),
 		};
 
-		Pipeline->ClosestHitGenRegion = {
-			.stride = HandleSizeAligned,
-			.size = AlignUp(1 * HandleSizeAligned, RTProperties.shaderGroupBaseAlignment),
+		pipeline->MissGenRegion = {
+			.stride = handleSizeAligned,
+			.size = AlignUp(1 * handleSizeAligned, rtProperties.shaderGroupBaseAlignment),
 		};
 
-		uint32_t DataSize = HandleCount * HandleSize;
-		DynamicArray<uint8_t> Handles(DataSize);
-		vkGetRayTracingShaderGroupHandlesKHR(InContext->Device, Pipeline->Handle, 0, HandleCount, DataSize, Handles.data());
+		pipeline->ClosestHitGenRegion = {
+			.stride = handleSizeAligned,
+			.size = AlignUp(1 * handleSizeAligned, rtProperties.shaderGroupBaseAlignment),
+		};
 
-		uint64_t BufferSize = Pipeline->RayGenRegion.size + Pipeline->MissGenRegion.size + Pipeline->ClosestHitGenRegion.size + Pipeline->CallableGenRegion.size;
-		Pipeline->SBTBuffer = Buffer::Create(InContext, BufferSize, BufferUsage::ShaderBindingTable, true);
+		uint32_t dataSize = handleCount * handleSize;
+		DynamicArray<uint8_t> handles(dataSize);
+		vkGetRayTracingShaderGroupHandlesKHR(context->Device, pipeline->Handle, 0, handleCount, dataSize, handles.data());
 
-		uint64_t BufferAddress = Pipeline->SBTBuffer->Address;
-		Pipeline->RayGenRegion.deviceAddress = BufferAddress;
-		Pipeline->MissGenRegion.deviceAddress = BufferAddress + Pipeline->RayGenRegion.size;
-		Pipeline->ClosestHitGenRegion.deviceAddress = BufferAddress + Pipeline->RayGenRegion.size + Pipeline->MissGenRegion.size;
+		uint64_t bufferSize = pipeline->RayGenRegion.size + pipeline->MissGenRegion.size + pipeline->ClosestHitGenRegion.size + pipeline->CallableGenRegion.size;
+		pipeline->SBTBuffer = Buffer::Create(context, bufferSize, BufferUsage::ShaderBindingTable, true);
 
-		auto GetHandle = [&](uint32_t Index) { return Handles.data() + Index * HandleSize; };
+		uint64_t bufferAddress = pipeline->SBTBuffer->Address;
+		pipeline->RayGenRegion.deviceAddress = bufferAddress;
+		pipeline->MissGenRegion.deviceAddress = bufferAddress + pipeline->RayGenRegion.size;
+		pipeline->ClosestHitGenRegion.deviceAddress = bufferAddress + pipeline->RayGenRegion.size + pipeline->MissGenRegion.size;
 
-		auto* BufferData = reinterpret_cast<uint8_t*>(Pipeline->SBTBuffer.GetMappedMemory());
-		uint8_t* DataPtr = BufferData;
-		uint32_t HandleIndex = 0;
+		auto GetHandle = [&](uint32_t index) { return handles.data() + index * handleSize; };
 
-		memcpy(DataPtr, GetHandle(HandleIndex++), HandleSize);
+		auto* bufferData = reinterpret_cast<uint8_t*>(pipeline->SBTBuffer.GetMappedMemory());
+		uint8_t* dataPtr = bufferData;
+		uint32_t handleIndex = 0;
 
-		DataPtr = BufferData + Pipeline->RayGenRegion.size;
-		for (uint32_t Index = 0; Index < 1; Index++)
+		memcpy(dataPtr, GetHandle(handleIndex++), handleSize);
+
+		dataPtr = bufferData + pipeline->RayGenRegion.size;
+		for (uint32_t i = 0; i < 1; i++)
 		{
-			memcpy(DataPtr, GetHandle(HandleIndex++), HandleSize);
-			DataPtr += Pipeline->MissGenRegion.stride;
+			memcpy(dataPtr, GetHandle(handleIndex++), handleSize);
+			dataPtr += pipeline->MissGenRegion.stride;
 		}
 
-		DataPtr = BufferData + Pipeline->RayGenRegion.size + Pipeline->MissGenRegion.size;
-		for (uint32_t Index = 0; Index < 1; Index++)
+		dataPtr = bufferData + pipeline->RayGenRegion.size + pipeline->MissGenRegion.size;
+		for (uint32_t i = 0; i < 1; i++)
 		{
-			memcpy(DataPtr, GetHandle(HandleIndex++), HandleSize);
-			DataPtr += Pipeline->ClosestHitGenRegion.stride;
+			memcpy(dataPtr, GetHandle(handleIndex++), handleSize);
+			dataPtr += pipeline->ClosestHitGenRegion.stride;
 		}
 
-		return { Pipeline };
+		return { pipeline };
 	}
 
 	/*void VulkanRenderDevice::RayTracingPipelineDestroy(RayTracingPipelineRH InPipeline)
 	{
-		auto& Pipeline = m_RayTracingPipelines[InPipeline];
+		auto& pipeline = m_RayTracingPipelines[InPipeline];
 
-		BufferDestroy(Pipeline.SBTBuffer);
+		BufferDestroy(pipeline.SBTBuffer);
 
-		vkDestroyPipeline(m_Device, Pipeline.Handle, nullptr);
-		vkDestroyPipelineLayout(m_Device, Pipeline.Layout, nullptr);
+		vkDestroyPipeline(m_Device, pipeline.Handle, nullptr);
+		vkDestroyPipelineLayout(m_Device, pipeline.Layout, nullptr);
 		m_RayTracingPipelines.Return(InPipeline);
 	}*/
 

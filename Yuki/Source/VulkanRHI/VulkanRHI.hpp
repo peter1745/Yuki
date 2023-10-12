@@ -5,6 +5,8 @@
 
 #include "Features/VulkanFeature.hpp"
 
+#include "VulkanUtils.hpp"
+
 #include <vma/vk_mem_alloc.h>
 
 namespace Yuki::RHI {
@@ -75,7 +77,10 @@ namespace Yuki::RHI {
 	template<>
 	struct RenderHandle<Image>::Impl
 	{
+		Context Ctx = {};
+
 		VkImage Handle = VK_NULL_HANDLE;
+		VmaAllocation Allocation = VK_NULL_HANDLE;
 		uint32_t Width = 0;
 		uint32_t Height = 0;
 		VkFormat Format = VK_FORMAT_UNDEFINED;
@@ -83,9 +88,11 @@ namespace Yuki::RHI {
 		VkImageLayout Layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		VkImageLayout OldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-		inline static VkImageLayout ImageLayoutToVkImageLayout(ImageLayout InLayout)
+		ImageView DefaultView{};
+
+		inline static VkImageLayout ImageLayoutToVkImageLayout(ImageLayout layout)
 		{
-			switch (InLayout)
+			switch (layout)
 			{
 			case ImageLayout::Undefined: return VK_IMAGE_LAYOUT_UNDEFINED;
 			case ImageLayout::General: return VK_IMAGE_LAYOUT_GENERAL;
@@ -96,6 +103,32 @@ namespace Yuki::RHI {
 			case ImageLayout::TransferSource: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			default: return VK_IMAGE_LAYOUT_UNDEFINED;
 			}
+		}
+
+		inline static VkFormat ImageFormatToVkFormat(RHI::ImageFormat format)
+		{
+			switch (format)
+			{
+			case Yuki::RHI::ImageFormat::RGBA8: return VK_FORMAT_R8G8B8A8_UNORM;
+			case Yuki::RHI::ImageFormat::BGRA8: return VK_FORMAT_B8G8R8A8_UNORM;
+			case Yuki::RHI::ImageFormat::D32SFloat: return VK_FORMAT_D32_SFLOAT;
+			}
+
+			return VK_FORMAT_UNDEFINED;
+		}
+
+		inline static VkImageUsageFlags ImageUsageToVkImageUsageFlags(ImageUsage usage)
+		{
+			VkImageUsageFlags result = 0;
+
+			if (usage & ImageUsage::ColorAttachment)	result |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			if (usage & ImageUsage::DepthAttachment)	result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			if (usage & ImageUsage::Sampled)			result |= VK_IMAGE_USAGE_SAMPLED_BIT;
+			if (usage & ImageUsage::TransferDest)		result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			if (usage & ImageUsage::TransferSource)		result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+			if (usage & ImageUsage::Storage)			result |= VK_IMAGE_USAGE_STORAGE_BIT;
+
+			return result;
 		}
 	};
 
@@ -156,17 +189,23 @@ namespace Yuki::RHI {
 	};
 
 	template<>
+	struct RenderHandle<PipelineLayout>::Impl
+	{
+		VkPipelineLayout Handle;
+	};
+
+	template<>
 	struct RenderHandle<Pipeline>::Impl
 	{
+		PipelineLayout Layout;
 		VkPipeline Handle;
-		VkPipelineLayout Layout;
 	};
 
 	template<>
 	struct RenderHandle<RayTracingPipeline>::Impl
 	{
+		PipelineLayout Layout;
 		VkPipeline Handle;
-		VkPipelineLayout Layout;
 
 		Buffer SBTBuffer = {};
 		VkStridedDeviceAddressRegionKHR RayGenRegion{};

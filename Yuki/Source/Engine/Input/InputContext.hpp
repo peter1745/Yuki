@@ -10,17 +10,17 @@ namespace Yuki {
 	{
 	public:
 		template<std::derived_from<InputBinding> TBindingClass>
-		void Bind(const TBindingClass& InBinding)
+		void Bind(const TBindingClass& binding)
 		{
-			m_Bindings.emplace_back(std::move(Unique<TBindingClass>::New(InBinding)));
+			m_Bindings.emplace_back(std::move(Unique<TBindingClass>::New(binding)));
 		}
 
 		template<std::derived_from<InputEvent> TEventClass>
-		void ProcessInput(const TEventClass& InEvent) const
+		void ProcessInput(const TEventClass& event) const
 		{
-			for (const auto& Binding : m_Bindings)
+			for (const auto& binding : m_Bindings)
 			{
-				if (Binding->TryHandle(&InEvent))
+				if (binding->TryHandle(&event))
 					break;
 			}
 		}

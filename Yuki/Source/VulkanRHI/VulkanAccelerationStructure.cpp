@@ -4,112 +4,108 @@
 
 namespace Yuki::RHI {
 
-	AccelerationStructure AccelerationStructure::Create(Context InContext, BufferRH InVertexBuffer, BufferRH InIndexBuffer)
+	AccelerationStructure AccelerationStructure::Create(Context context, BufferRH vertexBuffer, BufferRH indexBuffer)
 	{
-		auto AccelerationStructure = new Impl();
-		AccelerationStructure->Ctx = InContext;
+		auto accelerationStructure = new Impl();
+		accelerationStructure->Ctx = context;
 
-		VkAccelerationStructureGeometryTrianglesDataKHR TrianglesData =
+		VkAccelerationStructureGeometryTrianglesDataKHR trianglesData =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
 			.pNext = nullptr,
 			.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT,
-			.vertexData = { .deviceAddress = InVertexBuffer->Address },
+			.vertexData = { .deviceAddress = vertexBuffer->Address },
 			.vertexStride = sizeof(float) * 3,
-			.maxVertex = 2,
+			.maxVertex = 3,
 			.indexType = VK_INDEX_TYPE_UINT32,
-			.indexData = { .deviceAddress = InIndexBuffer->Address },
+			.indexData = { .deviceAddress = indexBuffer->Address },
 			.transformData = {},
 		};
 
-		VkAccelerationStructureGeometryKHR Geometry =
+		VkAccelerationStructureGeometryKHR geometry =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
 			.pNext = nullptr,
 			.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
-			.geometry = { .triangles = TrianglesData },
+			.geometry = { .triangles = trianglesData },
 			.flags = VK_GEOMETRY_OPAQUE_BIT_KHR,
 		};
 
-		VkAccelerationStructureBuildRangeInfoKHR Offset =
+		VkAccelerationStructureBuildRangeInfoKHR offset =
 		{
-			.primitiveCount = 1,
+			.primitiveCount = 2,
 			.primitiveOffset = 0,
 			.firstVertex = 0,
 			.transformOffset = 0,
 		};
 
-		VkAccelerationStructureBuildGeometryInfoKHR BuildInfo =
+		VkAccelerationStructureBuildGeometryInfoKHR buildInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
 			.pNext = nullptr,
 			.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
 			.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
 			.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
-			//.srcAccelerationStructure,
-			//.dstAccelerationStructure,
 			.geometryCount = 1,
-			.pGeometries = &Geometry,
-			//.ppGeometries,
-			//.scratchData,
+			.pGeometries = &geometry,
 		};
 
-		uint32_t NumPrimitives = 1;
+		uint32_t numPrimitives = 2;
 
-		VkAccelerationStructureBuildSizesInfoKHR BuildSizesInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
-		vkGetAccelerationStructureBuildSizesKHR(InContext->Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &BuildInfo, &NumPrimitives, &BuildSizesInfo);
+		VkAccelerationStructureBuildSizesInfoKHR buildSizesInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
+		vkGetAccelerationStructureBuildSizesKHR(context->Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &numPrimitives, &buildSizesInfo);
 
-		const auto& AccelerationStructureProperties = InContext->GetFeature<VulkanRaytracingFeature>().GetAccelerationStructureProperties();
+		const auto& accelerationStructureProperties = context->GetFeature<VulkanRaytracingFeature>().GetAccelerationStructureProperties();
 
-		auto ScratchBuffer = Buffer::Create(InContext, BuildSizesInfo.buildScratchSize + AccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment, BufferUsage::Storage);
+		auto scratchBuffer = Buffer::Create(context, buildSizesInfo.buildScratchSize + accelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment, BufferUsage::Storage);
 
 		// TODO(Peter): Compactify
 
-		AccelerationStructure->AccelerationStructureStorage = Buffer::Create(InContext, BuildSizesInfo.accelerationStructureSize, BufferUsage::AccelerationStructureStorage);
+		accelerationStructure->AccelerationStructureStorage = Buffer::Create(context, buildSizesInfo.accelerationStructureSize, BufferUsage::AccelerationStructureStorage);
 
-		VkAccelerationStructureCreateInfoKHR AccelerationStructureInfo =
+		VkAccelerationStructureCreateInfoKHR accelerationStructureInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
 			.pNext = nullptr,
 			.createFlags = 0,
-			.buffer = AccelerationStructure->AccelerationStructureStorage->Handle,
+			.buffer = accelerationStructure->AccelerationStructureStorage->Handle,
 			.offset = 0,
-			.size = BuildSizesInfo.accelerationStructureSize,
+			.size = buildSizesInfo.accelerationStructureSize,
 			.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
 		};
-		vkCreateAccelerationStructureKHR(InContext->Device, &AccelerationStructureInfo, nullptr, &AccelerationStructure->BottomLevelAS);
+		vkCreateAccelerationStructureKHR(context->Device, &accelerationStructureInfo, nullptr, &accelerationStructure->BottomLevelAS);
 
-		BuildInfo.dstAccelerationStructure = AccelerationStructure->BottomLevelAS;
-		BuildInfo.scratchData.deviceAddress = AlignUp(ScratchBuffer->Address, Cast<uint64_t>(AccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment));
+		buildInfo.dstAccelerationStructure = accelerationStructure->BottomLevelAS;
+		buildInfo.scratchData.deviceAddress = AlignUp(scratchBuffer->Address, Cast<uint64_t>(accelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment));
 
-		auto Queue = InContext.RequestQueue(QueueType::Graphics);
+		auto queue = context.RequestQueue(QueueType::Graphics);
 
-		auto Fence = Fence::Create(InContext);
+		auto fence = Fence::Create(context);
 
-		auto CmdPool = CommandPool::Create(InContext, Queue);
-		auto CmdList = CmdPool.NewList();
-		CmdList.Begin();
+		auto cmdPool = CommandPool::Create(context, queue);
+		auto cmdList = cmdPool.NewList();
+		cmdList.Begin();
 
-		const auto* BuildOffsetsPtr = &Offset;
-		vkCmdBuildAccelerationStructuresKHR(CmdList->Handle, 1, &BuildInfo, &BuildOffsetsPtr);
+		const auto* buildOffsetsPtr = &offset;
+		vkCmdBuildAccelerationStructuresKHR(cmdList->Handle, 1, &buildInfo, &buildOffsetsPtr);
 
-		CmdList.End();
+		cmdList.End();
 
-		Queue.Submit({ CmdList }, {}, { Fence });
+		queue.Submit({ cmdList }, {}, { fence });
 
-		Fence.Wait();
+		fence.Wait();
 
-		ScratchBuffer.Destroy();
+		scratchBuffer.Destroy();
 
 		// TLAS
 
-		VkAccelerationStructureDeviceAddressInfoKHR AddressInfo =
+		VkAccelerationStructureDeviceAddressInfoKHR addressInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
-			.accelerationStructure = AccelerationStructure->BottomLevelAS
+			.accelerationStructure = accelerationStructure->BottomLevelAS
 		};
 
-		VkAccelerationStructureInstanceKHR Instance =
+		VkAccelerationStructureInstanceKHR instance =
 		{
 			.transform = { .matrix = {
 				1.0f, 0.0f, 0.0f, 0.0f,
@@ -120,86 +116,86 @@ namespace Yuki::RHI {
 			.mask = 0xFF,
 			.instanceShaderBindingTableRecordOffset = 0,
 			.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,
-			.accelerationStructureReference = vkGetAccelerationStructureDeviceAddressKHR(InContext->Device, &AddressInfo),
+			.accelerationStructureReference = vkGetAccelerationStructureDeviceAddressKHR(context->Device, &addressInfo),
 		};
 
-		CmdList = CmdPool.NewList();
-		CmdList.Begin();
+		cmdList = cmdPool.NewList();
+		cmdList.Begin();
 
-		auto InstancesBuffer = Buffer::Create(InContext, sizeof(VkAccelerationStructureInstanceKHR), BufferUsage::AccelerationStructureBuildInput, true);
-		InstancesBuffer.SetData(&Instance, sizeof(Instance));
+		auto instancesBuffer = Buffer::Create(context, sizeof(VkAccelerationStructureInstanceKHR), BufferUsage::AccelerationStructureBuildInput, true);
+		instancesBuffer.SetData(&instance, sizeof(instance));
 
-		VkAccelerationStructureGeometryInstancesDataKHR InstancesData =
+		VkAccelerationStructureGeometryInstancesDataKHR instancesData =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
 			.pNext = nullptr,
 			.arrayOfPointers = VK_FALSE,
-			.data = { .deviceAddress = InstancesBuffer->Address },
+			.data = { .deviceAddress = instancesBuffer->Address },
 		};
 
-		VkAccelerationStructureGeometryKHR TopLevelGeometry =
+		VkAccelerationStructureGeometryKHR topLevelGeometry =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
 			.pNext = nullptr,
 			.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
-			.geometry = { .instances = InstancesData },
+			.geometry = { .instances = instancesData },
 			.flags = 0,
 		};
 
-		BuildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-		BuildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
-		BuildInfo.geometryCount = 1;
-		BuildInfo.pGeometries = &TopLevelGeometry;
-		BuildInfo.srcAccelerationStructure = VK_NULL_HANDLE;
+		buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+		buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+		buildInfo.geometryCount = 1;
+		buildInfo.pGeometries = &topLevelGeometry;
+		buildInfo.srcAccelerationStructure = VK_NULL_HANDLE;
 
-		uint32_t NumInstances = 1;
-		vkGetAccelerationStructureBuildSizesKHR(InContext->Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &BuildInfo, &NumInstances, &BuildSizesInfo);
+		uint32_t numInstances = 1;
+		vkGetAccelerationStructureBuildSizesKHR(context->Device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &numInstances, &buildSizesInfo);
 
-		AccelerationStructure->TopLevelAccelerationStructureStorage = Buffer::Create(InContext, BuildSizesInfo.accelerationStructureSize, BufferUsage::AccelerationStructureStorage);
+		accelerationStructure->TopLevelAccelerationStructureStorage = Buffer::Create(context, buildSizesInfo.accelerationStructureSize, BufferUsage::AccelerationStructureStorage);
 
-		AccelerationStructureInfo =
+		accelerationStructureInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
 			.pNext = nullptr,
 			.createFlags = 0,
-			.buffer = AccelerationStructure->TopLevelAccelerationStructureStorage->Handle,
+			.buffer = accelerationStructure->TopLevelAccelerationStructureStorage->Handle,
 			.offset = 0,
-			.size = BuildSizesInfo.accelerationStructureSize,
+			.size = buildSizesInfo.accelerationStructureSize,
 			.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
 		};
-		vkCreateAccelerationStructureKHR(InContext->Device, &AccelerationStructureInfo, nullptr, &AccelerationStructure->TopLevelAS);
+		vkCreateAccelerationStructureKHR(context->Device, &accelerationStructureInfo, nullptr, &accelerationStructure->TopLevelAS);
 
-		ScratchBuffer = Buffer::Create(InContext, BuildSizesInfo.buildScratchSize + AccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment, BufferUsage::Storage);
+		scratchBuffer = Buffer::Create(context, buildSizesInfo.buildScratchSize + accelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment, BufferUsage::Storage);
 
-		BuildInfo.dstAccelerationStructure = AccelerationStructure->TopLevelAS;
-		BuildInfo.scratchData.deviceAddress = AlignUp(ScratchBuffer->Address, Cast<uint64_t>(AccelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment));
+		buildInfo.dstAccelerationStructure = accelerationStructure->TopLevelAS;
+		buildInfo.scratchData.deviceAddress = AlignUp(scratchBuffer->Address, Cast<uint64_t>(accelerationStructureProperties.minAccelerationStructureScratchOffsetAlignment));
 
-		VkAccelerationStructureBuildRangeInfoKHR BuildOffsets{ NumInstances, 0, 0, 0 };
-		BuildOffsetsPtr = &BuildOffsets;
-		vkCmdBuildAccelerationStructuresKHR(CmdList->Handle, 1, &BuildInfo, &BuildOffsetsPtr);
+		VkAccelerationStructureBuildRangeInfoKHR BuildOffsets{ numInstances, 0, 0, 0 };
+		buildOffsetsPtr = &BuildOffsets;
+		vkCmdBuildAccelerationStructuresKHR(cmdList->Handle, 1, &buildInfo, &buildOffsetsPtr);
 
-		CmdList.End();
+		cmdList.End();
 
-		Queue.Submit({ CmdList }, {}, { Fence });
+		queue.Submit({ cmdList }, {}, { fence });
 
-		Fence.Wait();
+		fence.Wait();
 
-		ScratchBuffer.Destroy();
+		scratchBuffer.Destroy();
 
-		Fence.Destroy();
-		CmdPool.Destroy();
+		fence.Destroy();
+		cmdPool.Destroy();
 
-		return { AccelerationStructure };
+		return { accelerationStructure };
 	}
 
 	uint64_t AccelerationStructure::GetTopLevelAddress()
 	{
-		VkAccelerationStructureDeviceAddressInfoKHR AddressInfo =
+		VkAccelerationStructureDeviceAddressInfoKHR addressInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
 			.accelerationStructure = m_Impl->TopLevelAS
 		};
-		return vkGetAccelerationStructureDeviceAddressKHR(m_Impl->Ctx->Device, &AddressInfo);
+		return vkGetAccelerationStructureDeviceAddressKHR(m_Impl->Ctx->Device, &addressInfo);
 	}
 
 	/*void VulkanRenderDevice::AccelerationStructureDestroy(AccelerationStructureRH InAccelerationStructure)

@@ -2,16 +2,16 @@
 
 namespace Yuki::FileIO {
 
-	bool ReadText(const std::filesystem::path& InFilePath, std::string& OutText)
+	bool ReadText(const std::filesystem::path& filepath, std::string& text)
 	{
-		std::ifstream Stream(InFilePath);
+		std::ifstream stream(filepath);
 
-		if (!Stream)
+		if (!stream)
 			return false;
 
-		std::stringstream Contents;
-		Contents << Stream.rdbuf();
-		OutText = Contents.str();
+		std::stringstream contents;
+		contents << stream.rdbuf();
+		text = contents.str();
 		return true;
 	}
 
