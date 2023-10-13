@@ -32,7 +32,7 @@ void main()
 	d.x *= float(gl_LaunchSizeEXT.x) / float(gl_LaunchSizeEXT.y);
 
 	vec3 origin = InPushConstants.ViewPos;
-	vec3 direction = normalize((InPushConstants.CameraY * d.y) + (InPushConstants.CameraX * d.x) - focalPoint);
+	vec3 direction = normalize((InPushConstants.CameraY * d.y * -1) + (InPushConstants.CameraX * d.x) - focalPoint);
 
 	traceRayEXT(
 		accelerationStructureEXT(InPushConstants.TopLevelAS),

@@ -38,6 +38,7 @@ namespace Yuki {
 	{
 		DynamicArray<MeshData> Meshes;
 		DynamicArray<MeshNode> Nodes;
+		DynamicArray<MeshScene> Scenes;
 	};
 
 	class glTFLoader

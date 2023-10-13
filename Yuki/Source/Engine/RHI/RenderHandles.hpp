@@ -351,8 +351,8 @@ namespace Yuki::RHI {
 	{
 		static AccelerationStructure Create(Context context);
 
-		GeometryID AddGeometry(const DynamicArray<Vec3>& vertexPositions, const DynamicArray<uint32_t>& indices);
-		void AddInstance(GeometryID geometry);
+		GeometryID AddGeometry(Span<Vec3> vertexPositions, Span<uint32_t> indices);
+		void AddInstance(GeometryID geometry, const Mat4& transform);
 
 		uint64_t GetTopLevelAddress();
 	};

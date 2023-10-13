@@ -118,8 +118,27 @@ public:
 				Yuki::Model model;
 				loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);
 
-				auto geometryID = data.AccelerationStructure.AddGeometry(model.Meshes[0].Positions, model.Meshes[0].Indices);
-				data.AccelerationStructure.AddInstance(geometryID);
+				Yuki::DynamicArray<GeometryID> geometries;
+
+				for (const auto& mesh : model.Meshes)
+					geometries.push_back(data.AccelerationStructure.AddGeometry(mesh.Positions, mesh.Indices));
+
+				auto processNode = [&](this auto&& self, const Yuki::MeshNode& node, const Yuki::Mat4& parentTransform = Yuki::Mat4(1.0f)) -> void
+				{
+					Yuki::Mat4 transform = parentTransform * (glm::translate(node.Translation) * glm::mat4_cast(node.Rotation) * glm::scale(node.Scale));
+
+					if (node.MeshIndex >= 0)
+						data.AccelerationStructure.AddInstance(geometries[node.MeshIndex], transform);
+
+					for (auto childNodeIndex : node.ChildNodes)
+						self(model.Nodes[childNodeIndex], transform);
+				};
+
+				for (const auto& scene : model.Scenes)
+				{
+					for (auto nodeIndex : scene.NodeIndices)
+						processNode(model.Nodes[nodeIndex]);
+				}
 
 				data.PC.CameraZOffset = 1.0f / glm::tan(0.5f * glm::radians(90.0f));
 
@@ -145,7 +164,7 @@ public:
 
 					data.Output = Image::Create(m_Context, windowData.Width, windowData.Height, ImageFormat::BGRA8, ImageUsage::Storage | ImageUsage::TransferSource);
 					data.Width = windowData.Width;
-					data.Height = windowData.Width;
+					data.Height = windowData.Height;
 				}
 
 				data.DescriptorSet.Write(0, { data.Output.GetDefaultView() }, 0);
@@ -228,8 +247,8 @@ public:
 				RasterData& data = graph.GetPassData<RasterData>(passID);
 				data.PC.VertexBuffer = data.VertexBuffer.GetDeviceAddress();
 
-				Yuki::Mat4 projectionMatrix = Yuki::PerspectiveInfReversedZ(glm::radians(90.0f), Yuki::Cast<float>(data.Width) / Yuki::Cast<float>(data.Height), 0.001f);
-				Yuki::Mat4 viewMatrix = glm::inverse(glm::translate(glm::mat4(1.0f), s_CameraData.Position) * glm::toMat4(s_CameraData.Rotation));
+				Yuki::Mat4 projectionMatrix = Yuki::PerspectiveInfReversedZ(glm::radians(70.0f), Yuki::Cast<float>(data.Width) / Yuki::Cast<float>(data.Height), 0.001f);
+				Yuki::Mat4 viewMatrix = glm::inverse(glm::translate(glm::mat4(1.0f), s_CameraData.Position) * glm::mat4_cast(s_CameraData.Rotation));
 				data.PC.ViewProjection = projectionMatrix * viewMatrix;
 
 				const auto& windowData = m_WindowSystem.GetWindowData(m_Window);
@@ -333,7 +352,7 @@ private:
 			m_WindowSystem.SetCursorLock(m_Window, true);
 
 			int64_t deltaX = m_WindowSystem.GetRawMouseDeltaX(m_Window) * -1;
-			int64_t deltaY = m_WindowSystem.GetRawMouseDeltaY(m_Window) * -1;
+			int64_t deltaY = m_WindowSystem.GetRawMouseDeltaY(m_Window);
 
 			m_CameraRotation = glm::angleAxis(deltaX * 0.001f, Yuki::Vec3{ 0.0f, 1.0f, 0.0f }) * m_CameraRotation;
 			auto pitchedRotation = m_CameraRotation * glm::angleAxis(deltaY * 0.001f, Yuki::Vec3{ -1.0f, 0.0f, 0.0f });

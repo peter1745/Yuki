@@ -130,9 +130,13 @@ namespace Yuki {
 		for (const auto& node : asset->nodes)
 			processNode(node);
 
-		/*for (const auto& gltfScene : asset->scenes)
+		for (const auto& gltfScene : asset->scenes)
 		{
-		}*/
+			auto& scene = model.Scenes.emplace_back();
+
+			for (auto nodeIndex : gltfScene.nodeIndices)
+				scene.NodeIndices.push_back(nodeIndex);
+		}
 	}
 
 }

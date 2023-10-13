@@ -17,22 +17,22 @@ namespace Yuki::RHI {
 		return { accelerationStructure };
 	}
 
-	GeometryID AccelerationStructure::AddGeometry(const DynamicArray<Vec3>& vertexPositions, const DynamicArray<uint32_t>& indices)
+	GeometryID AccelerationStructure::AddGeometry(Span<Vec3> vertexPositions, Span<uint32_t> indices)
 	{
 		auto geometryBuffer = Buffer::Create(m_Impl->Ctx,
-											vertexPositions.size() * sizeof(Vec3),
+											vertexPositions.ByteSize(),
 											BufferUsage::Storage |
 											BufferUsage::AccelerationStructureBuildInput |
 											BufferUsage::TransferDst);
 
 		auto indexBuffer = Buffer::Create(m_Impl->Ctx,
-										indices.size() * sizeof(uint32_t),
+										indices.ByteSize(),
 										BufferUsage::Index |
 										BufferUsage::AccelerationStructureBuildInput |
 										BufferUsage::TransferDst);
 
-		Buffer::UploadImmediate(geometryBuffer, vertexPositions.data(), vertexPositions.size() * sizeof(Vec3));
-		Buffer::UploadImmediate(indexBuffer, indices.data(), indices.size() * sizeof(uint32_t));
+		Buffer::UploadImmediate(geometryBuffer, vertexPositions.Data(), vertexPositions.ByteSize());
+		Buffer::UploadImmediate(indexBuffer, indices.Data(), indices.ByteSize());
 
 		VkAccelerationStructureGeometryTrianglesDataKHR trianglesData =
 		{
@@ -41,7 +41,7 @@ namespace Yuki::RHI {
 			.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT,
 			.vertexData = { .deviceAddress = geometryBuffer->Address },
 			.vertexStride = sizeof(Vec3),
-			.maxVertex = Cast<uint32_t>(vertexPositions.size() - 1),
+			.maxVertex = Cast<uint32_t>(vertexPositions.Count() - 1),
 			.indexType = VK_INDEX_TYPE_UINT32,
 			.indexData = { .deviceAddress = indexBuffer->Address },
 			.transformData = {},
@@ -56,7 +56,7 @@ namespace Yuki::RHI {
 			.flags = VK_GEOMETRY_OPAQUE_BIT_KHR,
 		};
 
-		uint32_t numPrimitives = Cast<uint32_t>(indices.size() / 3);
+		uint32_t numPrimitives = Cast<uint32_t>(indices.Count() / 3);
 
 		VkAccelerationStructureBuildRangeInfoKHR offset =
 		{
@@ -163,7 +163,7 @@ namespace Yuki::RHI {
 		return geometryID;
 	}
 
-	void AccelerationStructure::AddInstance(GeometryID geometry)
+	void AccelerationStructure::AddInstance(GeometryID geometry, const Mat4& transform)
 	{
 		YUKI_VERIFY(m_Impl->InstanceCount < MaxInstances);
 
@@ -177,9 +177,9 @@ namespace Yuki::RHI {
 		{
 			.transform = {
 				.matrix = {
-					1.0f, 0.0f, 0.0f, 0.0f,
-					0.0f, 1.0f, 0.0f, 0.0f,
-					0.0f, 0.0f, 1.0f, 0.0f,
+					transform[0][0], transform[1][0], transform[2][0], transform[3][0],
+					transform[0][1], transform[1][1], transform[2][1], transform[3][1],
+					transform[0][2], transform[1][2], transform[2][2], transform[3][2],
 				}
 			},
 			.instanceCustomIndex = 0,
