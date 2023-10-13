@@ -70,4 +70,10 @@ namespace Yuki::Vulkan {
 
 }
 
-#define YUKI_VK_CHECK(Expr) do { if (VkResult res = Expr; res != VK_SUCCESS) { Yuki::Logging::Fatal("{} failed with result {}", #Expr, Yuki::Vulkan::VkResultToString(res)); } } while(false)
+#define YUKI_VK_CHECK(Expr) do {\
+	if (VkResult res = Expr; res != VK_SUCCESS)\
+	{\
+		Yuki::Logging::Fatal("{} failed with result {}", #Expr, Yuki::Vulkan::VkResultToString(res));\
+		YUKI_DEBUG_BREAK();\
+	}\
+} while(false)

@@ -76,20 +76,63 @@ namespace Yuki::RHI {
 
 	class GlslIncluder : public glslang::TShader::Includer
 	{
+		struct UserData
+		{
+			std::string Name;
+			std::string Content;
+		};
+
 	public:
 		IncludeResult* includeSystem(const char* headerName, const char* includerName, size_t inclusionDepth) override
 		{
-			return nullptr;
+			return include(headerName, includerName, false);
 		}
 
 		IncludeResult* includeLocal(const char* headerName, const char* includerName, size_t inclusionDepth) override
 		{
-			return nullptr;
+			return include(headerName, includerName, true);
 		}
 
 		void releaseInclude(IncludeResult* includeResult) override
 		{
-			YUKI_UNUSED(includeResult);
+			delete Cast<UserData*>(includeResult->userData);
+			delete includeResult;
+		}
+
+	private:
+		IncludeResult* include(const char* headerName, const char* includerName, bool isRelative)
+		{
+			std::filesystem::path requested = headerName;
+			std::filesystem::path current = includerName;
+
+			std::filesystem::path target;
+			bool exists = false;
+
+			if (isRelative)
+			{
+				target = current.parent_path() / requested;
+				exists = std::filesystem::exists(target);
+			}
+
+			if (!exists)
+			{
+				target = requested;
+				exists = std::filesystem::exists(target);
+			}
+
+			auto userData = new UserData();
+
+			if (exists)
+			{
+				userData->Name = target.string();
+				FileIO::ReadText(target, userData->Content);
+			}
+			else
+			{
+				YUKI_VERIFY(false);
+			}
+
+			return new IncludeResult(userData->Name, userData->Content.c_str(), userData->Content.length(), userData);
 		}
 	};
 

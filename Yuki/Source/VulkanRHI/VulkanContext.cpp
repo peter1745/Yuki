@@ -249,6 +249,7 @@ namespace Yuki::RHI {
 				}
 
 				VkPhysicalDeviceFeatures2 features2{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, };
+				features2.features.shaderInt64 = VK_TRUE;
 				for (const auto& requestedFeature : context->EnabledFeatures | std::views::values)
 					requestedFeature->PopulatePhysicalDeviceFeatures(features2);
 

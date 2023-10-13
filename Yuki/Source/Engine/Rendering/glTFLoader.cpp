@@ -70,15 +70,16 @@ namespace Yuki {
 				const auto& indicesAccessor = asset->accessors[primitive.indicesAccessor.value()];
 
 				size_t baseVertex = meshData.Positions.size();
+				size_t baseIndex = meshData.Indices.size();
 				size_t vertexID = baseVertex;
 
-				meshData.Indices.resize(indicesAccessor.count);
+				meshData.Indices.resize(baseIndex + indicesAccessor.count);
 				meshData.Positions.resize(baseVertex + positionAccessor.count);
 				meshData.ShadingAttributes.resize(baseVertex + positionAccessor.count);
 
 				fastgltf::iterateAccessorWithIndex<uint32_t>(asset, indicesAccessor, [&](uint32_t vertexIndex, size_t i)
 				{
-					meshData.Indices[i] = vertexIndex;
+					meshData.Indices[baseIndex + i] = vertexIndex + Cast<uint32_t>(baseVertex);
 				});
 
 				fastgltf::iterateAccessor<Vec3>(asset, positionAccessor, [&](const Vec3& position)

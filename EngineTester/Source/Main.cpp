@@ -64,6 +64,10 @@ public:
 			DescriptorSet DescriptorSet{};
 			AccelerationStructure AccelerationStructure{};
 
+			Buffer GeometriesBuffer;
+			Yuki::DynamicArray<Buffer> IndexBuffers;
+			Yuki::DynamicArray<Buffer> ShadingAttributeBuffers;
+
 			struct PushConstants
 			{
 				uint64_t TopLevelAS = 0;
@@ -71,6 +75,7 @@ public:
 				Yuki::Vec3 CameraX = {};
 				Yuki::Vec3 CameraY = {};
 				float CameraZOffset = 0.0f;
+				uint64_t Geometries = 0;
 			} PC;
 		};
 
@@ -104,9 +109,9 @@ public:
 					.Pipeline = RayTracingPipeline::Create(m_Context, {
 						.Layout = pipelineLayout,
 						.Shaders = {
-							{ "Shaders/Raytracing.glsl", ShaderStage::RayGeneration },
-							{ "Shaders/Raytracing.glsl", ShaderStage::RayMiss },
-							{ "Shaders/Raytracing.glsl", ShaderStage::RayClosestHit },
+							{ "Shaders/RayGen.glsl", ShaderStage::RayGeneration },
+							{ "Shaders/RayMiss.glsl", ShaderStage::RayMiss },
+							{ "Shaders/RayClosestHit.glsl", ShaderStage::RayClosestHit },
 						}
 					}),
 					.DescriptorPool = descriptorPool,
@@ -114,14 +119,43 @@ public:
 					.AccelerationStructure = AccelerationStructure::Create(m_Context)
 				};
 
+				struct GeometryInfo
+				{
+					uint64_t ShadingAttribs;
+					uint64_t Indices;
+				};
+
+				data.GeometriesBuffer = Buffer::Create(m_Context, 65536 * sizeof(GeometryInfo), BufferUsage::Storage | BufferUsage::TransferDst, true);
+
+				data.PC.Geometries = data.GeometriesBuffer.GetDeviceAddress();
+
 				Yuki::glTFLoader loader;
 				Yuki::Model model;
-				loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);
+				//loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);
+				loader.Load("Meshes/NewSponza_Main_glTF_002.gltf", model);
 
 				Yuki::DynamicArray<GeometryID> geometries;
 
 				for (const auto& mesh : model.Meshes)
+				{
+					Buffer indexBuffer = Buffer::Create(m_Context, mesh.Indices.size() * sizeof(uint32_t), BufferUsage::Storage | BufferUsage::TransferDst);
+					Buffer shadingAttribsBuffer = Buffer::Create(m_Context, mesh.ShadingAttributes.size() * sizeof(Yuki::ShadingAttributes), BufferUsage::Storage | BufferUsage::TransferDst);
+
+					Buffer::UploadImmediate(indexBuffer, mesh.Indices.data(), mesh.Indices.size() * sizeof(uint32_t));
+					Buffer::UploadImmediate(shadingAttribsBuffer, mesh.ShadingAttributes.data(), mesh.ShadingAttributes.size() * sizeof(Yuki::ShadingAttributes));
+
+					data.IndexBuffers.push_back(indexBuffer);
+					data.ShadingAttributeBuffers.push_back(shadingAttribsBuffer);
+
+					GeometryInfo geometryInfo =
+					{
+						.ShadingAttribs = shadingAttribsBuffer.GetDeviceAddress(),
+						.Indices = indexBuffer.GetDeviceAddress(),
+					};
+					data.GeometriesBuffer.SetData(&geometryInfo, sizeof(GeometryInfo), Yuki::Cast<uint32_t>(geometries.size() * sizeof(GeometryInfo)));
+
 					geometries.push_back(data.AccelerationStructure.AddGeometry(mesh.Positions, mesh.Indices));
+				}
 
 				auto processNode = [&](this auto&& self, const Yuki::MeshNode& node, const Yuki::Mat4& parentTransform = Yuki::Mat4(1.0f)) -> void
 				{
@@ -260,7 +294,7 @@ public:
 
 					data.Output = Image::Create(m_Context, windowData.Width, windowData.Height, ImageFormat::BGRA8, ImageUsage::ColorAttachment | ImageUsage::TransferSource);
 					data.Width = windowData.Width;
-					data.Height = windowData.Width;
+					data.Height = windowData.Height;
 				}
 
 				auto cmd = graph.StartPass();

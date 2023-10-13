@@ -12,7 +12,8 @@ namespace Yuki {
 		return {
 			VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
 			VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-			VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
+			VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+			VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME
 		};
 	}
 
@@ -23,6 +24,9 @@ namespace Yuki {
 
 		m_RayTracingPipelineFeatures.rayTracingPipeline = VK_TRUE;
 		AddToPNext(deviceFeatures, m_RayTracingPipelineFeatures);
+
+		m_PositionFetchFeatures.rayTracingPositionFetch = VK_TRUE;
+		AddToPNext(deviceFeatures, m_PositionFetchFeatures);
 	}
 
 	void VulkanRaytracingFeature::PopulateProperties(VkPhysicalDeviceProperties2& properties)
