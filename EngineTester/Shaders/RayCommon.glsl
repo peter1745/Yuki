@@ -10,6 +10,12 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Sha
 {
 	vec3 normal;
 	vec2 texCoord;
+	uint materialIndex;
+};
+
+layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Material
+{
+	uint baseColor;
 };
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Index
@@ -17,7 +23,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Ind
 	uint value;
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer GeometryInfo
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer GeometryInfo
 {
 	ShadingAttributes shadingAttribs;
 	Index indices;
@@ -31,4 +37,5 @@ layout(push_constant, scalar) uniform PushConstants
 	vec3 cameraY;
 	float cameraZ;
 	GeometryInfo geometries;
+	Material materials;
 } PC;

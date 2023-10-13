@@ -67,6 +67,7 @@ public:
 			Buffer GeometriesBuffer;
 			Yuki::DynamicArray<Buffer> IndexBuffers;
 			Yuki::DynamicArray<Buffer> ShadingAttributeBuffers;
+			Buffer MaterialBuffer;
 
 			struct PushConstants
 			{
@@ -76,6 +77,7 @@ public:
 				Yuki::Vec3 CameraY = {};
 				float CameraZOffset = 0.0f;
 				uint64_t Geometries = 0;
+				uint64_t Materials = 0;
 			} PC;
 		};
 
@@ -83,6 +85,11 @@ public:
 			.Initialize = [&](auto& graph, int32_t passID)
 			{
 				using namespace Yuki::RHI;
+
+				Yuki::glTFLoader loader;
+				Yuki::Model model;
+				loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);
+				//loader.Load("Meshes/NewSponza_Main_glTF_002.gltf", model);
 
 				DescriptorCount dc = { DescriptorType::StorageImage, 1 };
 
@@ -126,13 +133,11 @@ public:
 				};
 
 				data.GeometriesBuffer = Buffer::Create(m_Context, 65536 * sizeof(GeometryInfo), BufferUsage::Storage | BufferUsage::TransferDst, true);
+				data.MaterialBuffer = Buffer::Create(m_Context, model.Materials.size() * sizeof(Yuki::MeshMaterial), BufferUsage::Storage | BufferUsage::TransferDst);
+				Buffer::UploadImmediate(data.MaterialBuffer, model.Materials.data(), model.Materials.size() * sizeof(Yuki::MeshMaterial));
 
 				data.PC.Geometries = data.GeometriesBuffer.GetDeviceAddress();
-
-				Yuki::glTFLoader loader;
-				Yuki::Model model;
-				//loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);
-				loader.Load("Meshes/NewSponza_Main_glTF_002.gltf", model);
+				data.PC.Materials = data.MaterialBuffer.GetDeviceAddress();
 
 				Yuki::DynamicArray<GeometryID> geometries;
 
@@ -140,6 +145,11 @@ public:
 				{
 					Buffer indexBuffer = Buffer::Create(m_Context, mesh.Indices.size() * sizeof(uint32_t), BufferUsage::Storage | BufferUsage::TransferDst);
 					Buffer shadingAttribsBuffer = Buffer::Create(m_Context, mesh.ShadingAttributes.size() * sizeof(Yuki::ShadingAttributes), BufferUsage::Storage | BufferUsage::TransferDst);
+
+					for (size_t i = 0; i < mesh.ShadingAttributes.size(); i++)
+					{
+						Yuki::Logging::Info("PARSED - MaterialIndex(VertexID: {}): {}", i, mesh.ShadingAttributes[i].MaterialIndex);
+					}
 
 					Buffer::UploadImmediate(indexBuffer, mesh.Indices.data(), mesh.Indices.size() * sizeof(uint32_t));
 					Buffer::UploadImmediate(shadingAttribsBuffer, mesh.ShadingAttributes.data(), mesh.ShadingAttributes.size() * sizeof(Yuki::ShadingAttributes));
@@ -150,7 +160,7 @@ public:
 					GeometryInfo geometryInfo =
 					{
 						.ShadingAttribs = shadingAttribsBuffer.GetDeviceAddress(),
-						.Indices = indexBuffer.GetDeviceAddress(),
+						.Indices = indexBuffer.GetDeviceAddress()
 					};
 					data.GeometriesBuffer.SetData(&geometryInfo, sizeof(GeometryInfo), Yuki::Cast<uint32_t>(geometries.size() * sizeof(GeometryInfo)));
 
@@ -162,7 +172,7 @@ public:
 					Yuki::Mat4 transform = parentTransform * (glm::translate(node.Translation) * glm::mat4_cast(node.Rotation) * glm::scale(node.Scale));
 
 					if (node.MeshIndex >= 0)
-						data.AccelerationStructure.AddInstance(geometries[node.MeshIndex], transform);
+						data.AccelerationStructure.AddInstance(geometries[node.MeshIndex], transform, node.MeshIndex);
 
 					for (auto childNodeIndex : node.ChildNodes)
 						self(model.Nodes[childNodeIndex], transform);
@@ -246,9 +256,9 @@ public:
 					.DescriptorLayouts = {}
 				});
 
-				Yuki::glTFLoader loader;
+				/*Yuki::glTFLoader loader;
 				Yuki::Model model;
-				loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);
+				loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);*/
 
 				RasterData data =
 				{
@@ -263,13 +273,13 @@ public:
 							{ ImageFormat::BGRA8 }
 						}
 					}),
-					.VertexBuffer = Buffer::Create(m_Context, model.Meshes[0].Positions.size() * sizeof(Yuki::Vec3), BufferUsage::Storage | BufferUsage::TransferDst),
+					/*.VertexBuffer = Buffer::Create(m_Context, model.Meshes[0].Positions.size() * sizeof(Yuki::Vec3), BufferUsage::Storage | BufferUsage::TransferDst),
 					.IndexBuffer = Buffer::Create(m_Context, model.Meshes[0].Indices.size() * sizeof(uint32_t), BufferUsage::Index | BufferUsage::TransferDst),
-					.IndexCount = Yuki::Cast<uint32_t>(model.Meshes[0].Indices.size())
+					.IndexCount = Yuki::Cast<uint32_t>(model.Meshes[0].Indices.size())*/
 				};
 
-				Buffer::UploadImmediate(data.VertexBuffer, model.Meshes[0].Positions.data(), model.Meshes[0].Positions.size() * sizeof(Yuki::Vec3));
-				Buffer::UploadImmediate(data.IndexBuffer, model.Meshes[0].Indices.data(), model.Meshes[0].Indices.size() * sizeof(uint32_t));
+				/*Buffer::UploadImmediate(data.VertexBuffer, model.Meshes[0].Positions.data(), model.Meshes[0].Positions.size() * sizeof(Yuki::Vec3));
+				Buffer::UploadImmediate(data.IndexBuffer, model.Meshes[0].Indices.data(), model.Meshes[0].Indices.size() * sizeof(uint32_t));*/
 
 				graph.SetPassData(passID, data);
 			},

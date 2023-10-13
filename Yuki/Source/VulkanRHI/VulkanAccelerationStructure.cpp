@@ -165,7 +165,7 @@ namespace Yuki::RHI {
 		return geometryID;
 	}
 
-	void AccelerationStructure::AddInstance(GeometryID geometry, const Mat4& transform)
+	void AccelerationStructure::AddInstance(GeometryID geometry, const Mat4& transform, uint32_t customInstanceIndex)
 	{
 		YUKI_VERIFY(m_Impl->InstanceCount < MaxInstances);
 
@@ -184,7 +184,7 @@ namespace Yuki::RHI {
 					transform[0][2], transform[1][2], transform[2][2], transform[3][2],
 				}
 			},
-			.instanceCustomIndex = m_Impl->InstanceCount,
+			.instanceCustomIndex = customInstanceIndex,
 			.mask = 0xFF,
 			.instanceShaderBindingTableRecordOffset = 0,
 			.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,

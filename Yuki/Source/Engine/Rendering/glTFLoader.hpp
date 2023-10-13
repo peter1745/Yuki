@@ -8,6 +8,7 @@ namespace Yuki {
 	{
 		Vec3 Normal;
 		Vec2 TexCoord;
+		uint32_t MaterialIndex;
 	};
 
 	struct MeshData
@@ -34,9 +35,15 @@ namespace Yuki {
 		DynamicArray<size_t> NodeIndices;
 	};
 
+	struct MeshMaterial
+	{
+		uint32_t BaseColor = 0xffffffff;
+	};
+
 	struct Model
 	{
 		DynamicArray<MeshData> Meshes;
+		DynamicArray<MeshMaterial> Materials;
 		DynamicArray<MeshNode> Nodes;
 		DynamicArray<MeshScene> Scenes;
 	};

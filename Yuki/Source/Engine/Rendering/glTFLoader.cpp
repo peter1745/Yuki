@@ -52,6 +52,18 @@ namespace Yuki {
 			asset = Unique<fastgltf::Asset>::New(std::move(expectedAsset.get()));
 		}
 
+		for (const auto& gltfMaterial : asset->materials)
+		{
+			auto& material = model.Materials.emplace_back();
+
+			const auto& baseColor = gltfMaterial.pbrData.baseColorFactor;
+			uint8_t r = Cast<uint8_t>(baseColor[0] * 255.0f);
+			uint8_t g = Cast<uint8_t>(baseColor[1] * 255.0f);
+			uint8_t b = Cast<uint8_t>(baseColor[2] * 255.0f);
+			uint8_t a = Cast<uint8_t>(baseColor[3] * 255.0f);
+			material.BaseColor = (a << 24) | (b << 16) | (g << 8) | r;
+		}
+
 		for (const auto& gltfMesh : asset->meshes)
 		{
 			auto& meshData = model.Meshes.emplace_back();
@@ -84,7 +96,10 @@ namespace Yuki {
 
 				fastgltf::iterateAccessor<Vec3>(asset, positionAccessor, [&](const Vec3& position)
 				{
-					meshData.Positions[vertexID++] = position;
+					meshData.Positions[vertexID] = position;
+					meshData.ShadingAttributes[vertexID].MaterialIndex = Cast<uint32_t>(primitive.materialIndex.value_or(0));
+					Logging::Info("MaterialIndex(VertexID: {}): {}", vertexID, meshData.ShadingAttributes[vertexID].MaterialIndex);
+					vertexID++;
 				});
 				vertexID = baseVertex;
 
@@ -123,6 +138,7 @@ namespace Yuki {
 			node.Rotation = { TRS.rotation[3], TRS.rotation[0], TRS.rotation[1], TRS.rotation[2] };
 			node.Scale = { TRS.scale[0], TRS.scale[1], TRS.scale[2] };
 			node.MeshIndex = gltfNode.meshIndex.has_value() ? Cast<int32_t>(gltfNode.meshIndex.value()) : -1;
+			Logging::Info("Node: {}, MeshIndex: {}", node.Name, node.MeshIndex);
 
 			for (auto childIndex : gltfNode.children)
 				node.ChildNodes.push_back(childIndex);
