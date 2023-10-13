@@ -111,6 +111,12 @@ namespace Yuki::RHI {
 		RayClosestHit = 1 << 4,
 	};
 
+	YUKI_FLAG_ENUM(CommandPoolFlag)
+	{
+		None = 0,
+		TransientLists = 1 << 0
+	};
+
 	enum class PipelineType
 	{
 		Rasterization, Raytracing
@@ -235,7 +241,7 @@ namespace Yuki::RHI {
 
 	struct CommandPool : RenderHandle<CommandPool>
 	{
-		static CommandPool Create(Context context, QueueRH queue);
+		static CommandPool Create(Context context, QueueRH queue, CommandPoolFlag flags = CommandPoolFlag::None);
 		void Destroy();
 
 		void Reset() const;
@@ -300,9 +306,11 @@ namespace Yuki::RHI {
 		static Buffer Create(Context context, uint64_t size, BufferUsage usage, bool hostAccess = false);
 		void Destroy();
 
-		void SetData(const void* data, uint64_t dataSize = ~0);
+		void SetData(const void* data, uint64_t dataSize = ~0, uint32_t offset = 0);
 		uint64_t GetDeviceAddress();
 		void* GetMappedMemory();
+
+		static void UploadImmediate(Buffer dest, const void* data, size_t dataSize);
 	};
 
 	struct DescriptorSetLayout : RenderHandle<DescriptorSetLayout>

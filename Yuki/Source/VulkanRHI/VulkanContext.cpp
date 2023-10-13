@@ -303,7 +303,32 @@ namespace Yuki::RHI {
 
 		context->ShaderCompiler = Unique<VulkanShaderCompiler>::New();
 
-		return { context };
+		Context result = { context };
+		context->TemporariesPool = CommandPool::Create(result, result.RequestQueue(QueueType::Graphics));
+		return result;
+	}
+
+	CommandList Context::Impl::GetTemporaryCommandList()
+	{
+		if (TemporariesPool->AllocatedLists.size() >= 6)
+			TemporariesPool.Reset();
+
+		auto cmd = TemporariesPool.NewList();
+		cmd.Begin();
+		return cmd;
+	}
+
+	void Context::Impl::EndTemporaryCommandList(CommandList cmd)
+	{
+		cmd.End();
+
+		auto ctx = Context{ this };
+		auto queue = ctx.RequestQueue(QueueType::Graphics);
+		auto fence = Fence::Create(ctx);
+
+		queue.Submit({ cmd }, {}, { fence });
+		fence.Wait();
+		fence.Destroy();
 	}
 
 	/*VulkanContext::~VulkanContext() noexcept

@@ -55,13 +55,13 @@ namespace Yuki::RHI {
 		return { buffer };
 	}
 
-	void Buffer::SetData(const void* data, uint64_t dataSize)
+	void Buffer::SetData(const void* data, uint64_t dataSize, uint32_t offset)
 	{
 		dataSize = std::min(dataSize, m_Impl->Size);
 
 		VmaAllocationInfo allocationInfo;
 		vmaGetAllocationInfo(m_Impl->Ctx->Allocator, m_Impl->Allocation, &allocationInfo);
-		memcpy(allocationInfo.pMappedData, data, dataSize);
+		memcpy(Cast<std::byte*>(allocationInfo.pMappedData) + offset, data, dataSize);
 	}
 
 	uint64_t Buffer::GetDeviceAddress()
@@ -80,6 +80,20 @@ namespace Yuki::RHI {
 	{
 		vmaDestroyBuffer(m_Impl->Ctx->Allocator, m_Impl->Handle, m_Impl->Allocation);
 		delete m_Impl;
+	}
+
+	void Buffer::UploadImmediate(Buffer dest, const void* data, size_t dataSize)
+	{
+		auto context = dest->Ctx;
+
+		auto stagingBuffer = Buffer::Create(context, dataSize, BufferUsage::TransferSrc, true);
+		stagingBuffer.SetData(data, dataSize);
+
+		auto cmd = context->GetTemporaryCommandList();
+		cmd.CopyBuffer(dest, stagingBuffer);
+		context->EndTemporaryCommandList(cmd);
+
+		stagingBuffer.Destroy();
 	}
 
 }

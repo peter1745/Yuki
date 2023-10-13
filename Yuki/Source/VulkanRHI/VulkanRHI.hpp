@@ -31,11 +31,16 @@ namespace Yuki::RHI {
 
 		Unique<VulkanShaderCompiler> ShaderCompiler;
 
+		CommandPool TemporariesPool;
+
 		template<typename TFeatureClass>
 		TFeatureClass& GetFeature() const
 		{
 			return EnabledFeatures.at(TFeatureClass::GetRendererFeature());
 		}
+
+		CommandList GetTemporaryCommandList();
+		void EndTemporaryCommandList(CommandList cmd);
 	};
 
 	template<>

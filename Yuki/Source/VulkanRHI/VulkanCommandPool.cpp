@@ -2,16 +2,23 @@
 
 namespace Yuki::RHI {
 
-	CommandPool CommandPool::Create(Context context, QueueRH queue)
+	CommandPool CommandPool::Create(Context context, QueueRH queue, CommandPoolFlag flags)
 	{
 		auto pool = new Impl();
 		pool->Ctx = context;
+
+		VkCommandPoolCreateFlags poolFlags = 0;
+
+		if (flags & CommandPoolFlag::TransientLists)
+		{
+			poolFlags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+		}
 
 		VkCommandPoolCreateInfo poolInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 			.pNext = nullptr,
-			.flags = 0,
+			.flags = poolFlags,
 			.queueFamilyIndex = queue->Family
 		};
 		YUKI_VK_CHECK(vkCreateCommandPool(context->Device, &poolInfo, nullptr, &pool->Handle));

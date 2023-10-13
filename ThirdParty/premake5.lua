@@ -29,7 +29,7 @@ project "volk"
     filter { "system:linux" }
         defines { "VK_USE_PLATFORM_XCB_KHR" }
 
---[[project "simdjson"
+project "simdjson"
 	kind "StaticLib"
 
 	defines {
@@ -58,7 +58,7 @@ project "fastgltf"
 		"simdjson/include/"
 	}
 
-project "stb_image"
+--[[project "stb_image"
 	kind "StaticLib"
 
 	files {
