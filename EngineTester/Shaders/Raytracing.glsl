@@ -69,9 +69,10 @@ void main()
 #extension GL_EXT_nonuniform_qualifier : enable
 
 layout(location = 0) rayPayloadInEXT vec3 HitValue;
-hitAttributeEXT vec3 Attribs;
+
+hitAttributeEXT vec2 Attribs;
 
 void main()
 {
-	HitValue = vec3(1.0, 0.0, 0.0);
+	HitValue = vec3(1 - Attribs.x - Attribs.y, Attribs.x, Attribs.y);
 }

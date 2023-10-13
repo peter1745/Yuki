@@ -27,6 +27,8 @@ project "EngineTester"
 		"Yuki",
 		"volk",
 		"spdlog",
+        "simdjson",
+        "fastgltf",
 	}
 
 	defines { "SPDLOG_COMPILED_LIB" }

@@ -3,6 +3,7 @@
 #include <Engine/Common/WindowSystem.hpp>
 
 #include <Engine/Rendering/RenderGraph.hpp>
+#include <Engine/Rendering/glTFLoader.hpp>
 
 #include <Engine/Input/InputContext.hpp>
 
@@ -48,59 +49,20 @@ public:
 		m_Fence = Fence::Create(m_Context);
 		m_CommandPool = CommandPool::Create(m_Context, m_GraphicsQueue);
 
-		std::array vertices =
-		{
-			Vertex{ { -0.5f, 0.5f, 0.0f } },
-			Vertex{ { 0.5f, 0.5f,  0.0f } },
-			Vertex{ { 0.5f, -0.5f, 0.0f } },
-			Vertex{ { -0.5f, -0.5f, 0.0f } }
-		};
-
-		std::array indices =
-		{
-			0U, 1U, 2U, 2U, 3U, 0U
-		};
-
-		auto stagingBuffer = Buffer::Create(m_Context, vertices.size() * sizeof(Vertex), BufferUsage::TransferSrc, true);
-		stagingBuffer.SetData(vertices.data());
-
-		m_VertexBuffer = Buffer::Create(m_Context, vertices.size() * sizeof(Vertex), BufferUsage::Storage | BufferUsage::AccelerationStructureBuildInput | BufferUsage::TransferDst);
-		m_IndexBuffer = Buffer::Create(m_Context, 6 * sizeof(uint32_t), BufferUsage::Index | BufferUsage::AccelerationStructureBuildInput | BufferUsage::TransferDst);
-
-		auto CmdList = m_CommandPool.NewList();
-		CmdList.Begin();
-		CmdList.CopyBuffer(m_VertexBuffer, stagingBuffer);
-		CmdList.End();
-		m_GraphicsQueue.Submit({ CmdList }, {}, { m_Fence });
-
-		m_Fence.Wait();
-
-		stagingBuffer.SetData(indices.data());
-
-		CmdList = m_CommandPool.NewList();
-		CmdList.Begin();
-		CmdList.CopyBuffer(m_IndexBuffer, stagingBuffer);
-		CmdList.End();
-		m_GraphicsQueue.Submit({ CmdList }, {}, { m_Fence });
-
-		m_Fence.Wait();
-
-		stagingBuffer.Destroy();
-
 		m_Graph = Yuki::Unique<Yuki::RenderGraph>::New(m_Context);
 
 		struct RayTracingData
 		{
-			Yuki::RHI::Image Output{};
+			Image Output{};
 			uint32_t Width = 0;
 			uint32_t Height = 0;
 
-			Yuki::RHI::DescriptorSetLayout DescriptorLayout{};
-			Yuki::RHI::PipelineLayout PipelineLayout{};
-			Yuki::RHI::RayTracingPipeline Pipeline{};
-			Yuki::RHI::DescriptorPool DescriptorPool{};
-			Yuki::RHI::DescriptorSet DescriptorSet{};
-			Yuki::RHI::AccelerationStructure AccelerationStructure{};
+			DescriptorSetLayout DescriptorLayout{};
+			PipelineLayout PipelineLayout{};
+			RayTracingPipeline Pipeline{};
+			DescriptorPool DescriptorPool{};
+			DescriptorSet DescriptorSet{};
+			AccelerationStructure AccelerationStructure{};
 
 			struct PushConstants
 			{
@@ -149,10 +111,17 @@ public:
 					}),
 					.DescriptorPool = descriptorPool,
 					.DescriptorSet = descriptorPool.AllocateDescriptorSet(descriptorLayout),
-					.AccelerationStructure = AccelerationStructure::Create(m_Context, m_VertexBuffer, m_IndexBuffer)
+					.AccelerationStructure = AccelerationStructure::Create(m_Context)
 				};
 
-				data.PC.CameraZOffset = 1.0f / std::tanf(0.5f * 1.22173048f);
+				Yuki::glTFLoader loader;
+				Yuki::Model model;
+				loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);
+
+				auto geometryID = data.AccelerationStructure.AddGeometry(model.Meshes[0].Positions, model.Meshes[0].Indices);
+				data.AccelerationStructure.AddInstance(geometryID);
+
+				data.PC.CameraZOffset = 1.0f / glm::tan(0.5f * glm::radians(90.0f));
 
 				graph.SetPassData(passID, data);
 			},
@@ -196,12 +165,16 @@ public:
 
 		struct RasterData
 		{
-			Yuki::RHI::Image Output{};
+			Image Output{};
 			uint32_t Width = 0;
 			uint32_t Height = 0;
 
-			Yuki::RHI::PipelineLayout PipelineLayout{};
-			Yuki::RHI::Pipeline Pipeline{};
+			PipelineLayout PipelineLayout{};
+			Pipeline Pipeline{};
+
+			Buffer VertexBuffer;
+			Buffer IndexBuffer;
+			uint32_t IndexCount;
 
 			struct PushConstants
 			{
@@ -220,6 +193,10 @@ public:
 					.DescriptorLayouts = {}
 				});
 
+				Yuki::glTFLoader loader;
+				Yuki::Model model;
+				loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);
+
 				RasterData data =
 				{
 					.PipelineLayout = pipelineLayout,
@@ -232,8 +209,14 @@ public:
 						.ColorAttachments = {
 							{ ImageFormat::BGRA8 }
 						}
-					})
+					}),
+					.VertexBuffer = Buffer::Create(m_Context, model.Meshes[0].Positions.size() * sizeof(Yuki::Vec3), BufferUsage::Storage | BufferUsage::TransferDst),
+					.IndexBuffer = Buffer::Create(m_Context, model.Meshes[0].Indices.size() * sizeof(uint32_t), BufferUsage::Index | BufferUsage::TransferDst),
+					.IndexCount = Yuki::Cast<uint32_t>(model.Meshes[0].Indices.size())
 				};
+
+				Buffer::UploadImmediate(data.VertexBuffer, model.Meshes[0].Positions.data(), model.Meshes[0].Positions.size() * sizeof(Yuki::Vec3));
+				Buffer::UploadImmediate(data.IndexBuffer, model.Meshes[0].Indices.data(), model.Meshes[0].Indices.size() * sizeof(uint32_t));
 
 				graph.SetPassData(passID, data);
 			},
@@ -243,7 +226,7 @@ public:
 					return;
 
 				RasterData& data = graph.GetPassData<RasterData>(passID);
-				data.PC.VertexBuffer = m_VertexBuffer.GetDeviceAddress();
+				data.PC.VertexBuffer = data.VertexBuffer.GetDeviceAddress();
 
 				Yuki::Mat4 projectionMatrix = Yuki::PerspectiveInfReversedZ(glm::radians(90.0f), Yuki::Cast<float>(data.Width) / Yuki::Cast<float>(data.Height), 0.001f);
 				Yuki::Mat4 viewMatrix = glm::inverse(glm::translate(glm::mat4(1.0f), s_CameraData.Position) * glm::toMat4(s_CameraData.Rotation));
@@ -281,8 +264,8 @@ public:
 					}
 				});
 
-				cmd.BindIndexBuffer(m_IndexBuffer);
-				cmd.DrawIndexed(3, 0, 0);
+				cmd.BindIndexBuffer(data.IndexBuffer);
+				cmd.DrawIndexed(data.IndexCount, 0, 0);
 
 				cmd.EndRendering();
 
@@ -378,8 +361,6 @@ private:
 	Yuki::RHI::Queue m_GraphicsQueue;
 	Yuki::RHI::Fence m_Fence;
 	Yuki::RHI::CommandPool m_CommandPool;
-	Yuki::RHI::Buffer m_VertexBuffer;
-	Yuki::RHI::Buffer m_IndexBuffer;
 
 	Yuki::InputContext m_CameraInput;
 

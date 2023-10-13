@@ -222,11 +222,20 @@ namespace Yuki::RHI {
 	template<>
 	struct RenderHandle<AccelerationStructure>::Impl
 	{
+		struct BLAS
+		{
+			VkAccelerationStructureKHR Structure;
+			Buffer StructureStorage;
+		};
+
 		Context Ctx = {};
-		VkAccelerationStructureKHR BottomLevelAS;
-		Buffer AccelerationStructureStorage;
-		VkAccelerationStructureKHR TopLevelAS;
-		Buffer TopLevelAccelerationStructureStorage;
+		HashMap<GeometryID, BLAS> BottomLevelStructures;
+		Buffer InstancesBuffer;
+		uint32_t InstanceCount;
+		VkAccelerationStructureKHR TopLevelStructure;
+		Buffer TopLevelStructureStorage;
+
+		void RebuildTopLevelStructure();
 	};
 
 }

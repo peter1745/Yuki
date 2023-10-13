@@ -345,9 +345,14 @@ namespace Yuki::RHI {
 		static RayTracingPipeline Create(Context context, const RayTracingPipelineInfo& info);
 	};
 
+	using GeometryID = UniqueID;
+
 	struct AccelerationStructure : RenderHandle<AccelerationStructure>
 	{
-		static AccelerationStructure Create(Context context, BufferRH vertexBuffer, BufferRH indexBuffer);
+		static AccelerationStructure Create(Context context);
+
+		GeometryID AddGeometry(const DynamicArray<Vec3>& vertexPositions, const DynamicArray<uint32_t>& indices);
+		void AddInstance(GeometryID geometry);
 
 		uint64_t GetTopLevelAddress();
 	};
