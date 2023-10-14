@@ -43,9 +43,7 @@ namespace Yuki::RHI {
 	YUKI_RENDER_HANDLE(PipelineLayout);
 	YUKI_RENDER_HANDLE(Pipeline);
 	YUKI_RENDER_HANDLE(RayTracingPipeline);
-	YUKI_RENDER_HANDLE(DescriptorSetLayout);
-	YUKI_RENDER_HANDLE(DescriptorPool);
-	YUKI_RENDER_HANDLE(DescriptorSet);
+	YUKI_RENDER_HANDLE(DescriptorHeap);
 	YUKI_RENDER_HANDLE(Fence);
 	YUKI_RENDER_HANDLE(CommandPool);
 	YUKI_RENDER_HANDLE(CommandList);
@@ -140,7 +138,6 @@ namespace Yuki::RHI {
 	struct PipelineLayoutInfo
 	{
 		uint32_t PushConstantSize = 0;
-		Span<DescriptorSetLayoutRH> DescriptorLayouts;
 	};
 
 	struct PipelineInfo
@@ -155,33 +152,6 @@ namespace Yuki::RHI {
 	{
 		PipelineLayoutRH Layout = {};
 		Span<PipelineShaderInfo> Shaders;
-	};
-
-	enum class DescriptorType
-	{
-		Sampler,
-		CombinedImageSampler,
-		SampledImage,
-		StorageImage,
-		UniformTexelBuffer,
-		StorageTexelBuffer,
-		UniformBuffer,
-		StorageBuffer,
-		UniformBufferDynamic,
-		StorageBufferDynamic,
-		InputAttachment,
-	};
-
-	struct DescriptorCount
-	{
-		DescriptorType Type;
-		uint32_t Count;
-	};
-
-	struct DescriptorSetLayoutInfo
-	{
-		ShaderStage Stages = ShaderStage::None;
-		Span<DescriptorCount> Descriptors;
 	};
 
 #undef YUKI_RENDER_HANDLE
@@ -280,7 +250,7 @@ namespace Yuki::RHI {
 		void CopyImage(Image dest, Image src) const;
 		void BlitImage(Image dest, Image src) const;
 		void PushConstants(PipelineLayout layout, ShaderStage stages, const void* data, uint32_t dataSize);
-		void BindDescriptorSets(PipelineLayout layout, PipelineBindPoint bindPoint, Span<DescriptorSetRH> descriptorSets);
+		void BindDescriptorHeap(PipelineLayout layout, PipelineBindPoint bindPoint, DescriptorHeap heap);
 		void BindPipeline(PipelineRH pipeline);
 		void BindPipeline(RayTracingPipelineRH pipeline);
 		void BindIndexBuffer(BufferRH buffer);
@@ -322,27 +292,33 @@ namespace Yuki::RHI {
 		static Buffer Create(Context context, uint64_t size, BufferUsage usage, BufferFlags flags = BufferFlags::None);
 		void Destroy();
 
-		void SetData(const void* data, uint64_t dataSize = ~0, uint32_t offset = 0);
+		void SetData(const void* data, uint64_t dataSize, uint32_t offset = 0);
 		uint64_t GetDeviceAddress();
 		void* GetMappedMemory();
+
+		template<typename T>
+		void Set(const T& element, uint32_t index)
+		{
+			T* data = reinterpret_cast<T*>(GetMappedMemory());
+			memcpy(data + index, &element, sizeof(T));
+		}
+
+		template<typename T>
+		void Set(Span<T> elements, uint32_t startIndex = 0)
+		{
+			T* data = reinterpret_cast<T*>(GetMappedMemory());
+			memcpy(data + startIndex, elements.Data(), elements.ByteSize());
+		}
 	};
 
-	struct DescriptorSetLayout : RenderHandle<DescriptorSetLayout>
+	struct DescriptorHeap : RenderHandle<DescriptorHeap>
 	{
-		static DescriptorSetLayout Create(Context context, const DescriptorSetLayoutInfo& info);
-	};
+		static DescriptorHeap Create(Context context, uint32_t numDescriptors);
+		void Destroy();
 
-	struct DescriptorPool : RenderHandle<DescriptorPool>
-	{
-		static DescriptorPool Create(Context context, Span<DescriptorCount> descriptorCounts);
-
-		DescriptorSet AllocateDescriptorSet(DescriptorSetLayout layout);
-	};
-
-	struct DescriptorSet : RenderHandle<DescriptorSet>
-	{
-		void Write(uint32_t binding, Span<ImageViewRH> imageViews, uint32_t arrayOffset);
-		void Write(uint32_t binding, Span<SamplerRH> sampler, uint32_t arrayOffset);
+		void WriteStorageImages(uint32_t startIndex, Span<ImageView> storageImages) const;
+		void WriteSampledImages(uint32_t startIndex, Span<ImageView> sampledImages) const;
+		void WriteSamplers(uint32_t startIndex, Span<Sampler> samplers) const;
 	};
 
 	struct PipelineLayout : RenderHandle<PipelineLayout>

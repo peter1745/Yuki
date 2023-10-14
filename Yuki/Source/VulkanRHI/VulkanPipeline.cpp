@@ -19,10 +19,10 @@ namespace Yuki::RHI {
 	{
 		auto layout = new Impl();
 
-		DynamicArray<VkDescriptorSetLayout> descriptorSetLayouts;
+		/*DynamicArray<VkDescriptorSetLayout> descriptorSetLayouts;
 		descriptorSetLayouts.reserve(info.DescriptorLayouts.Count());
 		for (auto layoutHandle : info.DescriptorLayouts)
-			descriptorSetLayouts.emplace_back(layoutHandle->Handle);
+			descriptorSetLayouts.emplace_back(layoutHandle->Handle);*/
 
 		VkPushConstantRange pushConstants =
 		{
@@ -35,8 +35,8 @@ namespace Yuki::RHI {
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
-			.setLayoutCount = Cast<uint32_t>(descriptorSetLayouts.size()),
-			.pSetLayouts = descriptorSetLayouts.data(),
+			.setLayoutCount = 1,
+			.pSetLayouts = &context->DescriptorHeapLayout,
 			.pushConstantRangeCount = info.PushConstantSize > 0 ? 1U : 0U,
 			.pPushConstantRanges = info.PushConstantSize > 0 ? &pushConstants : nullptr,
 		};

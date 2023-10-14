@@ -33,11 +33,8 @@ namespace Yuki::RHI {
 										BufferUsage::TransferDst,
 										BufferFlags::Mapped | BufferFlags::DeviceLocal);
 
-		geometryBuffer.SetData(vertexPositions.Data());
-		indexBuffer.SetData(indices.Data());
-
-		/*Buffer::UploadImmediate(geometryBuffer, vertexPositions.Data(), vertexPositions.ByteSize());
-		Buffer::UploadImmediate(indexBuffer, indices.Data(), indices.ByteSize());*/
+		geometryBuffer.Set(vertexPositions);
+		indexBuffer.Set(indices);
 
 		VkAccelerationStructureGeometryTrianglesDataKHR trianglesData =
 		{
@@ -196,7 +193,7 @@ namespace Yuki::RHI {
 			.accelerationStructureReference = vkGetAccelerationStructureDeviceAddressKHR(m_Impl->Ctx->Device, &addressInfo),
 		};
 
-		m_Impl->InstancesBuffer.SetData(&instance, sizeof(instance), m_Impl->InstanceCount * sizeof(VkAccelerationStructureInstanceKHR));
+		m_Impl->InstancesBuffer.Set(instance, m_Impl->InstanceCount);
 		m_Impl->InstanceCount++;
 
 		m_Impl->RebuildTopLevelStructure();

@@ -4,8 +4,6 @@
 
 #include "RayCommon.glsl"
 
-layout(set = 0, binding = 0) uniform image2D Image;
-
 layout(location = 0) rayPayloadEXT vec3 Color;
 
 void main()
@@ -34,5 +32,5 @@ void main()
 		0
 	);
 
-	imageStore(Image, ivec2(gl_LaunchIDEXT.xy), vec4(Color, 1.0));
+	imageStore(StorageImages[PC.OutputImageHandle], ivec2(gl_LaunchIDEXT.xy), vec4(Color, 1.0));
 }

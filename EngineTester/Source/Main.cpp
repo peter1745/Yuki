@@ -2,6 +2,8 @@
 #include <Engine/Common/EngineTime.hpp>
 #include <Engine/Common/WindowSystem.hpp>
 
+#include <Engine/Containers/IndexFreeList.hpp>
+
 #include <Engine/Rendering/RenderGraph.hpp>
 #include <Engine/Rendering/glTFLoader.hpp>
 
@@ -46,10 +48,16 @@ public:
 
 		m_Swapchain = Swapchain::Create(m_Context, m_WindowSystem, m_Window);
 
+		m_DescriptorHeap = DescriptorHeap::Create(m_Context, 65536);
 		m_Fence = Fence::Create(m_Context);
-		m_CommandPool = CommandPool::Create(m_Context, m_GraphicsQueue);
 
 		m_Graph = Yuki::Unique<Yuki::RenderGraph>::New(m_Context);
+
+		struct GeometryInfo
+		{
+			uint64_t ShadingAttribs;
+			uint64_t Indices;
+		};
 
 		struct RayTracingData
 		{
@@ -59,9 +67,6 @@ public:
 
 			PipelineLayout PipelineLayout{};
 			RayTracingPipeline Pipeline{};
-			DescriptorPool DescriptorPool{};
-			DescriptorSet InputSet{};
-			DescriptorSet TexturesSet{};
 			AccelerationStructure AccelerationStructure{};
 
 			Buffer GeometriesBuffer;
@@ -78,6 +83,8 @@ public:
 				float CameraZOffset = 0.0f;
 				uint64_t Geometries = 0;
 				uint64_t Materials = 0;
+				uint32_t OutputImageHandle;
+				uint32_t DefaultSamplerHandle;
 			} PC;
 		};
 
@@ -92,40 +99,9 @@ public:
 				loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes_Textured_Complex.gltf", model);
 				//loader.Load("Meshes/NewSponza_Main_glTF_002.gltf", model);
 
-				auto descriptorPoolCounts = std::array
-				{
-					DescriptorCount{ DescriptorType::StorageImage, 65536 },
-					DescriptorCount{ DescriptorType::SampledImage, 65536 },
-					DescriptorCount{ DescriptorType::Sampler, 65536 },
-				};
-
-				auto descriptors = std::array
-				{
-					DescriptorCount{ DescriptorType::StorageImage, 1 }
-				};
-
-				auto descriptors1 = std::array
-				{
-					DescriptorCount{ DescriptorType::SampledImage, 65536 },
-					DescriptorCount{ DescriptorType::Sampler, 1 },
-				};
-
-				auto descriptorLayout0 = DescriptorSetLayout::Create(m_Context, {
-					.Stages = ShaderStage::RayGeneration | ShaderStage::RayClosestHit | ShaderStage::RayMiss,
-					.Descriptors = descriptors
-				});
-
-				auto descriptorLayout1 = DescriptorSetLayout::Create(m_Context, {
-					.Stages = ShaderStage::RayGeneration | ShaderStage::RayClosestHit | ShaderStage::RayMiss,
-					.Descriptors = descriptors1
-				});
-
 				auto pipelineLayout = PipelineLayout::Create(m_Context, {
 					.PushConstantSize = sizeof(RayTracingData::PushConstants),
-					.DescriptorLayouts = { descriptorLayout0, descriptorLayout1 }
 				});
-
-				auto descriptorPool = DescriptorPool::Create(m_Context, descriptorPoolCounts);
 
 				RayTracingData data =
 				{
@@ -138,32 +114,34 @@ public:
 							{ "Shaders/RayClosestHit.glsl", ShaderStage::RayClosestHit },
 						}
 					}),
-					.DescriptorPool = descriptorPool,
-					.InputSet = descriptorPool.AllocateDescriptorSet(descriptorLayout0),
-					.TexturesSet = descriptorPool.AllocateDescriptorSet(descriptorLayout1),
 					.AccelerationStructure = AccelerationStructure::Create(m_Context)
-				};
-
-				struct GeometryInfo
-				{
-					uint64_t ShadingAttribs;
-					uint64_t Indices;
 				};
 
 				for (size_t i = 0; i < model.Textures.size(); i++)
 				{
+					uint32_t handle = m_HeapFreeList.Acquire();
+
+					for (auto& material : model.Materials)
+					{
+						if (material.BaseColorTextureIndex == i)
+							material.BaseColorTextureIndex = handle;
+					}
+
 					const auto& texture = model.Textures[i];
 					Image image = Image::Create(m_Context, texture.Width, texture.Height, ImageFormat::RGBA8, ImageUsage::Sampled | ImageUsage::TransferDest | ImageUsage::HostTransfer);
 					image.SetData(texture.Data.data());
-					data.TexturesSet.Write(0, { image.GetDefaultView() }, i);
+					m_DescriptorHeap.WriteSampledImages(handle, { image.GetDefaultView() });
 				}
 
+				data.PC.DefaultSamplerHandle = m_HeapFreeList.Acquire();
+				data.PC.OutputImageHandle = m_HeapFreeList.Acquire();
+
 				auto sampler = Sampler::Create(m_Context);
-				data.TexturesSet.Write(1, { sampler }, 0);
+				m_DescriptorHeap.WriteSamplers(data.PC.DefaultSamplerHandle, { sampler });
 
 				data.GeometriesBuffer = Buffer::Create(m_Context, 65536 * sizeof(GeometryInfo), BufferUsage::Storage | BufferUsage::TransferDst, BufferFlags::Mapped | BufferFlags::DeviceLocal);
 				data.MaterialBuffer = Buffer::Create(m_Context, model.Materials.size() * sizeof(Yuki::MeshMaterial), BufferUsage::Storage | BufferUsage::TransferDst, BufferFlags::Mapped | BufferFlags::DeviceLocal);
-				data.MaterialBuffer.SetData(model.Materials.data());
+				data.MaterialBuffer.Set<Yuki::MeshMaterial>(model.Materials);
 
 				data.PC.Geometries = data.GeometriesBuffer.GetDeviceAddress();
 				data.PC.Materials = data.MaterialBuffer.GetDeviceAddress();
@@ -172,11 +150,19 @@ public:
 
 				for (const auto& mesh : model.Meshes)
 				{
-					Buffer indexBuffer = Buffer::Create(m_Context, mesh.Indices.size() * sizeof(uint32_t), BufferUsage::Storage | BufferUsage::TransferDst, BufferFlags::Mapped | BufferFlags::DeviceLocal);
-					Buffer shadingAttribsBuffer = Buffer::Create(m_Context, mesh.ShadingAttributes.size() * sizeof(Yuki::ShadingAttributes), BufferUsage::Storage | BufferUsage::TransferDst, BufferFlags::Mapped | BufferFlags::DeviceLocal);
+					Buffer indexBuffer = Buffer::Create(m_Context, mesh.Indices.size() * sizeof(uint32_t),
+														BufferUsage::Storage |
+														BufferUsage::TransferDst,
+														BufferFlags::Mapped |
+														BufferFlags::DeviceLocal);
+					Buffer shadingAttribsBuffer = Buffer::Create(m_Context, mesh.ShadingAttributes.size() * sizeof(Yuki::ShadingAttributes),
+																BufferUsage::Storage |
+																BufferUsage::TransferDst,
+																BufferFlags::Mapped |
+																BufferFlags::DeviceLocal);
 
-					indexBuffer.SetData(mesh.Indices.data());
-					shadingAttribsBuffer.SetData(mesh.ShadingAttributes.data());
+					indexBuffer.Set<uint32_t>(mesh.Indices);
+					shadingAttribsBuffer.Set<Yuki::ShadingAttributes>(mesh.ShadingAttributes);
 
 					data.IndexBuffers.push_back(indexBuffer);
 					data.ShadingAttributeBuffers.push_back(shadingAttribsBuffer);
@@ -186,7 +172,7 @@ public:
 						.ShadingAttribs = shadingAttribsBuffer.GetDeviceAddress(),
 						.Indices = indexBuffer.GetDeviceAddress()
 					};
-					data.GeometriesBuffer.SetData(&geometryInfo, sizeof(GeometryInfo), Yuki::Cast<uint32_t>(geometries.size() * sizeof(GeometryInfo)));
+					data.GeometriesBuffer.Set(geometryInfo, Yuki::Cast<uint32_t>(geometries.size()));
 
 					geometries.push_back(data.AccelerationStructure.AddGeometry(mesh.Positions, mesh.Indices));
 				}
@@ -234,13 +220,13 @@ public:
 					data.Width = windowData.Width;
 					data.Height = windowData.Height;
 				
-					data.InputSet.Write(0, { data.Output.GetDefaultView() }, 0);
+					m_DescriptorHeap.WriteStorageImages(data.PC.OutputImageHandle, { data.Output.GetDefaultView() });
 				}
 
 				auto cmd = graph.StartPass();
 				cmd.ImageBarrier({ { data.Output }, { Yuki::RHI::ImageLayout::General } });
 				cmd.PushConstants(data.PipelineLayout, Yuki::RHI::ShaderStage::RayGeneration, &data.PC, sizeof(data.PC));
-				cmd.BindDescriptorSets(data.PipelineLayout, Yuki::RHI::PipelineBindPoint::RayTracing, { data.InputSet, data.TexturesSet });
+				cmd.BindDescriptorHeap(data.PipelineLayout, Yuki::RHI::PipelineBindPoint::RayTracing, m_DescriptorHeap);
 				cmd.BindPipeline(data.Pipeline);
 				cmd.TraceRays(data.Pipeline, data.Width, data.Height);
 				cmd.ImageBarrier({ { data.Output }, { Yuki::RHI::ImageLayout::TransferSource } });
@@ -250,7 +236,7 @@ public:
 			}
 		});
 
-		struct RasterData
+		/*struct RasterData
 		{
 			Image Output{};
 			uint32_t Width = 0;
@@ -280,9 +266,9 @@ public:
 					.DescriptorLayouts = {}
 				});
 
-				/*Yuki::glTFLoader loader;
+				Yuki::glTFLoader loader;
 				Yuki::Model model;
-				loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);*/
+				loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);
 
 				RasterData data =
 				{
@@ -297,13 +283,10 @@ public:
 							{ ImageFormat::BGRA8 }
 						}
 					}),
-					/*.VertexBuffer = Buffer::Create(m_Context, model.Meshes[0].Positions.size() * sizeof(Yuki::Vec3), BufferUsage::Storage | BufferUsage::TransferDst),
+					.VertexBuffer = Buffer::Create(m_Context, model.Meshes[0].Positions.size() * sizeof(Yuki::Vec3), BufferUsage::Storage | BufferUsage::TransferDst),
 					.IndexBuffer = Buffer::Create(m_Context, model.Meshes[0].Indices.size() * sizeof(uint32_t), BufferUsage::Index | BufferUsage::TransferDst),
-					.IndexCount = Yuki::Cast<uint32_t>(model.Meshes[0].Indices.size())*/
+					.IndexCount = Yuki::Cast<uint32_t>(model.Meshes[0].Indices.size())
 				};
-
-				/*Buffer::UploadImmediate(data.VertexBuffer, model.Meshes[0].Positions.data(), model.Meshes[0].Positions.size() * sizeof(Yuki::Vec3));
-				Buffer::UploadImmediate(data.IndexBuffer, model.Meshes[0].Indices.data(), model.Meshes[0].Indices.size() * sizeof(uint32_t));*/
 
 				graph.SetPassData(passID, data);
 			},
@@ -362,7 +345,7 @@ public:
 
 				graph.Output(data.Output);
 			}
-		});
+		});*/
 
 		m_Graph->AddPass({
 			.Initialize = [](const auto& graph, int32_t passID){},
@@ -446,13 +429,15 @@ private:
 	Yuki::Unique<Yuki::RenderGraph> m_Graph;
 	Yuki::RHI::Swapchain m_Swapchain;
 	Yuki::RHI::Queue m_GraphicsQueue;
+	Yuki::RHI::DescriptorHeap m_DescriptorHeap;
 	Yuki::RHI::Fence m_Fence;
-	Yuki::RHI::CommandPool m_CommandPool;
 
 	Yuki::InputContext m_CameraInput;
 
 	Yuki::Vec3 m_CameraPosition{ 0.0f, 0.0f, 5.0f };
 	Yuki::Quat m_CameraRotation{ 1.0f, 0.0f, 0.0f, 0.0f };
+
+	Yuki::IndexFreeList m_HeapFreeList;
 };
 
 YUKI_DECLARE_APPLICATION(EngineTesterApp)

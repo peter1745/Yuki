@@ -198,27 +198,6 @@ namespace Yuki::RHI {
 		vkCmdPushConstants(m_Impl->Handle, layout->Handle, VK_SHADER_STAGE_ALL, 0, dataSize, data);
 	}
 
-	void CommandList::BindDescriptorSets(PipelineLayout layout, PipelineBindPoint bindPoint, Span<DescriptorSetRH> descriptorSets)
-	{
-		DynamicArray<VkDescriptorSet> sets(descriptorSets.Count());
-		for (size_t i = 0; i < descriptorSets.Count(); i++)
-			sets[i] = descriptorSets[i]->Handle;
-
-		VkPipelineBindPoint pipelineBindPoint = VK_PIPELINE_BIND_POINT_MAX_ENUM;
-
-		switch (bindPoint)
-		{
-		case PipelineBindPoint::Graphics:
-			pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			break;
-		case PipelineBindPoint::RayTracing:
-			pipelineBindPoint = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
-			break;
-		}
-
-		vkCmdBindDescriptorSets(m_Impl->Handle, pipelineBindPoint, layout->Handle, 0, Cast<uint32_t>(descriptorSets.Count()), sets.data(), 0, nullptr);
-	}
-
 	void CommandList::BindPipeline(PipelineRH pipeline)
 	{
 		vkCmdBindPipeline(m_Impl->Handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->Handle);

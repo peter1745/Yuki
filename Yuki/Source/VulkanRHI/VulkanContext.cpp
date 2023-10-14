@@ -304,6 +304,59 @@ namespace Yuki::RHI {
 
 		context->ShaderCompiler = Unique<VulkanShaderCompiler>::New();
 
+		{
+			VkMutableDescriptorTypeListEXT mutableDescriptorList =
+			{
+				.descriptorTypeCount = 3,
+				.pDescriptorTypes = std::array {
+					VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+					VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+					VK_DESCRIPTOR_TYPE_SAMPLER
+				}.data()
+			};
+
+			VkMutableDescriptorTypeCreateInfoEXT mutableDescriptorInfo =
+			{
+				.sType = VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT,
+				.pNext = nullptr,
+				.mutableDescriptorTypeListCount = 1,
+				.pMutableDescriptorTypeLists = &mutableDescriptorList,
+			};
+
+			VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo =
+			{
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+				.pNext = &mutableDescriptorInfo,
+				.bindingCount = 1,
+				.pBindingFlags = std::array {
+					VkDescriptorSetLayoutCreateFlags(
+						VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+						VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
+						VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT
+					)
+				}.data(),
+			};
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo =
+			{
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.pNext = &bindingFlagsInfo,
+				.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+				.bindingCount = 1,
+				.pBindings = std::array {
+					VkDescriptorSetLayoutBinding{
+						.binding = 0,
+						.descriptorType = VK_DESCRIPTOR_TYPE_MUTABLE_EXT,
+						.descriptorCount = 65536, // TODO(Peter): Use the smallest of the possible descriptor limits
+						.stageFlags = VK_SHADER_STAGE_ALL,
+						.pImmutableSamplers = nullptr,
+					}
+				}.data(),
+			};
+
+			vkCreateDescriptorSetLayout(context->Device, &layoutInfo, nullptr, &context->DescriptorHeapLayout);
+		}
+
 		Context result = { context };
 		context->TemporariesPool = CommandPool::Create(result, result.RequestQueue(QueueType::Graphics));
 		return result;

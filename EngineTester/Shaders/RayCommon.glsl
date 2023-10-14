@@ -31,8 +31,9 @@ layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer Geo
 	Index indices;
 };
 
-layout(set = 1, binding = 0) uniform texture2D textures[];
-layout(set = 1, binding = 1) uniform sampler defaultSampler;
+layout(set = 0, binding = 0) uniform image2D StorageImages[];
+layout(set = 0, binding = 0) uniform texture2D SampledImages[];
+layout(set = 0, binding = 0) uniform sampler Samplers[];
 
 layout(push_constant, scalar) uniform PushConstants
 {
@@ -43,4 +44,6 @@ layout(push_constant, scalar) uniform PushConstants
 	float cameraZ;
 	GeometryInfo geometries;
 	Material materials;
+	uint OutputImageHandle;
+	uint DefaultSamplerHandle;
 } PC;

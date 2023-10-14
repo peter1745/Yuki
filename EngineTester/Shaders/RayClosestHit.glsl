@@ -69,7 +69,7 @@ void main()
 
 	if (baseColorTextureIndex != -1)
 	{
-		vec4 textureColor = texture(sampler2D(textures[nonuniformEXT(baseColorTextureIndex)], defaultSampler), uv);
+		vec4 textureColor = texture(sampler2D(SampledImages[nonuniformEXT(baseColorTextureIndex)], Samplers[PC.DefaultSamplerHandle]), uv);
 
 		Color = vec3(textureColor.xyz * baseColor.xyz);
 	}

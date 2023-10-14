@@ -31,6 +31,8 @@ namespace Yuki::RHI {
 
 		Unique<VulkanShaderCompiler> ShaderCompiler;
 
+		VkDescriptorSetLayout DescriptorHeapLayout = VK_NULL_HANDLE;
+
 		CommandPool TemporariesPool;
 
 		template<typename TFeatureClass>
@@ -153,26 +155,12 @@ namespace Yuki::RHI {
 	};
 
 	template<>
-	struct RenderHandle<DescriptorSetLayout>::Impl
-	{
-		VkDescriptorSetLayout Handle;
-		DynamicArray<DescriptorType> BindingTypes;
-	};
-
-	template<>
-	struct RenderHandle<DescriptorPool>::Impl
+	struct RenderHandle<DescriptorHeap>::Impl
 	{
 		Context Ctx = {};
+		uint32_t NumDescriptors;
 		VkDescriptorPool Handle;
-		DynamicArray<DescriptorSet> AllocatedSets;
-	};
-
-	template<>
-	struct RenderHandle<DescriptorSet>::Impl
-	{
-		Context Ctx = {};
-		VkDescriptorSet Handle;
-		DescriptorSetLayout Layout = {};
+		VkDescriptorSet Set;
 	};
 
 	template<>

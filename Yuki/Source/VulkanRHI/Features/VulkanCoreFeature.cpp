@@ -11,16 +11,22 @@ namespace Yuki {
 	{
 		return {
 			VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME,
+			VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME
 		};
 	}
 
 	void VulkanCoreFeature::PopulatePhysicalDeviceFeatures(VkPhysicalDeviceFeatures2& deviceFeatures)
 	{
+		m_Vulkan12Features.shaderUniformBufferArrayNonUniformIndexing = VK_TRUE;
 		m_Vulkan12Features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+		m_Vulkan12Features.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+		m_Vulkan12Features.shaderStorageImageArrayNonUniformIndexing = VK_TRUE;
+		m_Vulkan12Features.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
 		m_Vulkan12Features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
-		m_Vulkan12Features.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
 		m_Vulkan12Features.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
+		m_Vulkan12Features.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
 		m_Vulkan12Features.descriptorBindingPartiallyBound = VK_TRUE;
+		m_Vulkan12Features.descriptorBindingVariableDescriptorCount = VK_TRUE;
 		m_Vulkan12Features.runtimeDescriptorArray = VK_TRUE;
 		m_Vulkan12Features.scalarBlockLayout = VK_TRUE;
 		m_Vulkan12Features.imagelessFramebuffer = VK_TRUE;
@@ -34,6 +40,9 @@ namespace Yuki {
 
 		m_HostImageCopyFeatures.hostImageCopy = VK_TRUE;
 		AddToPNext(deviceFeatures, m_HostImageCopyFeatures);
+
+		m_MutableDescriptorTypeFeatures.mutableDescriptorType = VK_TRUE;
+		AddToPNext(deviceFeatures, m_MutableDescriptorTypeFeatures);
 	}
 
 }
