@@ -58,7 +58,7 @@ project "fastgltf"
 		"simdjson/include/"
 	}
 
---[[project "stb_image"
+project "stb_image"
 	kind "StaticLib"
 
 	files {
@@ -69,7 +69,7 @@ project "fastgltf"
 		"stb_image/include/stb_image/"
 	}
 
-local VulkanSDKPath = os.getenv("VULKAN_SDK") .. "/include"
+--[[local VulkanSDKPath = os.getenv("VULKAN_SDK") .. "/include"
 
 project "DearImGui"
 	kind "StaticLib"
