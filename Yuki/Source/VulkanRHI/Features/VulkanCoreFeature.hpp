@@ -18,7 +18,7 @@ namespace Yuki {
 	private:
 		VkPhysicalDeviceVulkan13Features m_Vulkan13Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
 		VkPhysicalDeviceVulkan12Features m_Vulkan12Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
-		VkPhysicalDeviceMaintenance5FeaturesKHR m_Maintenance5Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR };
+		VkPhysicalDeviceHostImageCopyFeaturesEXT m_HostImageCopyFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT };
 	};
 
 }

@@ -299,7 +299,7 @@ namespace Yuki::RHI {
 		vkGetRayTracingShaderGroupHandlesKHR(context->Device, pipeline->Handle, 0, handleCount, dataSize, handles.data());
 
 		uint64_t bufferSize = pipeline->RayGenRegion.size + pipeline->MissGenRegion.size + pipeline->ClosestHitGenRegion.size + pipeline->CallableGenRegion.size;
-		pipeline->SBTBuffer = Buffer::Create(context, bufferSize, BufferUsage::ShaderBindingTable, true);
+		pipeline->SBTBuffer = Buffer::Create(context, bufferSize, BufferUsage::ShaderBindingTable, BufferFlags::Mapped | BufferFlags::DeviceLocal);
 
 		uint64_t bufferAddress = pipeline->SBTBuffer->Address;
 		pipeline->RayGenRegion.deviceAddress = bufferAddress;

@@ -14,6 +14,10 @@ namespace Yuki {
 			: m_Span(elements) {}
 		constexpr Span(const DynamicArray<TElementClass>& elements)
 			: m_Span(elements) {}
+		
+		template<size_t Size>
+		constexpr Span(const Array<TElementClass, Size>& elements)
+			: m_Span(elements) {}
 
 		constexpr bool IsEmpty() const { return m_Span.empty(); }
 		constexpr size_t Count() const { return m_Span.size(); }

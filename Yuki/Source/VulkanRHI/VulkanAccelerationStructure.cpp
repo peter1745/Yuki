@@ -12,7 +12,7 @@ namespace Yuki::RHI {
 		auto accelerationStructure = new Impl();
 		accelerationStructure->Ctx = context;
 
-		accelerationStructure->InstancesBuffer = Buffer::Create(context, InstanceBufferSize, BufferUsage::AccelerationStructureBuildInput, true);
+		accelerationStructure->InstancesBuffer = Buffer::Create(context, InstanceBufferSize, BufferUsage::AccelerationStructureBuildInput, BufferFlags::Mapped | BufferFlags::DeviceLocal);
 
 		return { accelerationStructure };
 	}
@@ -23,16 +23,21 @@ namespace Yuki::RHI {
 											vertexPositions.ByteSize(),
 											BufferUsage::Storage |
 											BufferUsage::AccelerationStructureBuildInput |
-											BufferUsage::TransferDst);
+											BufferUsage::TransferDst,
+											BufferFlags::Mapped | BufferFlags::DeviceLocal);
 
 		auto indexBuffer = Buffer::Create(m_Impl->Ctx,
 										indices.ByteSize(),
 										BufferUsage::Index |
 										BufferUsage::AccelerationStructureBuildInput |
-										BufferUsage::TransferDst);
+										BufferUsage::TransferDst,
+										BufferFlags::Mapped | BufferFlags::DeviceLocal);
 
-		Buffer::UploadImmediate(geometryBuffer, vertexPositions.Data(), vertexPositions.ByteSize());
-		Buffer::UploadImmediate(indexBuffer, indices.Data(), indices.ByteSize());
+		geometryBuffer.SetData(vertexPositions.Data());
+		indexBuffer.SetData(indices.Data());
+
+		/*Buffer::UploadImmediate(geometryBuffer, vertexPositions.Data(), vertexPositions.ByteSize());
+		Buffer::UploadImmediate(indexBuffer, indices.Data(), indices.ByteSize());*/
 
 		VkAccelerationStructureGeometryTrianglesDataKHR trianglesData =
 		{

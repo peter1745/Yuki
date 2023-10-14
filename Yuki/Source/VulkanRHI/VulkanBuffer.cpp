@@ -18,7 +18,7 @@ namespace Yuki::RHI {
 		return result;
 	}
 
-	Buffer Buffer::Create(Context context, uint64_t size, BufferUsage usage, bool hostAccess)
+	Buffer Buffer::Create(Context context, uint64_t size, BufferUsage usage, BufferFlags flags)
 	{
 		auto buffer = new Impl();
 		buffer->Ctx = context;
@@ -26,9 +26,19 @@ namespace Yuki::RHI {
 
 		VmaAllocationCreateInfo allocationInfo = { .usage = VMA_MEMORY_USAGE_AUTO, };
 
-		if (hostAccess)
+		if (flags & BufferFlags::Mapped)
 		{
-			allocationInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			allocationInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+			if (flags & BufferFlags::DeviceLocal)
+			{
+				allocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+				allocationInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			}
+			else
+			{
+				allocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+			}
 		}
 
 		VkBufferCreateInfo bufferInfo =
@@ -80,20 +90,6 @@ namespace Yuki::RHI {
 	{
 		vmaDestroyBuffer(m_Impl->Ctx->Allocator, m_Impl->Handle, m_Impl->Allocation);
 		delete m_Impl;
-	}
-
-	void Buffer::UploadImmediate(Buffer dest, const void* data, size_t dataSize)
-	{
-		auto context = dest->Ctx;
-
-		auto stagingBuffer = Buffer::Create(context, dataSize, BufferUsage::TransferSrc, true);
-		stagingBuffer.SetData(data, dataSize);
-
-		auto cmd = context->GetTemporaryCommandList();
-		cmd.CopyBuffer(dest, stagingBuffer);
-		context->EndTemporaryCommandList(cmd);
-
-		stagingBuffer.Destroy();
 	}
 
 }

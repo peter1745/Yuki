@@ -42,6 +42,61 @@ namespace Yuki::RHI {
 		return { image };
 	}
 
+	void Image::Transition(ImageLayout layout) const
+	{
+		VkHostImageLayoutTransitionInfoEXT transitionInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_HOST_IMAGE_LAYOUT_TRANSITION_INFO_EXT,
+			.pNext = nullptr,
+			.image = m_Impl->Handle,
+			.oldLayout = m_Impl->Layout,
+			.newLayout = Impl::ImageLayoutToVkImageLayout(layout),
+			.subresourceRange = {
+				.aspectMask = m_Impl->AspectMask,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+		};
+		vkTransitionImageLayoutEXT(m_Impl->Ctx->Device, 1, &transitionInfo);
+	}
+
+	void Image::SetData(const void* data) const
+	{
+		Transition(ImageLayout::General);
+
+		VkMemoryToImageCopyEXT region =
+		{
+			.sType = VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY_EXT,
+			.pNext = nullptr,
+			.pHostPointer = data,
+			.imageSubresource = {
+				.aspectMask = m_Impl->AspectMask,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.imageOffset = { 0, 0, 0},
+			.imageExtent = { m_Impl->Width, m_Impl->Height, 1 },
+		};
+
+		VkCopyMemoryToImageInfoEXT copyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO_EXT,
+			.pNext = nullptr,
+			.flags = 0,
+			.dstImage = m_Impl->Handle,
+			.dstImageLayout = VK_IMAGE_LAYOUT_GENERAL,
+			.regionCount = 1,
+			.pRegions = &region,
+		};
+		vkCopyMemoryToImageEXT(m_Impl->Ctx->Device, &copyInfo);
+
+		m_Impl->OldLayout = m_Impl->Layout;
+		m_Impl->Layout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+
 	void Image::Destroy()
 	{
 		m_Impl->DefaultView.Destroy();
@@ -205,6 +260,27 @@ namespace Yuki::RHI {
 			.pImageMemoryBarriers = barriers.data(),
 		};
 		vkCmdPipelineBarrier2(m_Impl->Handle, &dependencyInfo);
+	}
+
+	Sampler Sampler::Create(Context context)
+	{
+		auto impl = new Impl();
+
+		VkSamplerCreateInfo samplerInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.magFilter = VK_FILTER_LINEAR,
+			.minFilter = VK_FILTER_LINEAR,
+			.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+			.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+			.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+			.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		};
+		YUKI_VK_CHECK(vkCreateSampler(context->Device, &samplerInfo, nullptr, &impl->Handle));
+
+		return { impl };
 	}
 
 }

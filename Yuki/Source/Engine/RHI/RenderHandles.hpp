@@ -51,6 +51,7 @@ namespace Yuki::RHI {
 	YUKI_RENDER_HANDLE(CommandList);
 	YUKI_RENDER_HANDLE(Image);
 	YUKI_RENDER_HANDLE(ImageView);
+	YUKI_RENDER_HANDLE(Sampler);
 	YUKI_RENDER_HANDLE(Buffer);
 	YUKI_RENDER_HANDLE(AccelerationStructure);
 	YUKI_RENDER_HANDLE(RenderPass);
@@ -76,6 +77,7 @@ namespace Yuki::RHI {
 		TransferDest	= 1 << 3,
 		TransferSource	= 1 << 4,
 		Storage			= 1 << 5,
+		HostTransfer	= 1 << 6,
 	};
 
 	enum class ImageLayout
@@ -99,6 +101,13 @@ namespace Yuki::RHI {
 		ShaderBindingTable				= 1 << 5,
 		AccelerationStructureStorage	= 1 << 6,
 		AccelerationStructureBuildInput = 1 << 7,
+	};
+
+	YUKI_FLAG_ENUM(BufferFlags)
+	{
+		None = 0,
+		Mapped = 1 << 0,
+		DeviceLocal = 1 << 1,
 	};
 
 	YUKI_FLAG_ENUM(ShaderStage)
@@ -163,19 +172,17 @@ namespace Yuki::RHI {
 		InputAttachment,
 	};
 
-	struct DescriptorSetLayoutInfo
-	{
-		ShaderStage Stages = ShaderStage::None;
-		struct DescriptorInfo { uint32_t Count; DescriptorType Type; };
-		DynamicArray<DescriptorInfo> Descriptors;
-	};
-
 	struct DescriptorCount
 	{
 		DescriptorType Type;
 		uint32_t Count;
 	};
 
+	struct DescriptorSetLayoutInfo
+	{
+		ShaderStage Stages = ShaderStage::None;
+		Span<DescriptorCount> Descriptors;
+	};
 
 #undef YUKI_RENDER_HANDLE
 
@@ -292,6 +299,9 @@ namespace Yuki::RHI {
 		static Image Create(Context context, uint32_t width, uint32_t height, ImageFormat format, ImageUsage usage);
 		void Destroy();
 
+		void Transition(ImageLayout layout) const;
+		void SetData(const void* data) const;
+
 		ImageView GetDefaultView() const;
 	};
 
@@ -301,16 +311,20 @@ namespace Yuki::RHI {
 		void Destroy();
 	};
 
+	struct Sampler : RenderHandle<Sampler>
+	{
+		static Sampler Create(Context context);
+		void Destroy();
+	};
+
 	struct Buffer : RenderHandle<Buffer>
 	{
-		static Buffer Create(Context context, uint64_t size, BufferUsage usage, bool hostAccess = false);
+		static Buffer Create(Context context, uint64_t size, BufferUsage usage, BufferFlags flags = BufferFlags::None);
 		void Destroy();
 
 		void SetData(const void* data, uint64_t dataSize = ~0, uint32_t offset = 0);
 		uint64_t GetDeviceAddress();
 		void* GetMappedMemory();
-
-		static void UploadImmediate(Buffer dest, const void* data, size_t dataSize);
 	};
 
 	struct DescriptorSetLayout : RenderHandle<DescriptorSetLayout>
@@ -322,12 +336,13 @@ namespace Yuki::RHI {
 	{
 		static DescriptorPool Create(Context context, Span<DescriptorCount> descriptorCounts);
 
-		DescriptorSet AllocateDescriptorSet(DescriptorSetLayoutRH layout);
+		DescriptorSet AllocateDescriptorSet(DescriptorSetLayout layout);
 	};
 
 	struct DescriptorSet : RenderHandle<DescriptorSet>
 	{
 		void Write(uint32_t binding, Span<ImageViewRH> imageViews, uint32_t arrayOffset);
+		void Write(uint32_t binding, Span<SamplerRH> sampler, uint32_t arrayOffset);
 	};
 
 	struct PipelineLayout : RenderHandle<PipelineLayout>

@@ -36,8 +36,10 @@ void main()
 	vec4 baseColor0 = unpackUnorm4x8(m0.baseColor);
 	vec4 baseColor1 = unpackUnorm4x8(m1.baseColor);
 	vec4 baseColor2 = unpackUnorm4x8(m2.baseColor);
-
 	vec4 baseColor = baseColor0 * w.x + baseColor1 * w.y + baseColor2 * w.z;
+
+	//int baseColorTextureIndex = m0.baseColorTextureIndex * w.x + m1.baseColorTextureIndex * w.y + m2.baseColorTextureIndex * w.z;
+	int baseColorTextureIndex = m0.baseColorTextureIndex;
 
 #if defined(DEBUG_NORMALS)
 	#if defined(DEBUG_GEN_NORMALS)
@@ -64,8 +66,18 @@ void main()
 #elif defined(DEBUG_UVS)
 	Color = vec3(mod(uv, 1.0), 0.0);
 #else
-	//Color = vec3(attribs0.materialIndex / 4.0, attribs1.materialIndex / 4.0, attribs2.materialIndex / 4.0);
-	Color = vec3(baseColor.xyz);
+
+	if (baseColorTextureIndex != -1)
+	{
+		vec4 textureColor = texture(sampler2D(textures[nonuniformEXT(baseColorTextureIndex)], defaultSampler), uv);
+
+		Color = vec3(textureColor.xyz * baseColor.xyz);
+	}
+	else
+	{
+		Color = vec3(baseColor.xyz);
+	}
+
 #endif
 
 }

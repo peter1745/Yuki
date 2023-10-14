@@ -29,6 +29,7 @@ project "EngineTester"
 		"spdlog",
         "simdjson",
         "fastgltf",
+		"stb_image",
 	}
 
 	defines { "SPDLOG_COMPILED_LIB" }

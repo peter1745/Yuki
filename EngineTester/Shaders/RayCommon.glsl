@@ -1,6 +1,7 @@
 #extension GL_EXT_buffer_reference				: require
 #extension GL_EXT_buffer_reference2				: require
 #extension GL_EXT_buffer_reference_uvec2		: require
+#extension GL_EXT_nonuniform_qualifier			: require
 #extension GL_EXT_scalar_block_layout			: require
 #extension GL_EXT_shader_image_load_formatted	: require
 #extension GL_EXT_ray_tracing					: require
@@ -16,6 +17,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Sha
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Material
 {
 	uint baseColor;
+	int baseColorTextureIndex;
 };
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Index
@@ -28,6 +30,9 @@ layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer Geo
 	ShadingAttributes shadingAttribs;
 	Index indices;
 };
+
+layout(set = 1, binding = 0) uniform texture2D textures[];
+layout(set = 1, binding = 1) uniform sampler defaultSampler;
 
 layout(push_constant, scalar) uniform PushConstants
 {

@@ -4,6 +4,8 @@
 #include <fastgltf/tools.hpp>
 #include <fastgltf/glm_element_traits.hpp>
 
+#include <stb_image/stb_image.h>
+
 namespace Yuki {
 
 	void glTFLoader::Load(const std::filesystem::path& filepath, Model& model)
@@ -52,16 +54,82 @@ namespace Yuki {
 			asset = Unique<fastgltf::Asset>::New(std::move(expectedAsset.get()));
 		}
 
+		for (size_t i = 0; i < asset->images.size(); i++)
+		{
+			const auto& gltfImage = asset->images[i];
+
+			auto& texture = model.Textures.emplace_back();
+
+			auto createFromBytes = [&](const std::byte* data, int32_t dataSize)
+			{
+				int32_t width = 0;
+				int32_t height = 0;
+				auto* imageData = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(data), dataSize, &width, &height, nullptr, STBI_rgb_alpha);
+
+				size_t imageSize = Cast<size_t>(width * height * 4);
+				texture.Width = Cast<uint32_t>(width);
+				texture.Height = Cast<uint32_t>(height);
+				texture.Data.assign(reinterpret_cast<std::byte*>(imageData), reinterpret_cast<std::byte*>(imageData) + imageSize);
+				Logging::Info("Width={}, Height={}", width, height);
+
+				stbi_image_free(imageData);
+			};
+
+			std::visit(fastgltf::visitor
+			{
+				[&](const fastgltf::sources::URI& uri)
+				{
+					Logging::Info("Loading texture from URI");
+					auto fp = (filepath.parent_path() / uri.uri.path()).string();
+					int32_t width = 0;
+					int32_t height = 0;
+					auto* imageData = stbi_load(fp.c_str(), &width, &height, nullptr, STBI_rgb_alpha);
+
+					size_t imageSize = Cast<size_t>(width * height * 4);
+					texture.Width = Cast<uint32_t>(width);
+					texture.Height = Cast<uint32_t>(height);
+					texture.Data.assign(reinterpret_cast<std::byte*>(imageData), reinterpret_cast<std::byte*>(imageData) + imageSize);
+
+					Logging::Info("{}: Width={}, Height={}", fp, width, height);
+
+					stbi_image_free(imageData);
+				},
+				[&](const fastgltf::sources::Vector& vector)
+				{
+					Logging::Info("Loading texture from Vector");
+					createFromBytes(reinterpret_cast<const std::byte*>(vector.bytes.data()), Cast<int32_t>(vector.bytes.size()));
+				},
+				[&](const fastgltf::sources::ByteView& byteView)
+				{
+					Logging::Info("Loading texture from ByteView");
+					createFromBytes(byteView.bytes.data(), Cast<int32_t>(byteView.bytes.size()));
+				},
+				[&](const fastgltf::sources::BufferView& bufferView)
+				{
+					Logging::Info("Loading texture from BufferView");
+					const auto& view = asset->bufferViews[bufferView.bufferViewIndex];
+					const auto& buffer = asset->buffers[view.bufferIndex];
+					const auto* bytes = fastgltf::DefaultBufferDataAdapter{}(buffer) + view.byteOffset;
+					createFromBytes(bytes, Cast<int32_t>(view.byteLength));
+				},
+				[&](auto&&)
+				{
+					YUKI_VERIFY(false);
+				}
+			}, gltfImage.data);
+		}
+
 		for (const auto& gltfMaterial : asset->materials)
 		{
 			auto& material = model.Materials.emplace_back();
+			const auto& c = gltfMaterial.pbrData.baseColorFactor;
+			material.BaseColor = glm::packUnorm4x8({ c[0], c[1], c[2], c[3] });
 
-			const auto& baseColor = gltfMaterial.pbrData.baseColorFactor;
-			uint8_t r = Cast<uint8_t>(baseColor[0] * 255.0f);
-			uint8_t g = Cast<uint8_t>(baseColor[1] * 255.0f);
-			uint8_t b = Cast<uint8_t>(baseColor[2] * 255.0f);
-			uint8_t a = Cast<uint8_t>(baseColor[3] * 255.0f);
-			material.BaseColor = (a << 24) | (b << 16) | (g << 8) | r;
+			if (gltfMaterial.pbrData.baseColorTexture)
+			{
+				const auto& texture = gltfMaterial.pbrData.baseColorTexture.value();
+				material.BaseColorTextureIndex = Cast<int32_t>(asset->textures[texture.textureIndex].imageIndex.value());
+			}
 		}
 
 		for (const auto& gltfMesh : asset->meshes)

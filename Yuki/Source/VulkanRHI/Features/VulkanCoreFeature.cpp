@@ -10,7 +10,7 @@ namespace Yuki {
 	const DynamicArray<std::string_view> Yuki::VulkanCoreFeature::GetRequiredExtensions() const
 	{
 		return {
-			//VK_KHR_MAINTENANCE_5_EXTENSION_NAME
+			VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME,
 		};
 	}
 
@@ -32,8 +32,8 @@ namespace Yuki {
 		m_Vulkan13Features.dynamicRendering = VK_TRUE;
 		AddToPNext(deviceFeatures, m_Vulkan13Features);
 
-		/*m_Maintenance5Features.maintenance5 = VK_TRUE;
-		AddToPNext(InDeviceFeatures, m_Maintenance5Features);*/
+		m_HostImageCopyFeatures.hostImageCopy = VK_TRUE;
+		AddToPNext(deviceFeatures, m_HostImageCopyFeatures);
 	}
 
 }

@@ -38,15 +38,29 @@ namespace Yuki {
 	struct MeshMaterial
 	{
 		uint32_t BaseColor = 0xffffffff;
+		int32_t BaseColorTextureIndex = -1;
+	};
+
+	struct MeshTexture
+	{
+		uint32_t Width = 0;
+		uint32_t Height = 0;
+		DynamicArray<std::byte> Data;
 	};
 
 	struct Model
 	{
 		DynamicArray<MeshData> Meshes;
 		DynamicArray<MeshMaterial> Materials;
+		DynamicArray<MeshTexture> Textures;
 		DynamicArray<MeshNode> Nodes;
 		DynamicArray<MeshScene> Scenes;
 	};
+
+	template<typename... TLambdas>
+	struct Visitor : TLambdas... { using TLambdas::operator()...; };
+	template<typename... TLambdas>
+	Visitor(TLambdas...) -> Visitor<TLambdas...>;
 
 	class glTFLoader
 	{

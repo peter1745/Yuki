@@ -40,10 +40,11 @@ namespace Yuki::RHI {
 	{
 		auto layout = new Impl();
 
-		DynamicArray<VkDescriptorSetLayoutBinding> bindings(info.Descriptors.size());
-		for (uint32_t i = 0; i < info.Descriptors.size(); i++)
+		DynamicArray<VkDescriptorSetLayoutBinding> bindings(info.Descriptors.Count());
+		for (uint32_t i = 0; i < info.Descriptors.Count(); i++)
 		{
-			const auto& bindingInfo = info.Descriptors.at(i);
+			const auto& bindingInfo = info.Descriptors[i];
+			layout->BindingTypes.push_back(bindingInfo.Type);
 			bindings[i] =
 			{
 				.binding = i,
@@ -54,7 +55,7 @@ namespace Yuki::RHI {
 			};
 		}
 
-		DynamicArray<VkDescriptorBindingFlags> bindingFlags(info.Descriptors.size(), VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
+		DynamicArray<VkDescriptorBindingFlags> bindingFlags(info.Descriptors.Count(), VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
 		VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
@@ -122,7 +123,7 @@ namespace Yuki::RHI {
 		m_DescriptorPools.Return(InPool);
 	}*/
 
-	DescriptorSet DescriptorPool::AllocateDescriptorSet(DescriptorSetLayoutRH layout)
+	DescriptorSet DescriptorPool::AllocateDescriptorSet(DescriptorSetLayout layout)
 	{
 		auto set = new DescriptorSet::Impl();
 		set->Ctx = m_Impl->Ctx;
@@ -168,8 +169,39 @@ namespace Yuki::RHI {
 			.dstBinding = binding,
 			.dstArrayElement = arrayOffset,
 			.descriptorCount = uint32_t(descriptorImageInfos.size()),
-			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+			.descriptorType = DescriptorTypeToVkDescriptorType(m_Impl->Layout->BindingTypes[binding]),
 			.pImageInfo = descriptorImageInfos.data(),
+		};
+
+		vkUpdateDescriptorSets(m_Impl->Ctx->Device, 1, &writeDescriptor, 0, nullptr);
+	}
+	
+	void DescriptorSet::Write(uint32_t binding, Span<SamplerRH> samplers, uint32_t arrayOffset)
+	{
+		if (samplers.IsEmpty())
+			return;
+
+		DynamicArray<VkDescriptorImageInfo> descriptorSamplerInfos;
+		descriptorSamplerInfos.reserve(samplers.Count());
+
+		for (auto sampler : samplers)
+		{
+			auto& descriptorImageInfo = descriptorSamplerInfos.emplace_back();
+			descriptorImageInfo.sampler = sampler->Handle;
+			descriptorImageInfo.imageView = VK_NULL_HANDLE;
+			descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		}
+
+		VkWriteDescriptorSet writeDescriptor =
+		{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.pNext = nullptr,
+			.dstSet = m_Impl->Handle,
+			.dstBinding = binding,
+			.dstArrayElement = arrayOffset,
+			.descriptorCount = uint32_t(descriptorSamplerInfos.size()),
+			.descriptorType = DescriptorTypeToVkDescriptorType(m_Impl->Layout->BindingTypes[binding]),
+			.pImageInfo = descriptorSamplerInfos.data(),
 		};
 
 		vkUpdateDescriptorSets(m_Impl->Ctx->Device, 1, &writeDescriptor, 0, nullptr);

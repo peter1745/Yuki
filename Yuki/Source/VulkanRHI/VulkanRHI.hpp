@@ -132,6 +132,7 @@ namespace Yuki::RHI {
 			if (usage & ImageUsage::TransferDest)		result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 			if (usage & ImageUsage::TransferSource)		result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 			if (usage & ImageUsage::Storage)			result |= VK_IMAGE_USAGE_STORAGE_BIT;
+			if (usage & ImageUsage::HostTransfer)		result |= VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT;
 
 			return result;
 		}
@@ -146,9 +147,16 @@ namespace Yuki::RHI {
 	};
 
 	template<>
+	struct RenderHandle<Sampler>::Impl
+	{
+		VkSampler Handle = VK_NULL_HANDLE;
+	};
+
+	template<>
 	struct RenderHandle<DescriptorSetLayout>::Impl
 	{
 		VkDescriptorSetLayout Handle;
+		DynamicArray<DescriptorType> BindingTypes;
 	};
 
 	template<>
@@ -164,7 +172,7 @@ namespace Yuki::RHI {
 	{
 		Context Ctx = {};
 		VkDescriptorSet Handle;
-		DescriptorSetLayoutRH Layout = {};
+		DescriptorSetLayout Layout = {};
 	};
 
 	template<>
