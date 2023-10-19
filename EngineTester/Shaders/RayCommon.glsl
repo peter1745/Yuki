@@ -27,8 +27,8 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Ind
 
 layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer GeometryInfo
 {
-	ShadingAttributes shadingAttribs;
 	Index indices;
+	ShadingAttributes shadingAttribs;
 };
 
 layout(set = 0, binding = 0) uniform image2D StorageImages[];

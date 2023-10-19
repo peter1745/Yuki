@@ -54,11 +54,14 @@ namespace Yuki {
 			asset = Unique<fastgltf::Asset>::New(std::move(expectedAsset.get()));
 		}
 
+		model.Textures.resize(asset->images.size());
+
+		#pragma omp parallel for
 		for (size_t i = 0; i < asset->images.size(); i++)
 		{
 			const auto& gltfImage = asset->images[i];
 
-			auto& texture = model.Textures.emplace_back();
+			auto& texture = model.Textures[i];
 
 			auto createFromBytes = [&](const std::byte* data, int32_t dataSize)
 			{
@@ -70,7 +73,6 @@ namespace Yuki {
 				texture.Width = Cast<uint32_t>(width);
 				texture.Height = Cast<uint32_t>(height);
 				texture.Data.assign(reinterpret_cast<std::byte*>(imageData), reinterpret_cast<std::byte*>(imageData) + imageSize);
-				Logging::Info("Width={}, Height={}", width, height);
 
 				stbi_image_free(imageData);
 			};
@@ -89,8 +91,6 @@ namespace Yuki {
 					texture.Width = Cast<uint32_t>(width);
 					texture.Height = Cast<uint32_t>(height);
 					texture.Data.assign(reinterpret_cast<std::byte*>(imageData), reinterpret_cast<std::byte*>(imageData) + imageSize);
-
-					Logging::Info("{}: Width={}, Height={}", fp, width, height);
 
 					stbi_image_free(imageData);
 				},
@@ -119,9 +119,14 @@ namespace Yuki {
 			}, gltfImage.data);
 		}
 
-		for (const auto& gltfMaterial : asset->materials)
+		model.Materials.resize(asset->materials.size());
+
+		#pragma omp parallel for
+		for (size_t i = 0; i < asset->materials.size(); i++)
 		{
-			auto& material = model.Materials.emplace_back();
+			const auto& gltfMaterial = asset->materials[i];
+			auto& material = model.Materials[i];
+
 			const auto& c = gltfMaterial.pbrData.baseColorFactor;
 			material.BaseColor = glm::packUnorm4x8({ c[0], c[1], c[2], c[3] });
 
@@ -166,7 +171,6 @@ namespace Yuki {
 				{
 					meshData.Positions[vertexID] = position;
 					meshData.ShadingAttributes[vertexID].MaterialIndex = Cast<uint32_t>(primitive.materialIndex.value_or(0));
-					Logging::Info("MaterialIndex(VertexID: {}): {}", vertexID, meshData.ShadingAttributes[vertexID].MaterialIndex);
 					vertexID++;
 				});
 				vertexID = baseVertex;

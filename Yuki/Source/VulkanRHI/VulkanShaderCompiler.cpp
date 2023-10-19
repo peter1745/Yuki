@@ -15,6 +15,7 @@ namespace Yuki::RHI {
 		{ "RTRayGen",		ShaderStage::RayGeneration },
 		{ "RTMiss",			ShaderStage::RayMiss },
 		{ "RTClosestHit",	ShaderStage::RayClosestHit },
+		{ "RTAnyHit",		ShaderStage::RayAnyHit },
 	};
 
 	static const HashMap<ShaderStage, EShLanguage> c_EShLanguageLookup =
@@ -24,6 +25,7 @@ namespace Yuki::RHI {
 		{ ShaderStage::RayGeneration,	EShLangRayGen },
 		{ ShaderStage::RayMiss,			EShLangMiss },
 		{ ShaderStage::RayClosestHit,	EShLangClosestHit },
+		{ ShaderStage::RayAnyHit,		EShLangAnyHit },
 	};
 
 	VulkanShaderCompiler::VulkanShaderCompiler()

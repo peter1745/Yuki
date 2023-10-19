@@ -116,6 +116,7 @@ namespace Yuki::RHI {
 		RayGeneration = 1 << 2,
 		RayMiss = 1 << 3,
 		RayClosestHit = 1 << 4,
+		RayAnyHit = 1 << 5,
 	};
 
 	YUKI_FLAG_ENUM(CommandPoolFlag)
@@ -269,6 +270,9 @@ namespace Yuki::RHI {
 		static Image Create(Context context, uint32_t width, uint32_t height, ImageFormat format, ImageUsage usage);
 		void Destroy();
 
+		uint32_t GetWidth() const;
+		uint32_t GetHeight() const;
+
 		void Transition(ImageLayout layout) const;
 		void SetData(const void* data) const;
 
@@ -295,13 +299,6 @@ namespace Yuki::RHI {
 		void SetData(const void* data, uint64_t dataSize, uint32_t offset = 0);
 		uint64_t GetDeviceAddress();
 		void* GetMappedMemory();
-
-		template<typename T>
-		void Set(const T& element, uint32_t index)
-		{
-			T* data = reinterpret_cast<T*>(GetMappedMemory());
-			memcpy(data + index, &element, sizeof(T));
-		}
 
 		template<typename T>
 		void Set(Span<T> elements, uint32_t startIndex = 0)

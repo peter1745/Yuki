@@ -20,7 +20,7 @@ void main()
 
 	traceRayEXT(
 		accelerationStructureEXT(PC.tlas),
-		gl_RayFlagsOpaqueEXT,
+		gl_RayFlagsNoneEXT,
 		0xFF,
 		0,
 		0,

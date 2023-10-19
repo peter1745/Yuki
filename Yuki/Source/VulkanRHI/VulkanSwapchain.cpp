@@ -82,6 +82,7 @@ namespace Yuki::RHI {
 			imageData->AspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			imageData->Layout = VK_IMAGE_LAYOUT_UNDEFINED;
 			imageData->OldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageData->DefaultView = ImageView::Create(m_Impl->Ctx, imageData);
 			m_Impl->Images[i] = { imageData };
 		}
 

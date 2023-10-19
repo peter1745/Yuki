@@ -13,16 +13,12 @@ namespace Yuki::RHI {
 		{ ShaderStage::RayGeneration,	VK_SHADER_STAGE_RAYGEN_BIT_KHR },
 		{ ShaderStage::RayMiss,			VK_SHADER_STAGE_MISS_BIT_KHR },
 		{ ShaderStage::RayClosestHit,	VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR },
+		{ ShaderStage::RayAnyHit,		VK_SHADER_STAGE_ANY_HIT_BIT_KHR },
 	};
 
 	PipelineLayout PipelineLayout::Create(Context context, const PipelineLayoutInfo& info)
 	{
 		auto layout = new Impl();
-
-		/*DynamicArray<VkDescriptorSetLayout> descriptorSetLayouts;
-		descriptorSetLayouts.reserve(info.DescriptorLayouts.Count());
-		for (auto layoutHandle : info.DescriptorLayouts)
-			descriptorSetLayouts.emplace_back(layoutHandle->Handle);*/
 
 		VkPushConstantRange pushConstants =
 		{
@@ -228,10 +224,14 @@ namespace Yuki::RHI {
 			stage.pName = "main";
 		}
 
+		// TODO(Peter): Abstract shader groups a bit more than this, this is completely hardcoded for our current setup
 		DynamicArray<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups;
 		for (uint32_t i = 0; i < shaderStages.size(); i++)
 		{
 			const auto& stageInfo = shaderStages[i];
+
+			if (stageInfo.stage == VK_SHADER_STAGE_ANY_HIT_BIT_KHR)
+				continue;
 
 			auto& group = shaderGroups.emplace_back();
 			group.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
@@ -253,7 +253,7 @@ namespace Yuki::RHI {
 				group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
 				group.generalShader = VK_SHADER_UNUSED_KHR;
 				group.closestHitShader = i;
-				group.anyHitShader = VK_SHADER_UNUSED_KHR;
+				group.anyHitShader = i - 1;
 				group.intersectionShader = VK_SHADER_UNUSED_KHR;
 				break;
 			}
@@ -291,13 +291,14 @@ namespace Yuki::RHI {
 
 		pipeline->ClosestHitGenRegion = {
 			.stride = handleSizeAligned,
-			.size = AlignUp(1 * handleSizeAligned, rtProperties.shaderGroupBaseAlignment),
+			.size = AlignUp(2 * handleSizeAligned, rtProperties.shaderGroupBaseAlignment),
 		};
 
 		uint32_t dataSize = handleCount * handleSize;
 		DynamicArray<uint8_t> handles(dataSize);
-		vkGetRayTracingShaderGroupHandlesKHR(context->Device, pipeline->Handle, 0, handleCount, dataSize, handles.data());
+		vkGetRayTracingShaderGroupHandlesKHR(context->Device, pipeline->Handle, 0, Cast<uint32_t>(shaderGroups.size()), dataSize, handles.data());
 
+		// TODO(Peter): Refactor this whole mess to not be a bit more clear
 		uint64_t bufferSize = pipeline->RayGenRegion.size + pipeline->MissGenRegion.size + pipeline->ClosestHitGenRegion.size + pipeline->CallableGenRegion.size;
 		pipeline->SBTBuffer = Buffer::Create(context, bufferSize, BufferUsage::ShaderBindingTable, BufferFlags::Mapped | BufferFlags::DeviceLocal);
 
@@ -322,7 +323,7 @@ namespace Yuki::RHI {
 		}
 
 		dataPtr = bufferData + pipeline->RayGenRegion.size + pipeline->MissGenRegion.size;
-		for (uint32_t i = 0; i < 1; i++)
+		for (uint32_t i = 0; i < 2; i++)
 		{
 			memcpy(dataPtr, GetHandle(handleIndex++), handleSize);
 			dataPtr += pipeline->ClosestHitGenRegion.stride;

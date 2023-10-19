@@ -42,6 +42,16 @@ namespace Yuki::RHI {
 		return { image };
 	}
 
+	uint32_t Image::GetWidth() const
+	{
+		return m_Impl->Width;
+	}
+
+	uint32_t Image::GetHeight() const
+	{
+		return m_Impl->Height;
+	}
+
 	void Image::Transition(ImageLayout layout) const
 	{
 		VkHostImageLayoutTransitionInfoEXT transitionInfo =
@@ -274,9 +284,9 @@ namespace Yuki::RHI {
 			.magFilter = VK_FILTER_LINEAR,
 			.minFilter = VK_FILTER_LINEAR,
 			.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-			.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-			.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-			.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
 		};
 		YUKI_VK_CHECK(vkCreateSampler(context->Device, &samplerInfo, nullptr, &impl->Handle));
 

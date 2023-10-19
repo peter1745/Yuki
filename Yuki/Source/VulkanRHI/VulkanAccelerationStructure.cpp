@@ -55,7 +55,7 @@ namespace Yuki::RHI {
 			.pNext = nullptr,
 			.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
 			.geometry = { .triangles = trianglesData },
-			.flags = VK_GEOMETRY_OPAQUE_BIT_KHR,
+			//.flags = VK_GEOMETRY_OPAQUE_BIT_KHR,
 		};
 
 		uint32_t numPrimitives = Cast<uint32_t>(indices.Count() / 3);
@@ -193,7 +193,7 @@ namespace Yuki::RHI {
 			.accelerationStructureReference = vkGetAccelerationStructureDeviceAddressKHR(m_Impl->Ctx->Device, &addressInfo),
 		};
 
-		m_Impl->InstancesBuffer.Set(instance, m_Impl->InstanceCount);
+		m_Impl->InstancesBuffer.Set<VkAccelerationStructureInstanceKHR>({ instance }, m_Impl->InstanceCount);
 		m_Impl->InstanceCount++;
 
 		m_Impl->RebuildTopLevelStructure();
