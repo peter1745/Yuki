@@ -167,14 +167,14 @@ namespace Yuki::RHI {
 		return geometryID;
 	}
 
-	void AccelerationStructure::AddInstance(GeometryID geometry, const Mat4& transform, uint32_t customInstanceIndex)
+	void AccelerationStructure::AddInstance(GeometryID geometry, const Mat4& transform, uint32_t customInstanceIndex, uint32_t sbtOffset)
 	{
 		YUKI_VERIFY(m_Impl->InstanceCount < MaxInstances);
 
 		VkAccelerationStructureDeviceAddressInfoKHR addressInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
-			.accelerationStructure = m_Impl->BottomLevelStructures[geometry].Structure
+			.accelerationStructure = m_Impl->BottomLevelStructures[geometry].Structure,
 		};
 
 		VkAccelerationStructureInstanceKHR instance =
@@ -188,7 +188,7 @@ namespace Yuki::RHI {
 			},
 			.instanceCustomIndex = customInstanceIndex,
 			.mask = 0xFF,
-			.instanceShaderBindingTableRecordOffset = 0,
+			.instanceShaderBindingTableRecordOffset = sbtOffset,
 			.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,
 			.accelerationStructureReference = vkGetAccelerationStructureDeviceAddressKHR(m_Impl->Ctx->Device, &addressInfo),
 		};

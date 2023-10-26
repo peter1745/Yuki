@@ -46,9 +46,12 @@ namespace Yuki {
 		{
 			uint64_t IndexBufferAddress;
 			uint64_t ShadingAttributesAddress;
+			uint32_t MaterialIndex;
 		};
 		DynamicArray<GPUMeshData> m_GPUMeshes;
 		RHI::Buffer m_GPUMeshBuffer;
+
+		RHI::Buffer m_HitShaderHandles;
 
 		struct PushConstants
 		{

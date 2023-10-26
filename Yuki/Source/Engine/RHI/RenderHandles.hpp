@@ -149,10 +149,18 @@ namespace Yuki::RHI {
 		DynamicArray<ColorAttachmentInfo> ColorAttachments;
 	};
 
+	struct ShaderGroup
+	{
+		PipelineShaderInfo ClosestHitShader;
+		PipelineShaderInfo AnyHitShader;
+	};
+
 	struct RayTracingPipelineInfo
 	{
 		PipelineLayoutRH Layout = {};
-		Span<PipelineShaderInfo> Shaders;
+		PipelineShaderInfo RayGenShader;
+		Span<ShaderGroup> HitShaderGroups;
+		PipelineShaderInfo MissShader;
 	};
 
 #undef YUKI_RENDER_HANDLE
@@ -257,7 +265,7 @@ namespace Yuki::RHI {
 		void BindIndexBuffer(BufferRH buffer);
 		void SetViewport(Viewport viewport);
 		void DrawIndexed(uint32_t indexCount, uint32_t indexOffset, uint32_t instanceIndex);
-		void TraceRays(RayTracingPipelineRH pipeline, uint32_t width, uint32_t height);
+		void TraceRays(RayTracingPipelineRH pipeline, uint32_t width, uint32_t height, uint64_t hitGroupBaseAddress = 0, uint32_t numHitShaders = 0);
 		void End();
 	};
 
@@ -331,6 +339,8 @@ namespace Yuki::RHI {
 	struct RayTracingPipeline : RenderHandle<RayTracingPipeline>
 	{
 		static RayTracingPipeline Create(Context context, const RayTracingPipelineInfo& info);
+
+		void WriteHandle(void* bufferAddress, uint32_t index, uint32_t groupIndex);
 	};
 
 	using GeometryID = UniqueID;
@@ -340,7 +350,7 @@ namespace Yuki::RHI {
 		static AccelerationStructure Create(Context context);
 
 		GeometryID AddGeometry(Span<Vec3> vertexPositions, Span<uint32_t> indices);
-		void AddInstance(GeometryID geometry, const Mat4& transform, uint32_t customInstanceIndex);
+		void AddInstance(GeometryID geometry, const Mat4& transform, uint32_t customInstanceIndex, uint32_t sbtOffset);
 
 		uint64_t GetTopLevelAddress();
 	};

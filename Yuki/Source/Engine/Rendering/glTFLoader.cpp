@@ -118,10 +118,11 @@ namespace Yuki {
 				}
 			}, gltfImage.data);
 		}
+		Logging::Info("Loaded {} textures", model.Textures.size());
 
 		model.Materials.resize(asset->materials.size());
 
-		#pragma omp parallel for
+		//#pragma omp parallel for
 		for (size_t i = 0; i < asset->materials.size(); i++)
 		{
 			const auto& gltfMaterial = asset->materials[i];
@@ -135,14 +136,41 @@ namespace Yuki {
 				const auto& texture = gltfMaterial.pbrData.baseColorTexture.value();
 				material.BaseColorTextureIndex = Cast<int32_t>(asset->textures[texture.textureIndex].imageIndex.value());
 			}
-		}
 
-		for (const auto& gltfMesh : asset->meshes)
+			Logging::Info("Material: {}, Index: {}", gltfMaterial.name, i);
+
+			switch (gltfMaterial.alphaMode)
+			{
+			case fastgltf::AlphaMode::Opaque:
+				Logging::Info("\tAlpha Mode: Opaque");
+				break;
+			case fastgltf::AlphaMode::Mask:
+				Logging::Info("\tAlpha Mode: Mask");
+				break;
+			case fastgltf::AlphaMode::Blend:
+				Logging::Info("\tAlpha Mode: Blend");
+				material.AlphaBlending = 1;
+				break;
+			default:
+				break;
+			}
+		}
+		Logging::Info("Loaded {} materials", model.Materials.size());
+
+		DynamicArray<std::pair<uint32_t, uint32_t>> meshOffsets(asset->meshes.size());
+
+		for (uint32_t i = 0; i < asset->meshes.size(); i++)
 		{
-			auto& meshData = model.Meshes.emplace_back();
+			const auto& gltfMesh = asset->meshes[i];
+
+			meshOffsets[i].first = model.Meshes.size();
+			meshOffsets[i].second = gltfMesh.primitives.size();
+
+			Logging::Info("Mesh: {}", gltfMesh.name);
 
 			for (const auto& primitive : gltfMesh.primitives)
 			{
+				Logging::Info("Primitive: {}", model.Meshes.size());
 				const auto positionAttrib = primitive.findAttribute("POSITION");
 
 				if (positionAttrib == primitive.attributes.end())
@@ -151,29 +179,27 @@ namespace Yuki {
 				if (!primitive.indicesAccessor)
 					break;
 
+				auto& meshData = model.Meshes.emplace_back();
+
 				const auto& positionAccessor = asset->accessors[positionAttrib->second];
 				const auto& indicesAccessor = asset->accessors[primitive.indicesAccessor.value()];
 
-				size_t baseVertex = meshData.Positions.size();
-				size_t baseIndex = meshData.Indices.size();
-				size_t vertexID = baseVertex;
+				size_t vertexID = 0;
 
-				meshData.Indices.resize(baseIndex + indicesAccessor.count);
-				meshData.Positions.resize(baseVertex + positionAccessor.count);
-				meshData.ShadingAttributes.resize(baseVertex + positionAccessor.count);
+				meshData.Indices.resize(indicesAccessor.count);
+				meshData.Positions.resize(positionAccessor.count);
+				meshData.ShadingAttributes.resize(positionAccessor.count);
 
 				fastgltf::iterateAccessorWithIndex<uint32_t>(asset, indicesAccessor, [&](uint32_t vertexIndex, size_t i)
 				{
-					meshData.Indices[baseIndex + i] = vertexIndex + Cast<uint32_t>(baseVertex);
+					meshData.Indices[i] = vertexIndex;
 				});
 
 				fastgltf::iterateAccessor<Vec3>(asset, positionAccessor, [&](const Vec3& position)
 				{
-					meshData.Positions[vertexID] = position;
-					meshData.ShadingAttributes[vertexID].MaterialIndex = Cast<uint32_t>(primitive.materialIndex.value_or(0));
-					vertexID++;
+					meshData.Positions[vertexID++] = position;
 				});
-				vertexID = baseVertex;
+				vertexID = 0;
 
 				const auto normalsAttrib = primitive.findAttribute("NORMAL");
 				if (normalsAttrib != primitive.attributes.end())
@@ -183,7 +209,7 @@ namespace Yuki {
 					{
 						meshData.ShadingAttributes[vertexID++].Normal = normal;
 					});
-					vertexID = baseVertex;
+					vertexID = 0;
 				}
 
 				const auto texCoordsAttrib = primitive.findAttribute("TEXCOORD_0");
@@ -195,36 +221,53 @@ namespace Yuki {
 						meshData.ShadingAttributes[vertexID++].TexCoord = texCoord;
 					});
 				}
+
+				if (primitive.materialIndex)
+				{
+					meshData.MaterialIndex = primitive.materialIndex.value_or(0);
+					Logging::Info("\tMaterial: {}", meshData.MaterialIndex);
+				}
 			}
 		}
 
 		Logging::Info("[glTF]: Loaded {} meshes from {}", model.Meshes.size(), filepath.string());
 
-		auto processNode = [&](const fastgltf::Node& gltfNode)
+		auto processNode = [&](this auto&& self, MeshScene& scene, const fastgltf::Node& gltfNode, const Mat4& parentTransform) -> void
 		{
 			auto TRS = std::get<fastgltf::Node::TRS>(gltfNode.transform);
 
-			auto& node = model.Nodes.emplace_back();
-			node.Name = std::string(gltfNode.name);
-			node.Translation = { TRS.translation[0], TRS.translation[1], TRS.translation[2] };
-			node.Rotation = { TRS.rotation[3], TRS.rotation[0], TRS.rotation[1], TRS.rotation[2] };
-			node.Scale = { TRS.scale[0], TRS.scale[1], TRS.scale[2] };
-			node.MeshIndex = gltfNode.meshIndex.has_value() ? Cast<int32_t>(gltfNode.meshIndex.value()) : -1;
-			Logging::Info("Node: {}, MeshIndex: {}", node.Name, node.MeshIndex);
+			Mat4 transform =
+				parentTransform *
+				(glm::translate(Vec3{ TRS.translation[0], TRS.translation[1], TRS.translation[2] }) *
+				glm::mat4_cast(Quat{ TRS.rotation[3], TRS.rotation[0], TRS.rotation[1], TRS.rotation[2] }) *
+				glm::scale(Vec3{TRS.scale[0], TRS.scale[1], TRS.scale[2] }));
+
+			if (gltfNode.meshIndex)
+			{
+				auto [meshIndex, meshCount] = meshOffsets[gltfNode.meshIndex.value()];
+				for (uint32_t i = 0; i < meshCount; i++)
+				{
+					auto& instance = scene.Instances.emplace_back();
+					instance.Name = std::string(gltfNode.name);
+					instance.Transform = transform;
+					instance.MeshIndex = meshIndex + i;
+				}
+			}
 
 			for (auto childIndex : gltfNode.children)
-				node.ChildNodes.push_back(childIndex);
+			{
+				self(scene, asset->nodes[childIndex], transform);
+			}
 		};
-
-		for (const auto& node : asset->nodes)
-			processNode(node);
 
 		for (const auto& gltfScene : asset->scenes)
 		{
 			auto& scene = model.Scenes.emplace_back();
 
 			for (auto nodeIndex : gltfScene.nodeIndices)
-				scene.NodeIndices.push_back(nodeIndex);
+			{
+				processNode(scene, asset->nodes[nodeIndex], Mat4(1.0f));
+			}
 		}
 	}
 

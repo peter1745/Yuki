@@ -209,56 +209,71 @@ namespace Yuki::RHI {
 
 		DynamicArray<VkPipelineShaderStageCreateInfo> shaderStages;
 
-		shaderStages.reserve(info.Shaders.Count());
+		HashMap<std::filesystem::path, uint32_t> shaderIndices;
 
-		for (const auto& shaderInfo : info.Shaders)
+		auto createShader = [&](const PipelineShaderInfo& shaderInfo)
 		{
-			if (!std::filesystem::exists(shaderInfo.FilePath))
-				continue;
+			if (shaderIndices.contains(shaderInfo.FilePath))
+				return;
 
+			YUKI_VERIFY(std::filesystem::exists(shaderInfo.FilePath));
 			auto& stage = shaderStages.emplace_back();
 			stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			stage.pNext = nullptr;
 			stage.module = context->ShaderCompiler->CompileOrGetModule(context->Device, shaderInfo.FilePath, shaderInfo.Stage);
 			stage.stage = c_ShaderStageLookup.at(shaderInfo.Stage);
 			stage.pName = "main";
+
+			shaderIndices[shaderInfo.FilePath] = Cast<uint32_t>(shaderStages.size() - 1);
+		};
+
+		for (const auto& shaderGroup : info.HitShaderGroups)
+		{
+			if (!shaderGroup.ClosestHitShader.FilePath.empty())
+				createShader(shaderGroup.ClosestHitShader);
+
+			if (!shaderGroup.AnyHitShader.FilePath.empty())
+				createShader(shaderGroup.AnyHitShader);
 		}
 
-		// TODO(Peter): Abstract shader groups a bit more than this, this is completely hardcoded for our current setup
+		createShader(info.RayGenShader);
+		createShader(info.MissShader);
+
 		DynamicArray<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups;
-		for (uint32_t i = 0; i < shaderStages.size(); i++)
+		auto createGroup = [&]() -> auto&
 		{
-			const auto& stageInfo = shaderStages[i];
-
-			if (stageInfo.stage == VK_SHADER_STAGE_ANY_HIT_BIT_KHR)
-				continue;
-
 			auto& group = shaderGroups.emplace_back();
 			group.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+			group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+			group.generalShader = VK_SHADER_UNUSED_KHR;
+			group.closestHitShader = VK_SHADER_UNUSED_KHR;
+			group.anyHitShader = VK_SHADER_UNUSED_KHR;
+			group.intersectionShader = VK_SHADER_UNUSED_KHR;
+			return group;
+		};
 
-			switch (stageInfo.stage)
-			{
-			case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
-			case VK_SHADER_STAGE_MISS_BIT_KHR:
-			{
-				group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-				group.generalShader = i;
-				group.closestHitShader = VK_SHADER_UNUSED_KHR;
-				group.anyHitShader = VK_SHADER_UNUSED_KHR;
-				group.intersectionShader = VK_SHADER_UNUSED_KHR;
-				break;
-			}
-			case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR:
-			{
-				group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-				group.generalShader = VK_SHADER_UNUSED_KHR;
-				group.closestHitShader = i;
-				group.anyHitShader = i - 1;
-				group.intersectionShader = VK_SHADER_UNUSED_KHR;
-				break;
-			}
-			}
+		auto getShaderIndex = [&](const auto& shaderInfo) -> uint32_t
+		{
+			if (!shaderIndices.contains(shaderInfo.FilePath))
+				return VK_SHADER_UNUSED_KHR;
+
+			return shaderIndices[shaderInfo.FilePath];
+		};
+
+		// Hit groups
+		for (const auto& shaderGroup : info.HitShaderGroups)
+		{
+			auto& group = createGroup();
+			group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+			group.closestHitShader = getShaderIndex(shaderGroup.ClosestHitShader);
+			group.anyHitShader = getShaderIndex(shaderGroup.AnyHitShader);
 		}
+
+		uint32_t rayGenIndex = Cast<uint32_t>(shaderGroups.size());
+		createGroup().generalShader = getShaderIndex(info.RayGenShader);
+
+		uint32_t missIndex = Cast<uint32_t>(shaderGroups.size());
+		createGroup().generalShader = getShaderIndex(info.MissShader);
 
 		VkRayTracingPipelineCreateInfoKHR rayTracingPipelineInfo =
 		{
@@ -275,61 +290,62 @@ namespace Yuki::RHI {
 
 		const auto& rtProperties = context->GetFeature<VulkanRaytracingFeature>().GetRayTracingProperties();
 
-		uint32_t handleCount = Cast<uint32_t>(info.Shaders.Count());
-		uint32_t handleSize = rtProperties.shaderGroupHandleSize;
-		uint32_t handleSizeAligned = AlignUp(handleSize, rtProperties.shaderGroupHandleAlignment);
+		pipeline->HandleSize = rtProperties.shaderGroupHandleSize;
+		pipeline->HandleStride = AlignUp(pipeline->HandleSize, rtProperties.shaderGroupHandleAlignment);
+		uint32_t groupAlign = rtProperties.shaderGroupBaseAlignment;
+		uint32_t rayGenOffset = AlignUp(info.HitShaderGroups.Count() * pipeline->HandleStride, groupAlign);
+		uint32_t rayMissOffset = AlignUp(rayGenOffset + (1 * pipeline->HandleStride), groupAlign);
+		uint32_t tableSize = rayMissOffset + (1 * pipeline->HandleStride); // 1 == number of miss shaders we have
 
-		pipeline->RayGenRegion = {
-			.stride = AlignUp(handleSizeAligned, rtProperties.shaderGroupBaseAlignment),
-			.size = AlignUp(handleSizeAligned, rtProperties.shaderGroupBaseAlignment),
-		};
+		pipeline->SBTBuffer = Buffer::Create(context, tableSize, BufferUsage::ShaderBindingTable, BufferFlags::Mapped | BufferFlags::DeviceLocal);
 
-		pipeline->MissGenRegion = {
-			.stride = handleSizeAligned,
-			.size = AlignUp(1 * handleSizeAligned, rtProperties.shaderGroupBaseAlignment),
-		};
-
-		pipeline->ClosestHitGenRegion = {
-			.stride = handleSizeAligned,
-			.size = AlignUp(2 * handleSizeAligned, rtProperties.shaderGroupBaseAlignment),
-		};
-
-		uint32_t dataSize = handleCount * handleSize;
-		DynamicArray<uint8_t> handles(dataSize);
-		vkGetRayTracingShaderGroupHandlesKHR(context->Device, pipeline->Handle, 0, Cast<uint32_t>(shaderGroups.size()), dataSize, handles.data());
-
-		// TODO(Peter): Refactor this whole mess to not be a bit more clear
-		uint64_t bufferSize = pipeline->RayGenRegion.size + pipeline->MissGenRegion.size + pipeline->ClosestHitGenRegion.size + pipeline->CallableGenRegion.size;
-		pipeline->SBTBuffer = Buffer::Create(context, bufferSize, BufferUsage::ShaderBindingTable, BufferFlags::Mapped | BufferFlags::DeviceLocal);
-
-		uint64_t bufferAddress = pipeline->SBTBuffer->Address;
-		pipeline->RayGenRegion.deviceAddress = bufferAddress;
-		pipeline->MissGenRegion.deviceAddress = bufferAddress + pipeline->RayGenRegion.size;
-		pipeline->ClosestHitGenRegion.deviceAddress = bufferAddress + pipeline->RayGenRegion.size + pipeline->MissGenRegion.size;
-
-		auto GetHandle = [&](uint32_t index) { return handles.data() + index * handleSize; };
-
-		auto* bufferData = reinterpret_cast<uint8_t*>(pipeline->SBTBuffer.GetMappedMemory());
-		uint8_t* dataPtr = bufferData;
-		uint32_t handleIndex = 0;
-
-		memcpy(dataPtr, GetHandle(handleIndex++), handleSize);
-
-		dataPtr = bufferData + pipeline->RayGenRegion.size;
-		for (uint32_t i = 0; i < 1; i++)
+		auto getMapped = [&](uint64_t offset, uint32_t i)
 		{
-			memcpy(dataPtr, GetHandle(handleIndex++), handleSize);
-			dataPtr += pipeline->MissGenRegion.stride;
+			return Cast<std::byte*>(pipeline->SBTBuffer.GetMappedMemory()) + offset + (i * pipeline->HandleStride);
+		};
+
+		pipeline->Handles.resize(shaderGroups.size() * pipeline->HandleSize);
+		vkGetRayTracingShaderGroupHandlesKHR(context->Device, pipeline->Handle, 0, Cast<uint32_t>(shaderGroups.size()), pipeline->Handles.size(), pipeline->Handles.data());
+
+		auto getHandle = [&](uint32_t index) { return pipeline->Handles.data() + (index * pipeline->HandleSize); };
+
+		pipeline->RayHitRegion = {
+			.deviceAddress = pipeline->SBTBuffer.GetDeviceAddress(),
+			.stride = pipeline->HandleStride,
+			.size = rayGenOffset,
+		};
+		for (uint32_t i = 0; i < info.HitShaderGroups.Count(); i++)
+		{
+			memcpy(getMapped(0, i), getHandle(i), pipeline->HandleSize);
 		}
 
-		dataPtr = bufferData + pipeline->RayGenRegion.size + pipeline->MissGenRegion.size;
-		for (uint32_t i = 0; i < 2; i++)
+		pipeline->RayGenRegion = {
+			.deviceAddress = pipeline->SBTBuffer.GetDeviceAddress() + rayGenOffset,
+			.stride = pipeline->HandleStride,
+			.size = pipeline->HandleStride,
+		};
+		memcpy(getMapped(rayGenOffset, 0), getHandle(rayGenIndex), pipeline->HandleSize);
+
+		pipeline->RayMissRegion = {
+			.deviceAddress = pipeline->SBTBuffer.GetDeviceAddress() + rayMissOffset,
+			.stride = pipeline->HandleStride,
+			.size = tableSize - rayMissOffset,
+		};
+		for (uint32_t i = 0; i < 1; i++)
 		{
-			memcpy(dataPtr, GetHandle(handleIndex++), handleSize);
-			dataPtr += pipeline->ClosestHitGenRegion.stride;
+			memcpy(getMapped(rayMissOffset, i), getHandle(missIndex + i), pipeline->HandleSize);
 		}
 
 		return { pipeline };
+	}
+
+	void RayTracingPipeline::WriteHandle(void* bufferAddress, uint32_t index, uint32_t groupIndex)
+	{
+		memcpy(
+			Cast<std::byte*>(bufferAddress) + index * m_Impl->HandleStride,
+			m_Impl->Handles.data() + (groupIndex * m_Impl->HandleStride),
+			m_Impl->HandleSize
+		);
 	}
 
 	/*void VulkanRenderDevice::RayTracingPipelineDestroy(RayTracingPipelineRH InPipeline)

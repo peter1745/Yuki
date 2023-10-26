@@ -239,9 +239,22 @@ namespace Yuki::RHI {
 		vkCmdDrawIndexed(m_Impl->Handle, indexCount, 1, 0, 0, instanceIndex);
 	}
 
-	void CommandList::TraceRays(RayTracingPipelineRH pipeline, uint32_t width, uint32_t height)
+	void CommandList::TraceRays(RayTracingPipelineRH pipeline, uint32_t width, uint32_t height, uint64_t hitGroupBaseAddress, uint32_t numHitShaders)
 	{
-		vkCmdTraceRaysKHR(m_Impl->Handle, &pipeline->RayGenRegion, &pipeline->MissGenRegion, &pipeline->ClosestHitGenRegion, &pipeline->CallableGenRegion, width, height, 1);
+		VkStridedDeviceAddressRegionKHR hitRegion = {};
+
+		if (hitGroupBaseAddress)
+		{
+			hitRegion.deviceAddress = hitGroupBaseAddress;
+			hitRegion.stride = pipeline->RayHitRegion.stride;
+			hitRegion.size = numHitShaders * pipeline->RayHitRegion.stride;
+		}
+		else
+		{
+			hitRegion = pipeline->RayHitRegion;
+		}
+
+		vkCmdTraceRaysKHR(m_Impl->Handle, &pipeline->RayGenRegion, &pipeline->RayMissRegion, &hitRegion, &pipeline->CallablesRegion, width, height, 1);
 	}
 
 	void CommandList::End()

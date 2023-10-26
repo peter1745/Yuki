@@ -13,12 +13,17 @@ namespace Yuki {
 
 		m_Pipeline = RHI::RayTracingPipeline::Create(m_Context, {
 			.Layout = m_PipelineLayout,
-			.Shaders = {
-				{ "Shaders/RayGen.glsl", RHI::ShaderStage::RayGeneration },
-				{ "Shaders/RayMiss.glsl", RHI::ShaderStage::RayMiss },
-				{ "Shaders/RayAnyHit.glsl", RHI::ShaderStage::RayAnyHit },
-				{ "Shaders/RayClosestHit.glsl", RHI::ShaderStage::RayClosestHit },
-			}
+			.RayGenShader = { "Shaders/RayGen.glsl", RHI::ShaderStage::RayGeneration },
+			.HitShaderGroups = {
+				{
+					{ "Shaders/RayClosestHit.glsl", RHI::ShaderStage::RayClosestHit },
+				},
+				{
+					{ "Shaders/RayClosestHit.glsl", RHI::ShaderStage::RayClosestHit },
+					{ "Shaders/RayAnyHit.glsl", RHI::ShaderStage::RayAnyHit }
+				},
+			},
+			.MissShader = { "Shaders/RayMiss.glsl", RHI::ShaderStage::RayMiss }
 		});
 
 		m_AccelerationStructure = RHI::AccelerationStructure::Create(m_Context);
@@ -41,6 +46,11 @@ namespace Yuki {
 			RHI::BufferFlags::Mapped |
 			RHI::BufferFlags::DeviceLocal);
 		m_PushConstants.Geometries = m_GPUMeshBuffer.GetDeviceAddress();
+
+		m_HitShaderHandles = RHI::Buffer::Create(m_Context, 65536,
+			RHI::BufferUsage::ShaderBindingTable,
+			RHI::BufferFlags::Mapped |
+			RHI::BufferFlags::DeviceLocal);
 
 		// TEMP
 		auto sampler = RHI::Sampler::Create(m_Context);
@@ -67,7 +77,7 @@ namespace Yuki {
 		cmd.PushConstants(m_PipelineLayout, RHI::ShaderStage::RayGeneration, &m_PushConstants, sizeof(PushConstants));
 		cmd.BindDescriptorHeap(m_PipelineLayout, RHI::PipelineBindPoint::RayTracing, m_DescriptorHeap);
 		cmd.BindPipeline(m_Pipeline);
-		cmd.TraceRays(m_Pipeline, target.GetWidth(), target.GetHeight());
+		cmd.TraceRays(m_Pipeline, target.GetWidth(), target.GetHeight(), m_HitShaderHandles.GetDeviceAddress(), 2);
 		cmd.ImageBarrier({ { target }, { RHI::ImageLayout::Present } });
 		cmd.End();
 
@@ -106,8 +116,12 @@ namespace Yuki {
 
 		DynamicArray<RHI::GeometryID> geometries;
 
-		for (const auto& mesh : model.Meshes)
+		geometries.resize(model.Meshes.size());
+
+		for (uint32_t i = 0; i < model.Meshes.size(); i++)
 		{
+			const auto& mesh = model.Meshes[i];
+
 			RHI::Buffer indexBuffer = RHI::Buffer::Create(m_Context, mesh.Indices.size() * sizeof(uint32_t),
 				RHI::BufferUsage::Storage |
 				RHI::BufferUsage::TransferDst,
@@ -125,35 +139,27 @@ namespace Yuki {
 			auto& gpuMesh = m_GPUMeshes.emplace_back(GPUMeshData{
 				.IndexBufferAddress = indexBuffer.GetDeviceAddress(),
 				.ShadingAttributesAddress = shadingAttribsBuffer.GetDeviceAddress(),
+				.MaterialIndex = mesh.MaterialIndex
 			});
 
 			m_GPUMeshBuffer.Set<GPUMeshData>({ gpuMesh }, Cast<uint32_t>(m_GPUMeshes.size()) - 1);
 
-			geometries.push_back(m_AccelerationStructure.AddGeometry(mesh.Positions, mesh.Indices));
+			geometries[i] = m_AccelerationStructure.AddGeometry(mesh.Positions, mesh.Indices);
+
+			uint32_t sbtIndex = 0;
+			if (materials[mesh.MaterialIndex].AlphaBlending)
+			{
+				sbtIndex = 1;
+			}
+
+			m_Pipeline.WriteHandle(m_HitShaderHandles.GetMappedMemory(), i, sbtIndex);
 		}
-
-		auto processNode = [&](this auto&& self, const MeshNode& node, const Mat4& parentTransform = Mat4(1.0f)) -> void
-		{
-			Yuki::Mat4 transform = parentTransform * (glm::translate(node.Translation) * glm::mat4_cast(node.Rotation) * glm::scale(node.Scale));
-
-			if (node.MeshIndex >= 0)
-				m_AccelerationStructure.AddInstance(geometries[node.MeshIndex], transform, node.MeshIndex);
-
-			for (auto childNodeIndex : node.ChildNodes)
-				self(model.Nodes[childNodeIndex], transform);
-		};
 
 		for (const auto& scene : model.Scenes)
 		{
-			for (uint32_t i = 0; i < 10; i++)
+			for (const auto& instance : scene.Instances)
 			{
-				for (uint32_t j = 0; j < 10; j++)
-				{
-					Mat4 t = glm::translate(Mat4(1.0f), { i * 50.0f, 0.0f, j * 30.0f });
-
-					for (auto nodeIndex : scene.NodeIndices)
-						processNode(model.Nodes[nodeIndex], t);
-				}
+				m_AccelerationStructure.AddInstance(geometries[instance.MeshIndex], instance.Transform, instance.MeshIndex, instance.MeshIndex);
 			}
 		}
 

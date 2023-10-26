@@ -11,13 +11,13 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Sha
 {
 	vec3 normal;
 	vec2 texCoord;
-	uint materialIndex;
 };
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Material
 {
 	uint baseColor;
 	int baseColorTextureIndex;
+	uint alphaBlending;
 };
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Index
@@ -29,6 +29,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer Geo
 {
 	Index indices;
 	ShadingAttributes shadingAttribs;
+	uint materialIndex;
 };
 
 layout(set = 0, binding = 0) uniform image2D StorageImages[];

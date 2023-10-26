@@ -208,11 +208,15 @@ namespace Yuki::RHI {
 		PipelineLayout Layout;
 		VkPipeline Handle;
 
+		uint32_t HandleSize;
+		uint32_t HandleStride;
+		DynamicArray<uint8_t> Handles;
+
 		Buffer SBTBuffer = {};
 		VkStridedDeviceAddressRegionKHR RayGenRegion{};
-		VkStridedDeviceAddressRegionKHR MissGenRegion{};
-		VkStridedDeviceAddressRegionKHR ClosestHitGenRegion{};
-		VkStridedDeviceAddressRegionKHR CallableGenRegion{};
+		VkStridedDeviceAddressRegionKHR RayMissRegion{};
+		VkStridedDeviceAddressRegionKHR RayHitRegion{};
+		VkStridedDeviceAddressRegionKHR CallablesRegion{};
 	};
 
 	template<>

@@ -20,7 +20,7 @@ namespace Yuki {
 			: m_Span(elements) {}
 
 		constexpr bool IsEmpty() const { return m_Span.empty(); }
-		constexpr size_t Count() const { return m_Span.size(); }
+		constexpr uint32_t Count() const { return Cast<uint32_t>(m_Span.size()); }
 		constexpr size_t ByteSize() const { return m_Span.size() * sizeof(TElementClass); }
 
 		constexpr const TElementClass& operator[](size_t index) const { return m_Span[index]; }

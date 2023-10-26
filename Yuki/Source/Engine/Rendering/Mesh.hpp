@@ -1,41 +1,38 @@
 #pragma once
 
 namespace Yuki {
+
 	struct ShadingAttributes
 	{
 		Vec3 Normal;
 		Vec2 TexCoord;
-		uint32_t MaterialIndex;
 	};
 
-	struct MeshData
+	struct Mesh
 	{
 		DynamicArray<Vec3> Positions;
 		DynamicArray<ShadingAttributes> ShadingAttributes;
 		DynamicArray<uint32_t> Indices;
+		uint32_t MaterialIndex;
 	};
 
-	struct MeshNode
+	struct MeshInstance
 	{
 		std::string Name;
-		Vec3 Translation;
-		Quat Rotation;
-		Vec3 Scale;
-
-		int32_t MeshIndex = -1;
-
-		DynamicArray<size_t> ChildNodes;
+		Mat4 Transform;
+		uint32_t MeshIndex = 0;
 	};
 
 	struct MeshScene
 	{
-		DynamicArray<size_t> NodeIndices;
+		DynamicArray<MeshInstance> Instances;
 	};
 
 	struct MeshMaterial
 	{
 		uint32_t BaseColor = 0xffffffff;
 		int32_t BaseColorTextureIndex = -1;
+		uint32_t AlphaBlending = 0;
 	};
 
 	struct MeshTexture
@@ -47,10 +44,9 @@ namespace Yuki {
 
 	struct Model
 	{
-		DynamicArray<MeshData> Meshes;
+		DynamicArray<Mesh> Meshes;
 		DynamicArray<MeshMaterial> Materials;
 		DynamicArray<MeshTexture> Textures;
-		DynamicArray<MeshNode> Nodes;
 		DynamicArray<MeshScene> Scenes;
 	};
 }
