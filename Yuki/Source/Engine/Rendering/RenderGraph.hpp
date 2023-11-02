@@ -5,7 +5,7 @@
 
 namespace Yuki {
 
-	class RenderGraph;
+	/*class RenderGraph;
 
 	struct RenderPassInfo
 	{
@@ -62,6 +62,6 @@ namespace Yuki {
 		DynamicArray<DynamicArray<std::byte>> m_PassStorage;
 		DynamicArray<std::byte> m_OutputStorage;
 		int32_t m_ActivePass = -1;
-	};
+	};*/
 
 }

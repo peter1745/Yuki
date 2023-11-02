@@ -1,5 +1,7 @@
 #include "glTFLoader.hpp"
 
+#include "Engine/Common/Timer.hpp"
+
 #include <fastgltf/parser.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/glm_element_traits.hpp>
@@ -56,6 +58,7 @@ namespace Yuki {
 
 		model.Textures.resize(asset->images.size());
 
+		Timer::Start();
 		#pragma omp parallel for
 		for (size_t i = 0; i < asset->images.size(); i++)
 		{
@@ -81,8 +84,8 @@ namespace Yuki {
 			{
 				[&](const fastgltf::sources::URI& uri)
 				{
-					Logging::Info("Loading texture from URI");
 					auto fp = (filepath.parent_path() / uri.uri.path()).string();
+					Logging::Info("Loading texture {}", fp);
 					int32_t width = 0;
 					int32_t height = 0;
 					auto* imageData = stbi_load(fp.c_str(), &width, &height, nullptr, STBI_rgb_alpha);
@@ -118,11 +121,11 @@ namespace Yuki {
 				}
 			}, gltfImage.data);
 		}
+		Timer::Stop("Texture Loading");
 		Logging::Info("Loaded {} textures", model.Textures.size());
 
 		model.Materials.resize(asset->materials.size());
 
-		//#pragma omp parallel for
 		for (size_t i = 0; i < asset->materials.size(); i++)
 		{
 			const auto& gltfMaterial = asset->materials[i];
@@ -159,18 +162,16 @@ namespace Yuki {
 
 		DynamicArray<std::pair<uint32_t, uint32_t>> meshOffsets(asset->meshes.size());
 
+		Timer::Start();
 		for (uint32_t i = 0; i < asset->meshes.size(); i++)
 		{
 			const auto& gltfMesh = asset->meshes[i];
 
-			meshOffsets[i].first = model.Meshes.size();
-			meshOffsets[i].second = gltfMesh.primitives.size();
-
-			Logging::Info("Mesh: {}", gltfMesh.name);
+			meshOffsets[i].first = Cast<uint32_t>(model.Meshes.size());
+			meshOffsets[i].second = Cast<uint32_t>(gltfMesh.primitives.size());
 
 			for (const auto& primitive : gltfMesh.primitives)
 			{
-				Logging::Info("Primitive: {}", model.Meshes.size());
 				const auto positionAttrib = primitive.findAttribute("POSITION");
 
 				if (positionAttrib == primitive.attributes.end())
@@ -223,12 +224,10 @@ namespace Yuki {
 				}
 
 				if (primitive.materialIndex)
-				{
-					meshData.MaterialIndex = primitive.materialIndex.value_or(0);
-					Logging::Info("\tMaterial: {}", meshData.MaterialIndex);
-				}
+					meshData.MaterialIndex = Cast<uint32_t>(primitive.materialIndex.value_or(0));
 			}
 		}
+		Timer::Stop("Mesh Processing");
 
 		Logging::Info("[glTF]: Loaded {} meshes from {}", model.Meshes.size(), filepath.string());
 
@@ -263,12 +262,15 @@ namespace Yuki {
 		for (const auto& gltfScene : asset->scenes)
 		{
 			auto& scene = model.Scenes.emplace_back();
+			Logging::Info("Parsing scene {} ({} nodes)", gltfScene.name, gltfScene.nodeIndices.size());
 
 			for (auto nodeIndex : gltfScene.nodeIndices)
-			{
 				processNode(scene, asset->nodes[nodeIndex], Mat4(1.0f));
-			}
+
+			Logging::Info("Created {} instances", scene.Instances.size());
 		}
+
+		Logging::Info("Loaded {} scenes", model.Scenes.size());
 	}
 
 }

@@ -2,7 +2,7 @@
 
 namespace Yuki {
 
-	RenderGraph::RenderGraph(RHI::Context context)
+	/*RenderGraph::RenderGraph(RHI::Context context)
 		: m_Context(context)
 	{
 		m_GraphicsQueue = context.RequestQueue(RHI::QueueType::Graphics);
@@ -52,6 +52,6 @@ namespace Yuki {
 		{
 			m_GraphicsQueue.Submit({ cmd }, {}, { m_Passes[m_ActivePass]->Fence });
 		}
-	}
+	}*/
 
 }

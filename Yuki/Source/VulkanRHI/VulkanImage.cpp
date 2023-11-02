@@ -34,7 +34,11 @@ namespace Yuki::RHI {
 			.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 		};
 
-		VmaAllocationCreateInfo allocInfo = { .usage = VMA_MEMORY_USAGE_AUTO };
+		VmaAllocationCreateInfo allocInfo =
+		{
+			.usage = VMA_MEMORY_USAGE_AUTO,
+			.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+		};
 
 		YUKI_VK_CHECK(vmaCreateImage(context->Allocator, &imageInfo, &allocInfo, &image->Handle, &image->Allocation, nullptr));
 

@@ -224,18 +224,53 @@ namespace Yuki::RHI {
 	{
 		struct BLAS
 		{
+			Buffer Storage;
 			VkAccelerationStructureKHR Structure;
-			Buffer StructureStorage;
 		};
 
 		Context Ctx = {};
-		HashMap<GeometryID, BLAS> BottomLevelStructures;
+
+		DynamicArray<BLAS> BottomLevelStructures;
+
 		Buffer InstancesBuffer;
 		uint32_t InstanceCount;
 		VkAccelerationStructureKHR TopLevelStructure;
 		Buffer TopLevelStructureStorage;
+	};
 
-		void RebuildTopLevelStructure();
+	template<>
+	struct RenderHandle<AccelerationStructureBuilder>::Impl
+	{
+		Context Ctx = {};
+		VkQueryPool QueryPool = VK_NULL_HANDLE;
+
+		struct GeometryIndexData
+		{
+			Buffer IndexBuffer;
+			uint32_t IndexCount;
+		};
+
+		struct BLAS
+		{
+			DynamicArray<VkAccelerationStructureGeometryKHR> Geometries;
+			DynamicArray<Buffer> VertexBuffers;
+			DynamicArray<GeometryIndexData> IndexBuffers;
+			VkAccelerationStructureBuildSizesInfoKHR BuildSizesInfo;
+		};
+		DynamicArray<BLAS> BottomLevelStructures;
+
+		struct InstanceData
+		{
+			BlasID BLAS;
+			GeometryID Geometry;
+			Mat4 Transform;
+			uint32_t CustomInstanceIndex;
+			uint32_t SBTOffset;
+		};
+		DynamicArray<InstanceData> Instances;
+
+		void BuildBottomLevelStructures(AccelerationStructure::Impl* accelerationStructure);
+		void BuildTopLevelStructure(AccelerationStructure::Impl* accelerationStructure);
 	};
 
 }

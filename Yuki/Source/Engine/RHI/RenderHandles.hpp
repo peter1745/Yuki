@@ -52,6 +52,7 @@ namespace Yuki::RHI {
 	YUKI_RENDER_HANDLE(Sampler);
 	YUKI_RENDER_HANDLE(Buffer);
 	YUKI_RENDER_HANDLE(AccelerationStructure);
+	YUKI_RENDER_HANDLE(AccelerationStructureBuilder);
 	YUKI_RENDER_HANDLE(RenderPass);
 
 	YUKI_FLAG_ENUM(QueueType)
@@ -343,21 +344,24 @@ namespace Yuki::RHI {
 		void WriteHandle(void* bufferAddress, uint32_t index, uint32_t groupIndex);
 	};
 
-	using GeometryID = UniqueID;
+	using GeometryID = size_t;
+	using BlasID = size_t;
 
 	struct AccelerationStructure : RenderHandle<AccelerationStructure>
 	{
-		static AccelerationStructure Create(Context context);
-
-		GeometryID AddGeometry(Span<Vec3> vertexPositions, Span<uint32_t> indices);
-		void AddInstance(GeometryID geometry, const Mat4& transform, uint32_t customInstanceIndex, uint32_t sbtOffset);
-
 		uint64_t GetTopLevelAddress();
 	};
 
-	struct RenderPass : RenderHandle<RenderPass>
+	struct AccelerationStructureBuilder : RenderHandle<AccelerationStructureBuilder>
 	{
+		static AccelerationStructureBuilder Create(Context context);
 
+		BlasID CreateBLAS() const;
+
+		GeometryID AddGeometry(BlasID blas, Span<Vec3> vertexPositions, Buffer indexBuffer, uint32_t indexCount, bool alphaBlending) const;
+		void AddInstance(BlasID blas, GeometryID geometry, const Mat4& transform, uint32_t customInstanceIndex, uint32_t sbtOffset) const;
+
+		AccelerationStructure Build() const;
 	};
 
 	template<>
