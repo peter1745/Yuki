@@ -79,7 +79,6 @@ namespace Yuki::RHI {
 		Context Ctx = {};
 		VkSemaphore Handle = VK_NULL_HANDLE;
 		uint64_t Value = 0;
-		uint64_t NextSignalValue = 0;
 	};
 
 	template<>
@@ -247,6 +246,8 @@ namespace Yuki::RHI {
 	struct RenderHandle<AccelerationStructureBuilder>::Impl
 	{
 		Context Ctx = {};
+		TransferManager* Transfer = nullptr;
+
 		VkQueryPool QueryPool = VK_NULL_HANDLE;
 
 		struct GeometryIndexData

@@ -4,15 +4,18 @@
 
 #include "Engine/Common/Timer.hpp"
 
+#include "Engine/Rendering/TransferManager.hpp"
+
 namespace Yuki::RHI {
 
 	static constexpr uint32_t MaxInstances = 65536;
 	static constexpr uint32_t InstanceBufferSize = MaxInstances * sizeof(VkAccelerationStructureInstanceKHR);
 
-	AccelerationStructureBuilder AccelerationStructureBuilder::Create(Context context)
+	AccelerationStructureBuilder AccelerationStructureBuilder::Create(Context context, TransferManager* transferManager)
 	{
 		auto builder = new Impl();
 		builder->Ctx = context;
+		builder->Transfer = transferManager;
 
 		VkQueryPoolCreateInfo queryPoolInfo =
 		{
@@ -43,11 +46,7 @@ namespace Yuki::RHI {
 		GeometryID geometryID = blasData.Geometries.size();
 		auto& geometryData = blasData.Geometries.emplace_back();
 
-		RHI::Buffer vertexBuffer = RHI::Buffer::Create(m_Impl->Ctx, vertexPositions.ByteSize(),
-			RHI::BufferUsage::AccelerationStructureBuildInput,
-			RHI::BufferFlags::Mapped |
-			RHI::BufferFlags::DeviceLocal);
-		vertexBuffer.Set(vertexPositions);
+		auto vertexBuffer = m_Impl->Transfer->CreateBuffer(vertexPositions, BufferUsage::AccelerationStructureBuildInput);
 
 		blasData.VertexBuffers.push_back(vertexBuffer);
 		blasData.IndexBuffers.push_back({

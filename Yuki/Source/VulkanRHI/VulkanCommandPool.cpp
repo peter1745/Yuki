@@ -155,10 +155,8 @@ namespace Yuki::RHI {
 		vkCmdEndRendering(m_Impl->Handle);
 	}
 
-	void CommandList::CopyBuffer(BufferRH dest, uint64_t dstOffset, BufferRH src, uint64_t srcOffset)
+	void CommandList::CopyBuffer(BufferRH dest, uint64_t dstOffset, BufferRH src, uint64_t srcOffset, uint64_t size)
 	{
-		uint64_t size = std::min(dest->Size, src->Size);
-
 		VkBufferCopy2 region =
 		{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,

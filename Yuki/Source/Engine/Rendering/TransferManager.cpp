@@ -16,27 +16,35 @@ namespace Yuki {
 
 		for (auto queue : transferQueues)
 		{
-			auto& transferQueue = m_TransferQueues.emplace_back();
-			transferQueue.Context = m_Context;
-			transferQueue.Queue = queue;
+			auto transferQueue = Unique<TransferQueue>::New();
+			transferQueue->Context = m_Context;
+			transferQueue->Queue = queue;
 
 			if (!useHostCopy)
 			{
-				transferQueue.Pool = RHI::CommandPool::Create(m_Context, queue);
-				transferQueue.SubmitFence = RHI::Fence::Create(m_Context);
+				transferQueue->Pool = RHI::CommandPool::Create(m_Context, queue);
+				transferQueue->SubmitFence = RHI::Fence::Create(m_Context);
 			}
 
-			transferQueue.UseHostCopy = useHostCopy;
-			transferQueue.CurrentStagingBuffer = 0;
-			transferQueue.CurrentStagingBufferOffset = 0;
+			transferQueue->UseHostCopy = useHostCopy;
+			transferQueue->CurrentStagingBuffer = 0;
+			transferQueue->CurrentStagingBufferOffset = 0;
+
+			transferQueue->Thread = std::jthread(&TransferQueue::Execute, transferQueue.Get());
+
+			m_TransferQueues.emplace_back(std::move(transferQueue));
 		}
 	}
-
 
 	void TransferManager::Execute(Span<RHI::Fence> fences)
 	{
 		for (auto& transferQueue : m_TransferQueues)
-			transferQueue.Execute(fences);
+		{
+			std::scoped_lock lock(transferQueue->JobsMutex);
+			transferQueue->SignalFences.append_range(fences);
+			if (!transferQueue->ScheduledJobs.empty())
+				transferQueue->ConditionVar.notify_one();
+		}
 	}
 
 	RHI::Buffer TransferManager::TransferQueue::CopyToStagingBuffer(const std::byte* data, uint64_t dataSize)
@@ -69,7 +77,7 @@ namespace Yuki {
 		}
 
 		auto& currentBuffer = StagingBuffers[CurrentStagingBuffer];
-		currentBuffer.SetData(data, dataSize, CurrentStagingBufferOffset);
+		currentBuffer.SetData(data, dataSize, Cast<uint32_t>(CurrentStagingBufferOffset));
 		CurrentStagingBufferOffset += dataSize;
 		return currentBuffer;
 	}
@@ -78,7 +86,7 @@ namespace Yuki {
 	{
 		uint32_t queueIndex = data.size() < HeavyTransferThreshold ? 0 : 1;
 		auto& transferQueue = m_TransferQueues[queueIndex];
-		if (transferQueue.UseHostCopy)
+		if (transferQueue->UseHostCopy)
 		{
 			imageInfo.Usage |= RHI::ImageUsage::HostTransfer;
 		}
@@ -98,16 +106,18 @@ namespace Yuki {
 		uint32_t queueIndex = data.size() < HeavyTransferThreshold ? 0 : 1;
 		auto& transferQueue = m_TransferQueues[queueIndex];
 
-		transferQueue.ScheduledJobs.push_back([&, image, data](RHI::CommandList cmd)
+		std::scoped_lock lock(transferQueue->JobsMutex);
+
+		transferQueue->ScheduledJobs.push_back([&, image, data](RHI::CommandList cmd)
 		{
-			if (transferQueue.UseHostCopy)
+			if (transferQueue->UseHostCopy)
 			{
 				image.SetData(data.data());
 			}
 			else
 			{
-				auto buffer = transferQueue.CopyToStagingBuffer(data.data(), data.size());
-				uint32_t startOffset = transferQueue.CurrentStagingBufferOffset - data.size();
+				auto buffer = transferQueue->CopyToStagingBuffer(data.data(), data.size());
+				uint32_t startOffset = Cast<uint32_t>(transferQueue->CurrentStagingBufferOffset - data.size());
 
 				cmd.ImageBarrier({
 					.Images = { image },
@@ -128,7 +138,7 @@ namespace Yuki {
 		uint32_t queueIndex = size < HeavyTransferThreshold ? 0 : 1;
 		auto& transferQueue = m_TransferQueues[queueIndex];
 
-		if (transferQueue.UseHostCopy)
+		if (transferQueue->UseHostCopy)
 		{
 			usage |= RHI::BufferUsage::TransferDst;
 			flags |= RHI::BufferFlags::Mapped;
@@ -152,57 +162,68 @@ namespace Yuki {
 		uint32_t queueIndex = dataSize < HeavyTransferThreshold ? 0 : 1;
 		auto& transferQueue = m_TransferQueues[queueIndex];
 
+		std::scoped_lock lock(transferQueue->JobsMutex);
+
 		DynamicArray<std::byte> dataCopy(data, data + Cast<size_t>(dataSize));
 
-		transferQueue.ScheduledJobs.push_back([&, buffer, dataCopy, dataSize, offset](RHI::CommandList cmd) mutable
+		transferQueue->ScheduledJobs.push_back([&, buffer, dataCopy, dataSize, offset](RHI::CommandList cmd) mutable
 		{
-			if (transferQueue.UseHostCopy)
+			if (transferQueue->UseHostCopy)
 			{
 				buffer.SetData(dataCopy.data(), dataSize, offset);
 			}
 			else
 			{
-				auto srcBuffer = transferQueue.CopyToStagingBuffer(dataCopy.data(), dataSize);
-				uint32_t startOffset = transferQueue.CurrentStagingBufferOffset - dataSize;
-				cmd.CopyBuffer(buffer, offset, srcBuffer, transferQueue.CurrentStagingBufferOffset);
+				auto srcBuffer = transferQueue->CopyToStagingBuffer(dataCopy.data(), dataSize);
+				uint64_t startOffset = Cast<uint64_t>(transferQueue->CurrentStagingBufferOffset) - dataSize;
+				cmd.CopyBuffer(buffer, offset, srcBuffer, startOffset, dataSize);
 			}
 		});
 	}
 
-	void TransferManager::TransferQueue::Execute(Span<RHI::Fence> fences)
+	void TransferManager::TransferQueue::Execute()
 	{
-		if (ScheduledJobs.empty())
-			return;
-
-		Logging::Info("Executing {} transfers", ScheduledJobs.size());
-
-		if (UseHostCopy)
+		while (true)
 		{
-			for (auto&& func : ScheduledJobs)
-				func({});
-		}
-		else
-		{
-			SubmitFence.Wait();
-			Pool.Reset();
+			std::unique_lock lock(ConditionVarMutex);
 
-			auto cmd = Pool.NewList();
-			cmd.Begin();
-			for (auto&& func : ScheduledJobs)
+			while (ScheduledJobs.empty())
 			{
-				func(cmd);
+				ConditionVar.wait(lock);
 			}
-			cmd.End();
 
-			DynamicArray<RHI::Fence> fencesArr(fences.Data(), fences.Data() + fences.Count());
-			fencesArr.push_back(SubmitFence);
-			Queue.Submit({ cmd }, {}, fencesArr);
+			std::scoped_lock jobLock(JobsMutex);
 
-			CurrentStagingBuffer = 0;
-			CurrentStagingBufferOffset = 0;
+			Logging::Info("Executing {} transfers", ScheduledJobs.size());
+
+			if (UseHostCopy)
+			{
+				for (auto&& func : ScheduledJobs)
+					func({});
+			}
+			else
+			{
+				SubmitFence.Wait();
+				Pool.Reset();
+
+				auto cmd = Pool.NewList();
+				cmd.Begin();
+				for (auto&& func : ScheduledJobs)
+				{
+					func(cmd);
+				}
+				cmd.End();
+
+				SignalFences.push_back(SubmitFence);
+				Queue.Submit({ cmd }, {}, SignalFences);
+
+				CurrentStagingBuffer = 0;
+				CurrentStagingBufferOffset = 0;
+			}
+
+			SignalFences.clear();
+			ScheduledJobs.clear();
 		}
-
-		ScheduledJobs.clear();
 	}
 
 }

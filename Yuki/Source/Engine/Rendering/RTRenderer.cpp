@@ -41,10 +41,10 @@ namespace Yuki {
 		m_GPUMeshBuffer = m_TransferManager->CreateBuffer(65536 * sizeof(GPUMeshData), RHI::BufferUsage::Storage);
 		m_PushConstants.Geometries = m_GPUMeshBuffer.GetDeviceAddress();
 
-		m_HitShaderHandles = m_TransferManager->CreateBuffer(65536, RHI::BufferUsage::ShaderBindingTable);
+		m_HitShaderHandles = m_TransferManager->CreateBuffer(65536, RHI::BufferUsage::ShaderBindingTable, RHI::BufferFlags::Mapped);
 
 		m_BuildFence = RHI::Fence::Create(m_Context);
-		m_Builder = RHI::AccelerationStructureBuilder::Create(m_Context);
+		m_Builder = RHI::AccelerationStructureBuilder::Create(m_Context, m_TransferManager.Get());
 
 		// TEMP
 		auto sampler = RHI::Sampler::Create(m_Context);
@@ -58,10 +58,11 @@ namespace Yuki {
 	{
 		m_TransferManager->Execute({ m_BuildFence });
 
-		if (m_BuildFence.IsSignaled())
+		if (m_RebuildAccelerationStructure && m_BuildFence.GetValue() == m_BuildFence.GetCurrentValue())
 		{
 			m_AccelerationStructure = m_Builder.Build();
 			m_PushConstants.TopLevelAS = m_AccelerationStructure.GetTopLevelAddress();
+			m_RebuildAccelerationStructure = false;
 		}
 
 		m_PushConstants.ViewPos = cameraData.Position;
@@ -152,6 +153,8 @@ namespace Yuki {
 				m_Builder.AddInstance(blases[instance.MeshIndex], geometries[instance.MeshIndex], instance.Transform, instance.MeshIndex, instance.MeshIndex);
 			}
 		}
+
+		m_RebuildAccelerationStructure = true;
 	}
 
 }

@@ -12,6 +12,7 @@ namespace Yuki {
 
 	class WindowSystem;
 	class RenderGraph;
+	class TransferManager;
 
 }
 
@@ -232,8 +233,10 @@ namespace Yuki::RHI {
 		static Fence Create(Context context);
 		void Destroy();
 
+		uint64_t GetValue() const;
+		uint64_t GetCurrentValue() const;
+
 		void Wait(uint64_t value = 0) const;
-		bool IsSignaled() const;
 	};
 
 	struct CommandPool : RenderHandle<CommandPool>
@@ -266,7 +269,7 @@ namespace Yuki::RHI {
 		void ImageBarrier(ImageBarrier barrier);
 		void BeginRendering(RenderTarget renderTarget);
 		void EndRendering();
-		void CopyBuffer(BufferRH dest, uint64_t dstOffset, BufferRH src, uint64_t srcOffset);
+		void CopyBuffer(BufferRH dest, uint64_t dstOffset, BufferRH src, uint64_t srcOffset, uint64_t size);
 		void CopyImage(Image dest, Image src) const;
 		void CopyBufferToImage(Image dest, Buffer src, uint32_t bufferOffset) const;
 		void BlitImage(Image dest, Image src) const;
@@ -367,7 +370,7 @@ namespace Yuki::RHI {
 
 	struct AccelerationStructureBuilder : RenderHandle<AccelerationStructureBuilder>
 	{
-		static AccelerationStructureBuilder Create(Context context);
+		static AccelerationStructureBuilder Create(Context context, TransferManager* transferManager);
 
 		BlasID CreateBLAS() const;
 

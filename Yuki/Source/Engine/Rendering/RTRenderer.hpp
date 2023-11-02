@@ -71,6 +71,8 @@ namespace Yuki {
 
 		Unique<TransferManager> m_TransferManager = nullptr;
 		RHI::Fence m_BuildFence;
+		uint64_t m_BuildFenceSubmitValue;
+		bool m_RebuildAccelerationStructure = false;
 	};
 
 }

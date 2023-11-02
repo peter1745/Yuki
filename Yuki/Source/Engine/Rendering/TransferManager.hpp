@@ -2,6 +2,9 @@
 
 #include "Engine/RHI/RenderHandles.hpp"
 
+#include <mutex>
+#include <condition_variable>
+
 namespace Yuki {
 
 	class TransferManager
@@ -16,13 +19,17 @@ namespace Yuki {
 			size_t CurrentStagingBuffer;
 			size_t CurrentStagingBufferOffset;
 			bool UseHostCopy;
+			std::mutex ConditionVarMutex;
+			std::condition_variable ConditionVar;
+			std::jthread Thread;
 
+			std::mutex JobsMutex;
 			DynamicArray<Function<void(RHI::CommandList)>> ScheduledJobs;
 			DynamicArray<RHI::Fence> SignalFences;
 
 			RHI::Buffer CopyToStagingBuffer(const std::byte* data, uint64_t dataSize);
 
-			void Execute(Span<RHI::Fence> fences);
+			void Execute();
 		};
 
 	public:
@@ -58,6 +65,6 @@ namespace Yuki {
 
 	private:
 		RHI::Context m_Context;
-		DynamicArray<TransferQueue> m_TransferQueues;
+		DynamicArray<Unique<TransferQueue>> m_TransferQueues;
 	};
 }

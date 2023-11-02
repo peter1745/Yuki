@@ -24,11 +24,9 @@ public:
 		m_Context = Context::Create({
 			.RequestedFeatures = {
 				RendererFeature::RayTracing,
-				RendererFeature::HostImageCopy
+				//RendererFeature::HostImageCopy
 			},
 		});
-
-		Yuki::TransferManager transferManager(m_Context);
 
 		m_Window = m_WindowSystem.NewWindow({
 			.Title = "My Window"
