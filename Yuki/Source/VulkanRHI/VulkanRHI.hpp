@@ -79,6 +79,7 @@ namespace Yuki::RHI {
 		Context Ctx = {};
 		VkSemaphore Handle = VK_NULL_HANDLE;
 		uint64_t Value = 0;
+		uint64_t NextSignalValue = 0;
 	};
 
 	template<>
@@ -187,6 +188,10 @@ namespace Yuki::RHI {
 		VmaAllocation Allocation = VK_NULL_HANDLE;
 		VkDeviceAddress Address = 0;
 		uint64_t Size = 0;
+		BufferUsage Usage;
+		BufferFlags Flags;
+
+		void CreateInternal(Context context, uint64_t size, BufferUsage usage, BufferFlags flags);
 	};
 
 	template<>

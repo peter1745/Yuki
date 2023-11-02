@@ -126,6 +126,14 @@ namespace Yuki::RHI {
 		TransientLists = 1 << 0
 	};
 
+	struct ImageInfo
+	{
+		uint32_t Width;
+		uint32_t Height;
+		ImageFormat Format;
+		ImageUsage Usage;
+	};
+
 	enum class PipelineType
 	{
 		Rasterization, Raytracing
@@ -199,12 +207,13 @@ namespace Yuki::RHI {
 		bool IsFeatureEnabled(RendererFeature feature) const;
 
 		Queue RequestQueue(QueueType type) const;
+		DynamicArray<Queue> RequestQueues(QueueType type, uint32_t count) const;
 	};
 
 	struct Queue : RenderHandle<Queue>
 	{
 		void AcquireImages(Span<Swapchain> swapchains, Span<Fence> fences) const;
-		void Submit(Span<CommandListRH> commandLists, Span<FenceRH> waits, Span<FenceRH> signals) const;
+		void Submit(Span<CommandList> commandLists, Span<Fence> waits, Span<Fence> signals) const;
 		void Present(Span<Swapchain> swapchains, Span<Fence> fences) const;
 	};
 
@@ -223,7 +232,8 @@ namespace Yuki::RHI {
 		static Fence Create(Context context);
 		void Destroy();
 
-		void Wait(uint64_t value = 0);
+		void Wait(uint64_t value = 0) const;
+		bool IsSignaled() const;
 	};
 
 	struct CommandPool : RenderHandle<CommandPool>
@@ -256,8 +266,9 @@ namespace Yuki::RHI {
 		void ImageBarrier(ImageBarrier barrier);
 		void BeginRendering(RenderTarget renderTarget);
 		void EndRendering();
-		void CopyBuffer(BufferRH dest, BufferRH src);
+		void CopyBuffer(BufferRH dest, uint64_t dstOffset, BufferRH src, uint64_t srcOffset);
 		void CopyImage(Image dest, Image src) const;
+		void CopyBufferToImage(Image dest, Buffer src, uint32_t bufferOffset) const;
 		void BlitImage(Image dest, Image src) const;
 		void PushConstants(PipelineLayout layout, ShaderStage stages, const void* data, uint32_t dataSize);
 		void BindDescriptorHeap(PipelineLayout layout, PipelineBindPoint bindPoint, DescriptorHeap heap);
@@ -276,7 +287,7 @@ namespace Yuki::RHI {
 	{
 		friend Swapchain;
 
-		static Image Create(Context context, uint32_t width, uint32_t height, ImageFormat format, ImageUsage usage);
+		static Image Create(Context context, const ImageInfo& imageInfo);
 		void Destroy();
 
 		uint32_t GetWidth() const;
@@ -305,12 +316,14 @@ namespace Yuki::RHI {
 		static Buffer Create(Context context, uint64_t size, BufferUsage usage, BufferFlags flags = BufferFlags::None);
 		void Destroy();
 
-		void SetData(const void* data, uint64_t dataSize, uint32_t offset = 0);
-		uint64_t GetDeviceAddress();
-		void* GetMappedMemory();
+		uint64_t GetSize() const;
+
+		void SetData(const void* data, uint64_t dataSize, uint32_t offset = 0) const;
+		uint64_t GetDeviceAddress() const;
+		void* GetMappedMemory() const;
 
 		template<typename T>
-		void Set(Span<T> elements, uint32_t startIndex = 0)
+		void Set(Span<T> elements, uint32_t startIndex = 0) const
 		{
 			T* data = reinterpret_cast<T*>(GetMappedMemory());
 			memcpy(data + startIndex, elements.Data(), elements.ByteSize());
@@ -358,7 +371,7 @@ namespace Yuki::RHI {
 
 		BlasID CreateBLAS() const;
 
-		GeometryID AddGeometry(BlasID blas, Span<Vec3> vertexPositions, Buffer indexBuffer, uint32_t indexCount, bool alphaBlending) const;
+		GeometryID AddGeometry(BlasID blas, Span<Vec3> vertexPositions, Buffer indexBuffer, uint32_t indexCount, bool isOpaque) const;
 		void AddInstance(BlasID blas, GeometryID geometry, const Mat4& transform, uint32_t customInstanceIndex, uint32_t sbtOffset) const;
 
 		AccelerationStructure Build() const;

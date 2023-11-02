@@ -7,10 +7,9 @@ namespace Yuki {
 	{
 	}
 
-	const DynamicArray<std::string_view> Yuki::VulkanCoreFeature::GetRequiredExtensions() const
+	const DynamicArray<std::string_view> VulkanCoreFeature::GetRequiredExtensions() const
 	{
 		return {
-			VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME,
 			VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME
 		};
 	}
@@ -37,9 +36,6 @@ namespace Yuki {
 		m_Vulkan13Features.synchronization2 = VK_TRUE;
 		m_Vulkan13Features.dynamicRendering = VK_TRUE;
 		AddToPNext(deviceFeatures, m_Vulkan13Features);
-
-		m_HostImageCopyFeatures.hostImageCopy = VK_TRUE;
-		AddToPNext(deviceFeatures, m_HostImageCopyFeatures);
 
 		m_MutableDescriptorTypeFeatures.mutableDescriptorType = VK_TRUE;
 		AddToPNext(deviceFeatures, m_MutableDescriptorTypeFeatures);

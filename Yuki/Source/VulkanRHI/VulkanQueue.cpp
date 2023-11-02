@@ -1,5 +1,7 @@
 #include "VulkanRHI.hpp"
 
+#include "Engine/Containers/IndexFreeList.hpp"
+
 namespace Yuki::RHI {
 
 	Queue Context::RequestQueue(QueueType type) const
@@ -23,6 +25,50 @@ namespace Yuki::RHI {
 		}
 
 		return { bestQueue };
+	}
+
+	DynamicArray<Queue> Context::RequestQueues(QueueType type, uint32_t count) const
+	{
+		DynamicArray<Queue> result;
+		result.reserve(Cast<size_t>(count));
+
+		FixedIndexFreeList freeQueues(m_Impl->Queues.size());
+
+		for (uint32_t i = 0; i < count; i++)
+		{
+			uint32_t bestScore = std::numeric_limits<uint32_t>::max();
+			uint32_t bestQueueIndex = std::numeric_limits<uint32_t>::max();
+
+			for (uint32_t j = 0; j < m_Impl->Queues.size(); j++)
+			{
+				if (!freeQueues.IsFree(j))
+					continue;
+
+				const auto& queue = m_Impl->Queues[j];
+
+				VkQueueFlags flags = std::to_underlying(type);
+				if ((queue->Flags & flags) != flags)
+					continue;
+
+				uint32_t score = std::popcount(queue->Flags & ~Cast<uint32_t>(flags));
+
+				if (score < bestScore)
+				{
+					if (bestQueueIndex != std::numeric_limits<uint32_t>::max())
+						freeQueues.Return(bestQueueIndex);
+
+					freeQueues.Acquire(j);
+
+					bestScore = score;
+					bestQueueIndex = j;
+				}
+			}
+
+			if (bestQueueIndex != std::numeric_limits<uint32_t>::max())
+				result.push_back({ m_Impl->Queues[bestQueueIndex] });
+		}
+
+		return result;
 	}
 
 	static VkResult AcquireNextImage(VkDevice device, Swapchain swapchain)
@@ -98,7 +144,7 @@ namespace Yuki::RHI {
 		}
 	}
 
-	void Queue::Submit(Span<CommandListRH> commandLists, Span<FenceRH> waits, Span<FenceRH> signals) const
+	void Queue::Submit(Span<CommandList> commandLists, Span<Fence> waits, Span<Fence> signals) const
 	{
 		DynamicArray<VkCommandBufferSubmitInfo> commandListSubmitInfos;
 		commandListSubmitInfos.resize(commandLists.Count());

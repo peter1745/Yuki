@@ -362,6 +362,11 @@ namespace Yuki::RHI {
 		return result;
 	}
 
+	bool Context::IsFeatureEnabled(RendererFeature feature) const
+	{
+		return m_Impl->EnabledFeatures.contains(feature);
+	}
+
 	CommandList Context::Impl::GetTemporaryCommandList()
 	{
 		if (TemporariesPool->AllocatedLists.size() >= 6)

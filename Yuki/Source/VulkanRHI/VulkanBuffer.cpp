@@ -18,11 +18,12 @@ namespace Yuki::RHI {
 		return result;
 	}
 
-	Buffer Buffer::Create(Context context, uint64_t size, BufferUsage usage, BufferFlags flags)
+	void Buffer::Impl::CreateInternal(Context context, uint64_t size, BufferUsage usage, BufferFlags flags)
 	{
-		auto buffer = new Impl();
-		buffer->Ctx = context;
-		buffer->Size = size;
+		Ctx = context;
+		Size = size;
+		Usage = usage;
+		Flags = flags;
 
 		VmaAllocationCreateInfo allocationInfo = { .usage = VMA_MEMORY_USAGE_AUTO, };
 
@@ -53,19 +54,29 @@ namespace Yuki::RHI {
 			.pQueueFamilyIndices = nullptr,
 		};
 
-		vmaCreateBuffer(context->Allocator, &bufferInfo, &allocationInfo, &buffer->Handle, &buffer->Allocation, nullptr);
+		vmaCreateBuffer(context->Allocator, &bufferInfo, &allocationInfo, &Handle, &Allocation, nullptr);
 
 		VkBufferDeviceAddressInfo addressInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-			.buffer = buffer->Handle
+			.buffer = Handle
 		};
-		buffer->Address = vkGetBufferDeviceAddress(context->Device, &addressInfo);
+		Address = vkGetBufferDeviceAddress(context->Device, &addressInfo);
+	}
 
+	Buffer Buffer::Create(Context context, uint64_t size, BufferUsage usage, BufferFlags flags)
+	{
+		auto buffer = new Impl();
+		buffer->CreateInternal(context, size, usage, flags);
 		return { buffer };
 	}
 
-	void Buffer::SetData(const void* data, uint64_t dataSize, uint32_t offset)
+	uint64_t Buffer::GetSize() const
+	{
+		return m_Impl->Size;
+	}
+
+	void Buffer::SetData(const void* data, uint64_t dataSize, uint32_t offset) const
 	{
 		dataSize = std::min(dataSize, m_Impl->Size);
 
@@ -74,12 +85,12 @@ namespace Yuki::RHI {
 		memcpy(Cast<std::byte*>(allocationInfo.pMappedData) + offset, data, dataSize);
 	}
 
-	uint64_t Buffer::GetDeviceAddress()
+	uint64_t Buffer::GetDeviceAddress() const
 	{
 		return m_Impl->Address;
 	}
 
-	void* Buffer::GetMappedMemory()
+	void* Buffer::GetMappedMemory() const
 	{
 		VmaAllocationInfo allocationInfo;
 		vmaGetAllocationInfo(m_Impl->Ctx->Allocator, m_Impl->Allocation, &allocationInfo);

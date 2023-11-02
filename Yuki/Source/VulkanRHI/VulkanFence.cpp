@@ -31,7 +31,7 @@ namespace Yuki::RHI {
 		delete m_Impl;
 	}
 
-	void Fence::Wait(uint64_t value)
+	void Fence::Wait(uint64_t value) const
 	{
 		VkSemaphoreWaitInfo waitInfo =
 		{
@@ -41,5 +41,19 @@ namespace Yuki::RHI {
 			.pValues = value ? &value : &m_Impl->Value,
 		};
 		vkWaitSemaphores(m_Impl->Ctx->Device, &waitInfo, UINT64_MAX);
+	}
+
+	bool Fence::IsSignaled() const
+	{
+		uint64_t currentValue;
+		YUKI_VK_CHECK(vkGetSemaphoreCounterValue(m_Impl->Ctx->Device, m_Impl->Handle, &currentValue));
+		
+		if (m_Impl->NextSignalValue == currentValue)
+		{
+			m_Impl->NextSignalValue++;
+			return true;
+		}
+
+		return false;
 	}
 }

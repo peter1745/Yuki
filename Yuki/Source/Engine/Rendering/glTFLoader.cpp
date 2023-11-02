@@ -145,13 +145,10 @@ namespace Yuki {
 			switch (gltfMaterial.alphaMode)
 			{
 			case fastgltf::AlphaMode::Opaque:
-				Logging::Info("\tAlpha Mode: Opaque");
 				break;
 			case fastgltf::AlphaMode::Mask:
-				Logging::Info("\tAlpha Mode: Mask");
 				break;
 			case fastgltf::AlphaMode::Blend:
-				Logging::Info("\tAlpha Mode: Blend");
 				material.AlphaBlending = 1;
 				break;
 			default:

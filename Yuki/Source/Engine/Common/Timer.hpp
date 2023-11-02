@@ -16,7 +16,7 @@ namespace Yuki::Timer {
 	inline static void Stop(std::string_view name)
 	{
 		auto duration = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(std::chrono::steady_clock::now() - s_Start).count();
-		Logging::Info("{}: {:.2f}s ({}ms) - {}", name, duration * 0.001, duration, std::to_string(s_Stacktrace[0]));
+		Logging::Info("{}: {:.3f}s ({}ms) - {}", name, duration * 0.001, duration, std::to_string(s_Stacktrace[0]));
 	}
 
 }

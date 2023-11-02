@@ -4,6 +4,7 @@
 #include "Engine/RHI/RenderHandles.hpp"
 
 #include "Mesh.hpp"
+#include "TransferManager.hpp"
 
 namespace Yuki {
 
@@ -65,6 +66,11 @@ namespace Yuki {
 			uint32_t OutputImageHandle = 0;
 			uint32_t DefaultSamplerHandle = 0;
 		} m_PushConstants;
+
+		RHI::AccelerationStructureBuilder m_Builder;
+
+		Unique<TransferManager> m_TransferManager = nullptr;
+		RHI::Fence m_BuildFence;
 	};
 
 }

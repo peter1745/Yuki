@@ -2,6 +2,8 @@
 
 #include "Features/VulkanRaytracingFeature.hpp"
 
+#include "Engine/Common/Timer.hpp"
+
 namespace Yuki::RHI {
 
 	static constexpr uint32_t MaxInstances = 65536;
@@ -32,7 +34,7 @@ namespace Yuki::RHI {
 		return id;
 	}
 
-	GeometryID AccelerationStructureBuilder::AddGeometry(BlasID blas, Span<Vec3> vertexPositions, Buffer indexBuffer, uint32_t indexCount, bool alphaBlending) const
+	GeometryID AccelerationStructureBuilder::AddGeometry(BlasID blas, Span<Vec3> vertexPositions, Buffer indexBuffer, uint32_t indexCount, bool isOpaque) const
 	{
 		YUKI_VERIFY(blas < m_Impl->BottomLevelStructures.size());
 
@@ -73,7 +75,7 @@ namespace Yuki::RHI {
 			.triangles = trianglesData
 		};
 
-		if (!alphaBlending)
+		if (isOpaque)
 			geometryData.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
 
 		return geometryID;
@@ -104,6 +106,7 @@ namespace Yuki::RHI {
 		DynamicArray<Buffer> scratchBuffers;
 
 		uint64_t totalBlasSize = 0;
+		Timer::Start();
 		for (const auto& blasData : BottomLevelStructures)
 		{
 			auto& buildInfo = buildInfos.emplace_back();
@@ -168,6 +171,7 @@ namespace Yuki::RHI {
 
 			totalBlasSize += blasSize;
 		}
+		Timer::Stop("BLAS Building");
 
 		// Build the blases
 		auto cmd = Ctx->GetTemporaryCommandList();
@@ -196,13 +200,21 @@ namespace Yuki::RHI {
 
 		totalBlasSize = 0;
 
+		DynamicArray<VkAccelerationStructureKHR> oldAccelerationStructures;
+		oldAccelerationStructures.resize(accelerationStructure->BottomLevelStructures.size());
+
+		DynamicArray<Buffer> oldStructureStorageBuffers;
+		oldStructureStorageBuffers.resize(accelerationStructure->BottomLevelStructures.size());
+
 		// BLAS Compression
+		Timer::Start();
+		cmd = Ctx->GetTemporaryCommandList();
 		for (size_t i = 0; i < accelerationStructure->BottomLevelStructures.size(); i++)
 		{
 			auto& blasStorage = accelerationStructure->BottomLevelStructures[i];
 
-			VkAccelerationStructureKHR originalBlas = blasStorage.Structure;
-			Buffer originalStorage = blasStorage.Storage;
+			oldAccelerationStructures[i] = blasStorage.Structure;
+			oldStructureStorageBuffers[i] = blasStorage.Storage;
 
 			blasStorage.Storage = Buffer::Create(Ctx, blasSizes[i], BufferUsage::AccelerationStructureStorage);
 			VkAccelerationStructureCreateInfoKHR accelerationStructureInfo =
@@ -217,26 +229,25 @@ namespace Yuki::RHI {
 			};
 			YUKI_VK_CHECK(vkCreateAccelerationStructureKHR(Ctx->Device, &accelerationStructureInfo, nullptr, &blasStorage.Structure));
 
-			// Copy BLAS data from old BLAS to compacted BLAS
+			VkCopyAccelerationStructureInfoKHR copyInfo =
 			{
-				cmd = Ctx->GetTemporaryCommandList();
-				VkCopyAccelerationStructureInfoKHR copyInfo =
-				{
-					.sType = VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR,
-					.src = originalBlas,
-					.dst = blasStorage.Structure,
-					.mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR,
-				};
-				vkCmdCopyAccelerationStructureKHR(cmd->Handle, &copyInfo);
-				Ctx->EndTemporaryCommandList(cmd);
-			}
-
-			vkDestroyAccelerationStructureKHR(Ctx->Device, originalBlas, nullptr);
-			originalStorage.Destroy();
-			//vkDestroyQueryPool(m_Impl->Ctx->Device, queryPool, nullptr);
+				.sType = VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR,
+				.src = oldAccelerationStructures[i],
+				.dst = blasStorage.Structure,
+				.mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR,
+			};
+			vkCmdCopyAccelerationStructureKHR(cmd->Handle, &copyInfo);
 
 			totalBlasSize += blasSizes[i];
 		}
+		Ctx->EndTemporaryCommandList(cmd);
+
+		for (size_t i = 0; i < accelerationStructure->BottomLevelStructures.size(); i++)
+		{
+			vkDestroyAccelerationStructureKHR(Ctx->Device, oldAccelerationStructures[i], nullptr);
+			oldStructureStorageBuffers[i].Destroy();
+		}
+		Timer::Stop("BLAS Compression");
 
 		Logging::Info("Size after compression = {}Mb ({} bytes)", totalBlasSize / (1024 * 1024), totalBlasSize);
 
@@ -265,6 +276,8 @@ namespace Yuki::RHI {
 
 	void AccelerationStructureBuilder::Impl::BuildTopLevelStructure(AccelerationStructure::Impl* accelerationStructure)
 	{
+		Timer::Start();
+
 		uint32_t instanceIndex = 0;
 		for (const auto& instanceData : Instances)
 		{
@@ -364,6 +377,8 @@ namespace Yuki::RHI {
 		Ctx->EndTemporaryCommandList(cmd);
 
 		scratchBuffer.Destroy();
+
+		Timer::Stop("TLAS Building");
 	}
 
 	uint64_t AccelerationStructure::GetTopLevelAddress()

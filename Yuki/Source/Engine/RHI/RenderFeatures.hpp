@@ -7,7 +7,8 @@ namespace Yuki::RHI {
 	enum class RendererFeature
 	{
 		Core,
-		RayTracing
+		RayTracing,
+		HostImageCopy
 	};
 }
 

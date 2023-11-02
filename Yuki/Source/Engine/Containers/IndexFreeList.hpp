@@ -27,4 +27,32 @@ namespace Yuki {
 		DynamicArray<uint32_t> m_FreeList;
 	};
 
+	class FixedIndexFreeList
+	{
+	public:
+		FixedIndexFreeList(uint32_t maxIndex)
+			: m_MaxIndex(maxIndex)
+		{
+			m_FreeList.resize(maxIndex);
+			for (uint32_t i = 0; i < maxIndex; i++)
+				m_FreeList[i] = true;
+		}
+
+		bool IsFree(uint32_t index) const { return m_FreeList[index]; }
+
+		void Acquire(uint32_t index)
+		{
+			m_FreeList[index] = false;
+		}
+
+		void Return(uint32_t index)
+		{
+			m_FreeList[index] = true;
+		}
+
+	private:
+		uint32_t m_MaxIndex;
+		DynamicArray<bool> m_FreeList;
+	};
+
 }

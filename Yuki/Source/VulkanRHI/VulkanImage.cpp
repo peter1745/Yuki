@@ -2,16 +2,16 @@
 
 namespace Yuki::RHI {
 
-	Image Image::Create(Context context, uint32_t width, uint32_t height, ImageFormat format, ImageUsage usage)
+	Image Image::Create(Context context, const ImageInfo& imageInfo)
 	{
 		auto image = new Impl();
 		image->Ctx = context;
-		image->Width = width;
-		image->Height = height;
-		image->Format = Impl::ImageFormatToVkFormat(format);
+		image->Width = imageInfo.Width;
+		image->Height = imageInfo.Height;
+		image->Format = Impl::ImageFormatToVkFormat(imageInfo.Format);
 		image->AspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-		VkImageCreateInfo imageInfo =
+		VkImageCreateInfo createInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 			.pNext = nullptr,
@@ -27,7 +27,7 @@ namespace Yuki::RHI {
 			.arrayLayers = 1,
 			.samples = VK_SAMPLE_COUNT_1_BIT,
 			.tiling = VK_IMAGE_TILING_OPTIMAL,
-			.usage = Impl::ImageUsageToVkImageUsageFlags(usage),
+			.usage = Impl::ImageUsageToVkImageUsageFlags(imageInfo.Usage),
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 0,
 			.pQueueFamilyIndices = nullptr,
@@ -37,10 +37,24 @@ namespace Yuki::RHI {
 		VmaAllocationCreateInfo allocInfo =
 		{
 			.usage = VMA_MEMORY_USAGE_AUTO,
-			.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 		};
 
-		YUKI_VK_CHECK(vmaCreateImage(context->Allocator, &imageInfo, &allocInfo, &image->Handle, &image->Allocation, nullptr));
+		if (imageInfo.Usage & ImageUsage::HostTransfer)
+		{
+			if (context.IsFeatureEnabled(RendererFeature::HostImageCopy))
+			{
+				allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+			}
+			else
+			{
+				Logging::Error("Attempting to create image with HostTransfer usage without enabling HostImageCopy feature!");
+
+				// Make sure to remove the host transfer usage bit
+				createInfo.usage &= ~VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT;
+			}
+		}
+
+		YUKI_VK_CHECK(vmaCreateImage(context->Allocator, &createInfo, &allocInfo, &image->Handle, &image->Allocation, nullptr));
 
 		image->DefaultView = ImageView::Create(context, { image });
 		return { image };
@@ -116,6 +130,38 @@ namespace Yuki::RHI {
 		m_Impl->DefaultView.Destroy();
 		vmaDestroyImage(m_Impl->Ctx->Allocator, m_Impl->Handle, m_Impl->Allocation);
 		delete m_Impl;
+	}
+
+	void CommandList::CopyBufferToImage(Image dest, Buffer src, uint32_t bufferOffset) const
+	{
+		VkBufferImageCopy2 copyRegion =
+		{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+			.pNext = nullptr,
+			.bufferOffset = bufferOffset,
+			.bufferRowLength = 0,
+			.bufferImageHeight = 0,
+			.imageSubresource = {
+				.aspectMask = dest->AspectMask,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.imageOffset = { 0, 0, 0 },
+			.imageExtent = { dest->Width, dest->Height, 1 },
+		};
+
+		VkCopyBufferToImageInfo2 copyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2,
+			.pNext = nullptr,
+			.srcBuffer = src->Handle,
+			.dstImage = dest->Handle,
+			.dstImageLayout = dest->Layout,
+			.regionCount = 1,
+			.pRegions = &copyRegion,
+		};
+		vkCmdCopyBufferToImage2(m_Impl->Handle, &copyInfo);
 	}
 
 	ImageView Image::GetDefaultView() const { return m_Impl->DefaultView; }

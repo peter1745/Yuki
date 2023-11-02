@@ -2,6 +2,7 @@
 
 #include "Features/VulkanCoreFeature.hpp"
 #include "Features/VulkanRaytracingFeature.hpp"
+#include "Features/VulkanHostImageCopyFeature.hpp"
 
 namespace Yuki::Vulkan {
 
@@ -11,6 +12,7 @@ namespace Yuki::Vulkan {
 		switch (feature)
 		{
 		case RayTracing: return Unique<VulkanRaytracingFeature>::New();
+		case HostImageCopy: return Unique<VulkanHostImageCopyFeature>::New();
 		}
 
 		return nullptr;

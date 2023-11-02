@@ -7,6 +7,7 @@
 #include <Engine/Rendering/RenderGraph.hpp>
 #include <Engine/Rendering/RTRenderer.hpp>
 #include <Engine/Rendering/glTFLoader.hpp>
+#include <Engine/Rendering/TransferManager.hpp>
 
 #include <Engine/Input/InputContext.hpp>
 
@@ -23,8 +24,11 @@ public:
 		m_Context = Context::Create({
 			.RequestedFeatures = {
 				RendererFeature::RayTracing,
+				RendererFeature::HostImageCopy
 			},
 		});
+
+		Yuki::TransferManager transferManager(m_Context);
 
 		m_Window = m_WindowSystem.NewWindow({
 			.Title = "My Window"
@@ -43,7 +47,8 @@ public:
 		Yuki::Model model;
 		//loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes.gltf", model);
 		//loader.Load("Meshes/deccer-cubes-main/SM_Deccer_Cubes_Textured_Complex.gltf", model);
-		loader.Load("Meshes/NewSponza_Main_glTF_002.gltf", model);
+		//loader.Load("Meshes/NewSponza_Main_glTF_002.gltf", model);
+		loader.Load("Meshes/Bistro.glb", model);
 		m_Renderer->AddMesh(model);
 	}
 
