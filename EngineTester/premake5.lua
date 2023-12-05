@@ -1,4 +1,4 @@
-local VulkanSDKPath = os.getenv("VULKAN_SDK")
+local GRDK = os.getenv("GRDKLatest");
 
 project "EngineTester"
 	kind "ConsoleApp"
@@ -6,97 +6,28 @@ project "EngineTester"
 	warnings "Extra"
 
 	files {
-		"Source/**.cpp",
-		"Source/**.hpp",
+		"Source/**.ixx",
 	}
-
-	includedirs {
-		"Source/",
-	}
-
-	externalincludedirs {
-        "../Yuki/Source/",
-        "../ThirdParty/glm/"
-    }
-
-	libdirs {
-        VulkanSDKPath .. "/Lib/"
-    }
 
 	links {
 		"Yuki",
-		"volk",
-		"spdlog",
-        "simdjson",
-        "fastgltf",
-		"stb_image",
+        "Yuki-D3D12",
+        "Aura",
 	}
 
-	defines { "SPDLOG_COMPILED_LIB" }
-
-	filter { "configurations:Debug" }
-		defines { "YUKI_CONFIG_DEBUG" }
-
-		links {
-			"glslangd",
-			"glslang-default-resource-limitsd",
-			"OGLCompilerd",
-			"OSDependentd",
-			"MachineIndependentd",
-			"GenericCodeGend",
-			"SPIRVd",
-			"SPVRemapperd",
-			"SPIRV-Toolsd",
-			"SPIRV-Tools-diffd",
-			"SPIRV-Tools-linkd",
-			"SPIRV-Tools-lintd",
-			"SPIRV-Tools-optd",
-			"SPIRV-Tools-reduced",
-		}
-
-	filter { "configurations:RelWithDebug" }
-		defines { "YUKI_CONFIG_REL_WITH_DEBUG" }
-
-		links {
-			"glslangd",
-			"glslang-default-resource-limitsd",
-			"OGLCompilerd",
-			"OSDependentd",
-			"MachineIndependentd",
-			"GenericCodeGend",
-			"SPIRVd",
-			"SPVRemapperd",
-			"SPIRV-Toolsd",
-			"SPIRV-Tools-diffd",
-			"SPIRV-Tools-linkd",
-			"SPIRV-Tools-lintd",
-			"SPIRV-Tools-optd",
-			"SPIRV-Tools-reduced",
-		}
-
-	filter { "configurations:Release" }
-		defines { "YUKI_CONFIG_RELEASE" }
-
-		links {
-			"glslang",
-			"glslang-default-resource-limitsd",
-			"OGLCompiler",
-			"OSDependent",
-			"MachineIndependent",
-			"GenericCodeGen",
-			"SPIRV",
-			"SPVRemapper",
-			"SPIRV-Tools",
-			"SPIRV-Tools-diff",
-			"SPIRV-Tools-link",
-			"SPIRV-Tools-lint",
-			"SPIRV-Tools-opt",
-			"SPIRV-Tools-reduce",
-		}
+	filter { "files:**.ixx" }
+		compileas "Module"
 
 	filter { "system:windows" }
-		defines { "YUKI_PLATFORM_WINDOWS" }
+		libdirs {
+			GRDK .. "/GameKit/Lib/amd64/",
+			"../ThirdParty/DXC/lib/x64/"
+		}
 
-	filter { "system:linux" }
-		defines { "YUKI_PLATFORM_LINUX" }
-
+		links {
+			"GameInput",
+			"xgameruntime",
+            "D3d12",
+            "DXGI",
+			"dxcompiler"
+		}

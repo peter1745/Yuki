@@ -21,4 +21,6 @@ perf.data
 .vs/
 .vscode/
 
+**/cmake-build-debug/**
+
 .gdb_history

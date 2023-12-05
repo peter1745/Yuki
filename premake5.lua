@@ -14,6 +14,9 @@ workspace "Yuki"
 
 	flags { "MultiProcessorCompile" }
 
+	enablemodules "On"
+	buildstlmodules "On"
+
 	filter "configurations:Debug"
 		symbols "On"
 		optimize "Off"
@@ -55,9 +58,7 @@ workspace "Yuki"
 			"/Zc:preprocessor"
 		}
 
-group "ThirdParty"
-include "ThirdParty/"
-group ""
-
 include "Yuki/"
+include "Yuki-D3D12/"
+include "ThirdParty/Aura/"
 include "EngineTester/"
