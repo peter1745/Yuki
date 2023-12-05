@@ -1,0 +1,64 @@
+workspace "Yuki"
+	configurations { "RelWithDebug", "Debug", "Release" }
+	architecture "x86_64"
+
+	language "C++"
+	cppdialect "C++latest"
+
+	targetdir "Build/Bin/%{cfg.buildcfg}"
+	objdir "Build/Intermediates/%{cfg.buildcfg}"
+
+	externalanglebrackets "On"
+	externalwarnings "Off"
+	warnings "Off"
+
+	flags { "MultiProcessorCompile" }
+
+	enablemodules "On"
+	buildstlmodules "On"
+
+	filter "configurations:Debug"
+		symbols "On"
+		optimize "Off"
+
+	filter "configurations:RelWithDebug"
+		symbols "On"
+		optimize "Debug"
+
+	filter "configurations:Release"
+		symbols "Off"
+		optimize "Full"
+
+	filter "system:windows"
+		defines { "_CRT_SECURE_NO_WARNINGS" }
+
+		disablewarnings {
+            "4100", -- Unreferenced Formal Parameter
+			"4201" -- Anonymous Struct
+        }
+
+		buildoptions {
+			"/openmp:llvm"
+		}
+
+	filter "toolset:clang"
+		disablewarnings {
+			"unused-parameter",
+		}
+
+	filter "toolset:gcc"
+		disablewarnings {
+			"unused-parameter",
+			"missing-field-initializers",
+		}
+
+    filter "action:vs*"
+        linkoptions { "/ignore:4099" }
+		buildoptions {
+			"/Zc:preprocessor"
+		}
+
+include "Yuki/"
+include "Yuki-D3D12/"
+include "ThirdParty/Aura/"
+include "EngineTester/"

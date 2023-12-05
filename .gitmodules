@@ -1,0 +1,3 @@
+[submodule "ThirdParty/Aura"]
+	path = ThirdParty/Aura
+	url = https://github.com/peter1745/Aura
