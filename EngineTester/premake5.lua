@@ -6,17 +6,17 @@ project "EngineTester"
 	warnings "Extra"
 
 	files {
-		"Source/**.ixx",
+		"Source/**.cpp",
+		"Source/**.hpp",
+	}
+
+	externalincludedirs {
+		"../Yuki/Source/"
 	}
 
 	links {
 		"Yuki",
-        "Yuki-D3D12",
-        "Aura",
 	}
-
-	filter { "files:**.ixx" }
-		compileas "Module"
 
 	filter { "system:windows" }
 		libdirs {

@@ -4,6 +4,7 @@ workspace "Yuki"
 
 	language "C++"
 	cppdialect "C++latest"
+	conformancemode "On"
 
 	targetdir "Build/Bin/%{cfg.buildcfg}"
 	objdir "Build/Intermediates/%{cfg.buildcfg}"
@@ -13,9 +14,6 @@ workspace "Yuki"
 	warnings "Off"
 
 	flags { "MultiProcessorCompile" }
-
-	enablemodules "On"
-	buildstlmodules "On"
 
 	filter "configurations:Debug"
 		symbols "On"
@@ -59,6 +57,4 @@ workspace "Yuki"
 		}
 
 include "Yuki/"
-include "Yuki-D3D12/"
-include "ThirdParty/Aura/"
 include "EngineTester/"

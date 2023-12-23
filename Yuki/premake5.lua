@@ -5,20 +5,29 @@ project "Yuki"
 
 	warnings "Extra"
 
+	pchheader "YukiPCH.hpp"
+	pchsource "Source/YukiPCH.cpp"
+
     files {
-        "Source/Engine/**.ixx",
+        "Source/YukiPCH.cpp",
+        "Source/YukiPCH.hpp",
+
+        "Source/Engine/**.cpp",
+        "Source/Engine/**.hpp",
     }
 
-	links {
-	    "Aura"
+	externalincludedirs {
+		"Source/"
 	}
 
-	filter { "files:**.ixx" }
-        compileas "Module"
+	forceincludes {
+		"YukiPCH.hpp"
+	}
 
     filter { "system:windows" }
         files {
-            "Source/Platform/Windows/**.ixx",
+            "Source/Platform/Windows/**.cpp",
+            "Source/Platform/Windows/**.hpp",
         }
 
 		externalincludedirs {
