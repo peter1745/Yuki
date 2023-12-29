@@ -1,9 +1,10 @@
 #include <Engine/Core/App.hpp>
 #include <Engine/Core/Window.hpp>
 #include <Engine/Input/InputContext.hpp>
-#include <Engine/Input/InputDisptacher.hpp>
+#include <Engine/Input/InputAdapter.hpp>
 
 #include <iostream>
+#include <Windows.h>
 
 class EngineTester final : public Yuki::Application
 {
@@ -18,38 +19,27 @@ protected:
 		{
 			const auto& device = m_Dispatcher.GetDevice(i);
 
-			if (device.GetType() == Yuki::InputDevice::Type::Controller)
+			if (device.GetType() == Yuki::InputDevice::Type::Keyboard)
 			{
 				m_Controller = &device;
 				break;
 			}
 		}
 
-		/*
-			ChannelID forwardChannel = AddChannel([]()
-			{
-				
-			}).BindDeviceChannel(device, );
+		/*m_InputSystem->RegisterTriggers("WalkForward",
+		{
+			{ InputID(Yuki::AnyDevice, InputCode::W), 1.0f },
+			{ InputID(Yuki::AnyDevice, InputCode::S), -1.0f },
+			{ InputID(m_Controller->GetID(), 0) }
+		});
 
-			ChannelID rightChannel = AddChannel([]()
+		context.AddAction({
+			m_InputSystem->GetTriggers("WalkForward"),
+			[](InputReading reading)
 			{
-				
-			}).BindInput();
-		
-			context.AddAction([](const ActionData& actionData)
-			{
-				camera.Translation += actionData.ReadAxis(Axis::X);
-				camera.Translation += actionData.ReadAxis(Axis::Y);
-			}).BindChannel(id);
-
-			drivingContext.AddAction([](const ActionData& actionData)
-			{
-				actionData.ReadChannel();
-				car.Turn();
-			}).BindChannel(id);
-
-			m_InputSystem.SetActiveContext(m_InputSystem.AddContext(context));
-		*/
+				reading.Read<Axis2D>();
+			}
+		});*/
 	}
 
 	void OnUpdate() override
@@ -57,7 +47,12 @@ protected:
 		m_WindowSystem.PollEvents();
 		m_Dispatcher.Update();
 
-		std::cout << "Channel 0: " << m_Controller->ReadChannelValue(1) << "\n";
+		const auto& value = m_Controller->ReadChannelValue('W').ReadValue<Yuki::AxisValue1D>();
+
+		if (value.Value)
+		{
+			std::cout << "W is pressed!\n";
+		}
 
 		if (m_Window->IsClosed())
 		{
@@ -68,7 +63,7 @@ protected:
 private:
 	Yuki::WindowSystem m_WindowSystem;
 	Yuki::Window* m_Window;
-	Yuki::InputDispatcher m_Dispatcher;
+	Yuki::InputAdapter m_Dispatcher;
 	const Yuki::InputDevice* m_Controller;
 
 };

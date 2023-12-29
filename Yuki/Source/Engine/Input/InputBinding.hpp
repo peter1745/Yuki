@@ -1,6 +1,5 @@
 #pragma once
 
-#include "GamepadAxis.hpp"
 #include "Key.hpp"
 
 #include <array>
