@@ -10,105 +10,58 @@ namespace Yuki {
 
 	using InputActionID = uint32_t;
 
+	template<typename From, typename To>
+	concept CastableTo = requires { static_cast<To>(std::declval<From>()); };
+
 	class InputReading
 	{
 	public:
 		InputReading() = default;
 
-		template<AxisValueType T>
-		const T& Read() const
+		template<size_t N>
+		std::array<float, N> Read() const
 		{
-			const T* value = std::get_if<T>(&m_Value);
-
-			if (value == nullptr)
+			if (N >= m_Values.size())
 			{
-				throw Exception("Invalid read ya dingus");
+				throw Exception("Reading out of bounds");
 			}
 
-			return *value;
+			std::array<float, N> values;
+			memcpy(values.data(), m_Values.data(), N * sizeof(float));
+			return values;
 		}
 
 	private:
-		InputReading(AxisType type)
-			: m_Type(type)
+		InputReading(uint32_t valueCount)
 		{
-			switch (type)
-			{
-			case AxisType::Axis1D:
-			{
-				m_Value = AxisValue1D{};
-				break;
-			}
-			case AxisType::Axis2D:
-			{
-				m_Value = AxisValue2D{};
-				break;
-			}
-			case AxisType::Axis3D:
-			{
-				m_Value = AxisValue3D{};
-				break;
-			}
-			}
+			m_Values.resize(valueCount, 0.0f);
 		}
 
-		void Write(Axis axis, float value)
+		void Write(uint32_t index, float value)
 		{
-			if (std::to_underlying(axis) > std::to_underlying(m_Type))
+			if (index >= m_Values.size())
 			{
 				throw Exception("Tried writing a value into a reading that's too small");
 			}
 
-			switch (m_Type)
-			{
-			case AxisType::Axis1D:
-			{
-				std::get<AxisValue1D>(m_Value).Value = value;
-				break;
-			}
-			case AxisType::Axis2D:
-			{
-				auto& axisValue = std::get<AxisValue2D>(m_Value);
-
-				if (axis == Axis::X)
-					axisValue.X = value;
-				else if (axis == Axis::Y)
-					axisValue.Y = value;
-				break;
-			}
-			case AxisType::Axis3D:
-			{
-				auto& axisValue = std::get<AxisValue3D>(m_Value);
-
-				if (axis == Axis::X)
-					axisValue.X = value;
-				else if (axis == Axis::Y)
-					axisValue.Y = value;
-				else if (axis == Axis::Y)
-					axisValue.Z = value;
-				break;
-			}
-			}
+			m_Values[index] = value;
 		}
 
 	private:
-		AxisType m_Type;
-		AxisValue m_Value;
+		std::vector<float> m_Values;
 
 		friend class InputSystem;
 	};
 
+	using InputActionFunction = std::function<void(InputReading)>;
+
 	class InputContext
 	{
-		using ActionFunction = std::function<void(InputReading)>;
-	public:
-		void BindAction(InputActionID actionID, ActionFunction func);
-
 	public:
 		bool Active = false;
 
 	private:
-		std::unordered_map<InputActionID, ActionFunction> m_ActionBindings;
+		std::unordered_map<InputActionID, InputActionFunction> m_ActionBindings;
 
 		friend class InputSystem;
 	};

@@ -6,16 +6,27 @@ namespace Yuki {
 
 	InputActionID InputSystem::RegisterAction(const InputAction& action)
 	{
-		InputActionID id = m_Actions.size();
+		InputActionID id = static_cast<InputActionID>(m_Actions.size());
 		m_Actions.push_back(action);
 		return id;
 	}
 
 	InputContextID InputSystem::RegisterContext(const InputContext& context)
 	{
-		InputContextID id = m_Contexts.size();
+		InputContextID id = static_cast<InputContextID>(m_Contexts.size());
 		m_Contexts.push_back(context); // TODO: std::move
 		return id;
+	}
+
+	void InputSystem::BindAction(InputContextID contextID, InputActionID actionID, InputActionFunction func)
+	{
+		auto& context = m_Contexts[contextID];
+		context.m_ActionBindings[actionID] = std::move(func);
+
+		if (context.Active)
+		{
+			GenerateActionMetadata();
+		}
 	}
 
 	void InputSystem::ActivateContext(InputContextID contextID)
@@ -43,7 +54,7 @@ namespace Yuki {
 				if (!trigger.Channel->IsDirty())
 					continue;
 
-				actionMetadata.Reading.Write(trigger.TargetAxis, trigger.Channel->Value * trigger.Scale);
+				actionMetadata.Reading.Write(trigger.Index, trigger.Channel->Value * trigger.Scale);
 				triggered = true;
 			}
 
@@ -74,11 +85,12 @@ namespace Yuki {
 				auto& actionMetadata = m_ActionMetadata.emplace_back();
 				actionMetadata.ID = actionID;
 				actionMetadata.ContextID = i;
-				actionMetadata.Type = action.Type;
-				actionMetadata.Reading = InputReading(actionMetadata.Type);
+				actionMetadata.Reading = InputReading(action.ValueCount);
 
-				for (const auto& axisBinding : action.AxisBindings)
+				for (uint32_t j = 0; j < action.AxisBindings.size(); j++)
 				{
+					const auto& axisBinding = action.AxisBindings[j];
+
 					for (const auto& triggerBinding : axisBinding.Bindings)
 					{
 						const auto& device = m_Adapter.GetDevice(triggerBinding.ID.DeviceID);
@@ -89,7 +101,7 @@ namespace Yuki {
 							continue;
 
 						auto& actionTrigger = actionMetadata.Triggers.emplace_back();
-						actionTrigger.TargetAxis = axisBinding.TargetAxis;
+						actionTrigger.Index = j;
 						actionTrigger.Channel = channel;
 						actionTrigger.Scale = triggerBinding.Scale;
 

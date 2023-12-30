@@ -14,13 +14,12 @@ namespace Yuki {
 	{
 		InputActionID ID;
 		InputContextID ContextID;
-		AxisType Type;
 
 		InputReading Reading;
 
 		struct TriggerMetadata
 		{
-			Axis TargetAxis;
+			uint32_t Index;
 			const ExternalInputChannel* Channel = nullptr;
 			float Scale;
 		};
@@ -33,6 +32,8 @@ namespace Yuki {
 	public:
 		InputActionID RegisterAction(const InputAction& action);
 		InputContextID RegisterContext(const InputContext& context);
+
+		void BindAction(InputContextID contextID, InputActionID actionID, InputActionFunction func);
 
 		void ActivateContext(InputContextID contextID);
 		void DeactivateContext(InputContextID contextID);

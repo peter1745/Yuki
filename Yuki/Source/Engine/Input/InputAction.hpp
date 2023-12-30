@@ -37,13 +37,12 @@ namespace Yuki {
 
 	struct AxisBinding
 	{
-		Axis TargetAxis;
 		std::vector<TriggerBinding> Bindings;
 	};
 
 	struct InputAction
 	{
-		AxisType Type;
+		uint32_t ValueCount;
 		std::vector<AxisBinding> AxisBindings;
 		bool ConsumeInputs;
 	};
