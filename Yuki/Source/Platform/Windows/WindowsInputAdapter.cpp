@@ -50,14 +50,14 @@ namespace Yuki {
 	{
 		const auto* deviceInfo = device->GetDeviceInfo();
 
-		/*if (deviceInfo->deviceFamily == GameInputFamilyXboxOne)
+		if (deviceInfo->deviceFamily == GameInputFamilyXboxOne)
 		{
 			return { "Xbox One Controller", "Microsoft" };
 		}
 		else if (deviceInfo->deviceFamily == GameInputFamilyXbox360)
 		{
 			return { "Xbox 360 Controller", "Microsoft" };
-		}*/
+		}
 
 		uint32_t rawDeviceCount = 0;
 		GetRawInputDeviceList(nullptr, &rawDeviceCount, sizeof(RAWINPUTDEVICELIST));

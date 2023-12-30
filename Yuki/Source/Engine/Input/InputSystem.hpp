@@ -40,6 +40,8 @@ namespace Yuki {
 	private:
 		void Update();
 
+		void GenerateActionMetadata();
+
 	private:
 		InputAdapter m_Adapter;
 

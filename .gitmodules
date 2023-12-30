@@ -1,3 +1,10 @@
 [submodule "ThirdParty/Aura"]
 	path = ThirdParty/Aura
 	url = https://github.com/peter1745/Aura
+[submodule "ThirdParty/rtmcpp"]
+	path = ThirdParty/rtmcpp
+	url = https://github.com/peter1745/rtmcpp
+[submodule "ThirdParty/spdlog"]
+	path = ThirdParty/spdlog
+	url = https://github.com/gabime/spdlog
+

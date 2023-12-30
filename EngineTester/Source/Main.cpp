@@ -21,6 +21,13 @@ protected:
 
 		const uint32_t deviceID = 7;
 
+		/*
+		TODO(Peter):
+			- Implement support for AnyDevice
+			- Generic input "codes" (e.g InputCode::w, InputCode::LeftThumbstick)
+			- Implement InputID detection (e.g press thumbstick forward and get the input id for that device + input)
+		*/
+
 		auto walkAction = m_InputSystem->RegisterAction({
 			.Type = AxisType::Axis2D,
 			.AxisBindings = {
@@ -43,10 +50,39 @@ protected:
 			.ConsumeInputs = true
 		});
 
+		auto driveAction = m_InputSystem->RegisterAction({
+			.Type = AxisType::Axis2D,
+			.AxisBindings = {
+				{
+					.TargetAxis = Axis::X,
+					.Bindings = {
+						{ { deviceID, 'D'}, 1.0f },
+						{ { deviceID, 'A' }, -1.0f },
+					}
+				},
+				{
+					.TargetAxis = Axis::Y,
+					.Bindings = {
+						{ { deviceID, 'W' }, 1.0f },
+						{ { deviceID, 'S' }, -1.0f },
+						{ { deviceID, 'K' }, -1.0f },
+						{{ 0, 6 }, 1.0f }
+					}
+				},
+			},
+			.ConsumeInputs = true
+		});
+
 		context.BindAction(walkAction, [](InputReading reading)
 		{
 			const auto& value = reading.Read<AxisValue2D>();
-			std::cout << "X: " << value.X << ", Y: " << value.Y << "\n";
+			std::cout << "WALK ACTION\n";
+		});
+
+		context.BindAction(driveAction, [](InputReading reading)
+		{
+			const auto& value = reading.Read<AxisValue2D>();
+			std::cout << "DRIVE ACTION\n";
 		});
 
 		InputContextID contextID = m_InputSystem->RegisterContext(context);
