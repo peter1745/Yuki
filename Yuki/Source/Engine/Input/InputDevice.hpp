@@ -51,6 +51,16 @@ namespace Yuki {
 			channelValue.Set(value);
 		}
 
+		const ExternalInputChannel* GetChannel(uint32_t channelIndex) const
+		{
+			if (channelIndex >= m_Channels.size())
+			{
+				throw Exception("Channel index out of range!");
+			}
+
+			return &m_Channels[channelIndex];
+		}
+
 		const ChannelValue& ReadChannelValue(uint32_t channelIndex) const
 		{
 			if (channelIndex >= m_Channels.size())

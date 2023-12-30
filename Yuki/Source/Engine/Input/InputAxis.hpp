@@ -6,9 +6,16 @@ namespace Yuki {
 
 	enum class Axis
 	{
-		None,
 		X,
-		Y
+		Y,
+		Z
+	};
+
+	enum class AxisType
+	{
+		Axis1D,
+		Axis2D,
+		Axis3D,
 	};
 
 	struct AxisValue1D { float Value; };

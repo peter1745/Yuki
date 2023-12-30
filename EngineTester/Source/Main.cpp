@@ -1,9 +1,11 @@
 #include <Engine/Core/App.hpp>
 #include <Engine/Core/Window.hpp>
-#include <Engine/Input/InputContext.hpp>
+#include <Engine/Input/InputSystem.hpp>
 #include <Engine/Input/InputAdapter.hpp>
+#include <Engine/Input/InputAction.hpp>
 
 #include <iostream>
+#include <ranges>
 #include <Windows.h>
 
 class EngineTester final : public Yuki::Application
@@ -11,48 +13,54 @@ class EngineTester final : public Yuki::Application
 protected:
 	void OnRun() override
 	{
-		m_Window = m_WindowSystem.NewWindow("Input Testing");
+		m_Window = m_WindowSystem->NewWindow("Input Testing");
 
-		Yuki::InputContext context;
+		using namespace Yuki;
 
-		for (uint32_t i = 0; i < m_Dispatcher.GetDeviceCount(); i++)
-		{
-			const auto& device = m_Dispatcher.GetDevice(i);
+		InputContext context;
 
-			if (device.GetType() == Yuki::InputDevice::Type::Keyboard)
-			{
-				m_Controller = &device;
-				break;
-			}
-		}
+		const uint32_t deviceID = 6;
 
-		/*m_InputSystem->RegisterTriggers("WalkForward",
-		{
-			{ InputID(Yuki::AnyDevice, InputCode::W), 1.0f },
-			{ InputID(Yuki::AnyDevice, InputCode::S), -1.0f },
-			{ InputID(m_Controller->GetID(), 0) }
+		auto walkAction = m_InputSystem->RegisterAction({
+			.Type = AxisType::Axis2D,
+			.AxisBindings = {
+				{
+					.TargetAxis = Axis::X,
+					.Bindings = {
+						{ { deviceID, 'W' }, 1.0f },
+						{ { deviceID, 'S' }, -1.0f },
+					}
+				},
+				{
+					.TargetAxis = Axis::Y,
+					.Bindings = {
+						{ { deviceID, 'D' }, 1.0f },
+						{ { deviceID, 'A' }, -1.0f },
+					}
+				}
+			},
+			.ConsumeInputs = true
 		});
 
-		context.AddAction({
-			m_InputSystem->GetTriggers("WalkForward"),
-			[](InputReading reading)
-			{
-				reading.Read<Axis2D>();
-			}
-		});*/
+		context.BindAction(walkAction, [](InputReading reading)
+		{
+			const auto& value = reading.Read<AxisValue2D>();
+			std::cout << "X: " << value.X << ", Y: " << value.Y << "\n";
+		});
+
+		InputContextID contextID = m_InputSystem->RegisterContext(context);
+
+		m_InputSystem->ActivateContext(contextID);
 	}
 
 	void OnUpdate() override
 	{
-		m_WindowSystem.PollEvents();
-		m_Dispatcher.Update();
-
-		const auto& value = m_Controller->ReadChannelValue('W').ReadValue<Yuki::AxisValue1D>();
+		/*const auto& value = m_Controller->ReadChannelValue('W').ReadValue<Yuki::AxisValue1D>();
 
 		if (value.Value)
 		{
 			std::cout << "W is pressed!\n";
-		}
+		}*/
 
 		if (m_Window->IsClosed())
 		{
@@ -61,9 +69,7 @@ protected:
 	}
 
 private:
-	Yuki::WindowSystem m_WindowSystem;
 	Yuki::Window* m_Window;
-	Yuki::InputAdapter m_Dispatcher;
 	const Yuki::InputDevice* m_Controller;
 
 };

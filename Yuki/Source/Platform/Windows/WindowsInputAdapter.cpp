@@ -10,20 +10,25 @@
 #include <initguid.h>
 #include <cfgmgr32.h>
 #include <devpkey.h>
-#include <hidsdi.h>
 
 #pragma comment(lib, "cfgmgr32.lib")
-#pragma comment(lib, "Hid")
 
 template<>
 struct std::hash<APP_LOCAL_DEVICE_ID>
 {
 	size_t operator()(const APP_LOCAL_DEVICE_ID& id) const
 	{
-		uint64_t v0 = 0, v1 = 0;
-		memcpy(&v0, &id.value[0], APP_LOCAL_DEVICE_ID_SIZE / 2);
-		memcpy(&v1, &id.value[APP_LOCAL_DEVICE_ID_SIZE / 2], APP_LOCAL_DEVICE_ID_SIZE / 2);
-		return v0 + v1;
+		size_t hash = 0;
+		uint32_t componentSize = APP_LOCAL_DEVICE_ID_SIZE / 4;
+
+		for (uint32_t i = 0; i < 4; i++)
+		{
+			size_t component = 0;
+			memcpy(&component, &id.value[i * componentSize], componentSize);
+			hash += component;
+		}
+
+		return hash;
 	}
 };
 
@@ -145,12 +150,12 @@ namespace Yuki {
 	static constexpr uint32_t s_MaxKeyCount = 256;
 
 	static void CALLBACK DeviceCallback(
-		_In_ GameInputCallbackToken callbackToken,
-		_In_ void* context,
-		_In_ IGameInputDevice* device,
-		_In_ uint64_t timestamp,
-		_In_ GameInputDeviceStatus currentStatus,
-		_In_ GameInputDeviceStatus previousStatus)
+		GameInputCallbackToken callbackToken,
+		void* context,
+		IGameInputDevice* device,
+		uint64_t timestamp,
+		GameInputDeviceStatus currentStatus,
+		GameInputDeviceStatus previousStatus)
 	{
 		const auto* deviceInfo = device->GetDeviceInfo();
 
@@ -216,7 +221,8 @@ namespace Yuki {
 
 			for (uint32_t i = 0; i < deviceInfo->controllerSwitchCount; i++)
 			{
-				inputDevice->RegisterChannel<AxisValue2D>();
+				inputDevice->RegisterChannel<AxisValue1D>();
+				inputDevice->RegisterChannel<AxisValue1D>();
 			}
 
 			std::cout << "Device: " << manufacturer << " " << deviceName << "\n";
@@ -270,7 +276,7 @@ namespace Yuki {
 			GameInputKindRacingWheel,
 			GameInputDeviceAnyStatus,
 			GameInputBlockingEnumeration,
-			this,
+			nullptr,
 			DeviceCallback,
 			&s_DeviceCallbackToken
 		));
@@ -279,6 +285,7 @@ namespace Yuki {
 	InputAdapter::~InputAdapter()
 	{
 		s_GameInput->UnregisterCallback(s_DeviceCallbackToken, 0);
+		s_GameInput->Release();
 	}
 
 	static float SwitchPositionToAxisValue(GameInputSwitchPosition position, Axis axis)
@@ -350,13 +357,26 @@ namespace Yuki {
 
 	static void ReadKeyboardInput(IGameInputReading* reading, const GameInputKeyboardInfo* keyboardInfo, InputDevice& device, uint32_t& currentChannel)
 	{
+		static std::array<GameInputKeyState, s_MaxKeyCount> s_KeyStates;
+		
+		for (uint32_t i = 0; i < s_MaxKeyCount; i++)
+		{
+			device.WriteChannelValue(currentChannel + i, AxisValue1D{ 0.0f });
+		}
+
+		uint32_t readKeys = reading->GetKeyState(s_MaxKeyCount, s_KeyStates.data());
+		for (uint32_t i = 0; i < readKeys; i++)
+		{
+			device.WriteChannelValue(currentChannel + s_KeyStates[i].virtualKey, AxisValue1D{ 1.0f });
+		}
+
 		// NOTE(Peter): Specifically not using `reading` here because the keyboard implementation for GameInput
 		//				doesn't let us easily index a channel based on the key
-		for (uint32_t i = 0; i < s_MaxKeyCount; i++)
+		/*for (uint32_t i = 0; i < s_MaxKeyCount; i++)
 		{
 			bool state = GetAsyncKeyState(i) & 0x8000;
 			device.WriteChannelValue(currentChannel + i, AxisValue1D{ state ? 1.0f : 0.0f });
-		}
+		}*/
 
 		currentChannel += s_MaxKeyCount;
 	}
@@ -367,7 +387,7 @@ namespace Yuki {
 		static std::array<float, MaxAxes> s_AxisValues;
 
 		uint32_t axisCount = reading->GetControllerAxisCount();
-		YukiUnused(reading->GetControllerAxisState(axisCount, s_AxisValues.data()));
+		YukiUnused(reading->GetControllerAxisState(MaxAxes, s_AxisValues.data()));
 		for (uint32_t i = 0; i < axisCount; i++)
 		{
 			device.WriteChannelValue(currentChannel + i, AxisValue1D{ std::lerp(-1.0f, 1.0f, s_AxisValues[i]) });
@@ -398,12 +418,16 @@ namespace Yuki {
 
 		uint32_t switchCount = reading->GetControllerSwitchCount();
 		YukiUnused(reading->GetControllerSwitchState(switchCount, s_SwitchPositions.data()));
-		for (uint32_t switchIndex = 0; switchIndex < switchCount; switchIndex++)
+		for (uint32_t switchIndex = 0; switchIndex < switchCount * 2; switchIndex += 2)
 		{
-			device.WriteChannelValue(currentChannel + switchIndex, AxisValue2D
+			device.WriteChannelValue(currentChannel + switchIndex, AxisValue1D
 			{
 				SwitchPositionToAxisValue(s_SwitchPositions[switchIndex], Axis::X),
-				SwitchPositionToAxisValue(s_SwitchPositions[switchIndex], Axis::Y)
+			});
+
+			device.WriteChannelValue(currentChannel + switchIndex + 1, AxisValue1D
+			{
+				SwitchPositionToAxisValue(s_SwitchPositions[switchIndex + 1], Axis::Y)
 			});
 		}
 
