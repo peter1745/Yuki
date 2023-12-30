@@ -10,8 +10,10 @@
 #include <initguid.h>
 #include <cfgmgr32.h>
 #include <devpkey.h>
+#include <hidsdi.h>
 
 #pragma comment(lib, "cfgmgr32.lib")
+#pragma comment(lib, "Hid.lib")
 
 template<>
 struct std::hash<APP_LOCAL_DEVICE_ID>
@@ -48,23 +50,14 @@ namespace Yuki {
 	{
 		const auto* deviceInfo = device->GetDeviceInfo();
 
-		if (deviceInfo->deviceFamily == GameInputFamilyXboxOne)
+		/*if (deviceInfo->deviceFamily == GameInputFamilyXboxOne)
 		{
 			return { "Xbox One Controller", "Microsoft" };
 		}
 		else if (deviceInfo->deviceFamily == GameInputFamilyXbox360)
 		{
 			return { "Xbox 360 Controller", "Microsoft" };
-		}
-
-		if (deviceInfo->supportedInput == GameInputKindMouse)
-		{
-			return { "Generic Mouse", "Unknown Manufacturer" };
-		}
-		else if (deviceInfo->supportedInput == GameInputKindKeyboard)
-		{
-			return { "Generic Keyboard", "Unknown Manufacturer" };
-		}
+		}*/
 
 		uint32_t rawDeviceCount = 0;
 		GetRawInputDeviceList(nullptr, &rawDeviceCount, sizeof(RAWINPUTDEVICELIST));
@@ -87,60 +80,41 @@ namespace Yuki {
 			std::wstring devicePath(devicePathSize, 0);
 			GetRawInputDeviceInfo(rawDevice.hDevice, RIDI_DEVICENAME, devicePath.data(), &devicePathSize);
 
-			std::wstring friendlyName;
-			std::wstring manufacturerName;
+			wchar_t friendlyName[1024]{};
+			wchar_t manufacturerName[1024]{};
+
+			HANDLE h = CreateFile(devicePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+			DEVPROPTYPE propertyType;
+			ULONG propertySize = 0;
+			CM_Get_Device_Interface_PropertyW(devicePath.c_str(), &DEVPKEY_Device_InstanceId, &propertyType, nullptr, &propertySize, 0);
+
+			std::wstring deviceId;
+			deviceId.resize(propertySize);
+			CM_Get_Device_Interface_PropertyW(devicePath.c_str(), &DEVPKEY_Device_InstanceId, &propertyType, reinterpret_cast<PBYTE>(deviceId.data()), &propertySize, 0);
+
+			DEVINST devInst;
+			CM_Locate_DevNodeW(&devInst, reinterpret_cast<DEVINSTID>(deviceId.data()), CM_LOCATE_DEVNODE_NORMAL);
+
+			if (!HidD_GetProductString(h, friendlyName, 1024))
+			{
+				CM_Get_DevNode_PropertyW(devInst, &DEVPKEY_NAME, &propertyType, nullptr, &propertySize, 0);
+				CM_Get_DevNode_PropertyW(devInst, &DEVPKEY_NAME, &propertyType, reinterpret_cast<PBYTE>(friendlyName), &propertySize, 0);
+			}
+
+			if (!HidD_GetManufacturerString(h, manufacturerName, 1024))
+			{
+				CM_Get_DevNode_PropertyW(devInst, &DEVPKEY_Device_Manufacturer, &propertyType, nullptr, &propertySize, 0);
+				CM_Get_DevNode_PropertyW(devInst, &DEVPKEY_Device_Manufacturer, &propertyType, reinterpret_cast<PBYTE>(manufacturerName), &propertySize, 0);
+			}
 
 			if (deviceInfo->vendorId != ridDeviceInfo.hid.dwVendorId || deviceInfo->productId != ridDeviceInfo.hid.dwProductId)
 			{
 				continue;
 			}
 
-			DEVPROPTYPE propertyType;
-			ULONG propertySize = 0;
-			CONFIGRET cr = CM_Get_Device_Interface_PropertyW(devicePath.c_str(), &DEVPKEY_Device_InstanceId, &propertyType, nullptr, &propertySize, 0);
+			CloseHandle(h);
 
-			if (cr != CR_BUFFER_SMALL)
-			{
-				__debugbreak();
-			}
-
-			std::wstring deviceId;
-			deviceId.resize(propertySize);
-			cr = CM_Get_Device_Interface_PropertyW(devicePath.c_str(), &DEVPKEY_Device_InstanceId, &propertyType, reinterpret_cast<PBYTE>(deviceId.data()), &propertySize, 0);
-
-			if (cr != CR_SUCCESS)
-			{
-				__debugbreak();
-			}
-
-			DEVINST devInst;
-			cr = CM_Locate_DevNodeW(&devInst, reinterpret_cast<DEVINSTID>(deviceId.data()), CM_LOCATE_DEVNODE_NORMAL);
-
-			if (cr != CR_SUCCESS)
-			{
-				__debugbreak();
-			}
-
-			propertySize = 0;
-			cr = CM_Get_DevNode_PropertyW(devInst, &DEVPKEY_NAME, &propertyType, nullptr, &propertySize, 0);
-			if (cr != CR_BUFFER_SMALL)
-			{
-				__debugbreak();
-			}
-
-			friendlyName.resize(propertySize);
-			cr = ::CM_Get_DevNode_PropertyW(devInst, &DEVPKEY_NAME, &propertyType, reinterpret_cast<PBYTE>(friendlyName.data()), &propertySize, 0);
-
-			propertySize = 0;
-			cr = CM_Get_DevNode_PropertyW(devInst, &DEVPKEY_Device_Manufacturer, &propertyType, nullptr, &propertySize, 0);
-			if (cr != CR_BUFFER_SMALL)
-			{
-				__debugbreak();
-			}
-
-			manufacturerName.resize(propertySize);
-			cr = ::CM_Get_DevNode_PropertyW(devInst, &DEVPKEY_Device_Manufacturer, &propertyType, reinterpret_cast<PBYTE>(manufacturerName.data()), &propertySize, 0);
-			
 			return { Utf16ToUtf8(friendlyName), Utf16ToUtf8(manufacturerName) };
 		}
 
@@ -197,7 +171,7 @@ namespace Yuki {
 
 				for (uint32_t i = 0; i < buttonCount; i++)
 				{
-					inputDevice->RegisterChannel<AxisValue1D>();
+					inputDevice->RegisterChannel();
 				}
 			}
 
@@ -205,24 +179,24 @@ namespace Yuki {
 			{
 				for (uint32_t i = 0; i < s_MaxKeyCount; i++)
 				{
-					inputDevice->RegisterChannel<AxisValue1D>();
+					inputDevice->RegisterChannel();
 				}
 			}
 
 			for (uint32_t i = 0; i < deviceInfo->controllerAxisCount; i++)
 			{
-				inputDevice->RegisterChannel<AxisValue1D>();
+				inputDevice->RegisterChannel();
 			}
 
 			for (uint32_t i = 0; i < deviceInfo->controllerButtonCount; i++)
 			{
-				inputDevice->RegisterChannel<AxisValue1D>();
+				inputDevice->RegisterChannel();
 			}
 
 			for (uint32_t i = 0; i < deviceInfo->controllerSwitchCount; i++)
 			{
-				inputDevice->RegisterChannel<AxisValue1D>();
-				inputDevice->RegisterChannel<AxisValue1D>();
+				inputDevice->RegisterChannel();
+				inputDevice->RegisterChannel();
 			}
 
 			std::cout << "Device: " << manufacturer << " " << deviceName << "\n";
@@ -338,19 +312,19 @@ namespace Yuki {
 			if (!(mouseInfo->supportedButtons & buttonID))
 				continue;
 
-			device.WriteChannelValue(currentChannel, AxisValue1D{ (mouseState.buttons & buttonID) ? 1.0f : 0.0f });
+			device.WriteChannelValue(currentChannel, (mouseState.buttons & buttonID) ? 1.0f : 0.0f);
 			currentChannel++;
 		}
 
 		if (mouseInfo->hasWheelX)
 		{
-			device.WriteChannelValue(currentChannel, AxisValue1D{ static_cast<float>(mouseState.wheelX) });
+			device.WriteChannelValue(currentChannel, static_cast<float>(mouseState.wheelX));
 			currentChannel++;
 		}
 
 		if (mouseInfo->hasWheelY)
 		{
-			device.WriteChannelValue(currentChannel, AxisValue1D{ static_cast<float>(mouseState.wheelY) });
+			device.WriteChannelValue(currentChannel, static_cast<float>(mouseState.wheelY));
 			currentChannel++;
 		}
 	}
@@ -361,13 +335,13 @@ namespace Yuki {
 		
 		for (uint32_t i = 0; i < s_MaxKeyCount; i++)
 		{
-			device.WriteChannelValue(currentChannel + i, AxisValue1D{ 0.0f });
+			device.WriteChannelValue(currentChannel + i, 0.0f);
 		}
 
 		uint32_t readKeys = reading->GetKeyState(s_MaxKeyCount, s_KeyStates.data());
 		for (uint32_t i = 0; i < readKeys; i++)
 		{
-			device.WriteChannelValue(currentChannel + s_KeyStates[i].virtualKey, AxisValue1D{ 1.0f });
+			device.WriteChannelValue(currentChannel + s_KeyStates[i].virtualKey, 1.0f);
 		}
 
 		// NOTE(Peter): Specifically not using `reading` here because the keyboard implementation for GameInput
@@ -390,7 +364,7 @@ namespace Yuki {
 		YukiUnused(reading->GetControllerAxisState(MaxAxes, s_AxisValues.data()));
 		for (uint32_t i = 0; i < axisCount; i++)
 		{
-			device.WriteChannelValue(currentChannel + i, AxisValue1D{ std::lerp(-1.0f, 1.0f, s_AxisValues[i]) });
+			device.WriteChannelValue(currentChannel + i, std::lerp(-1.0f, 1.0f, s_AxisValues[i]));
 		}
 
 		currentChannel += axisCount;
@@ -405,7 +379,7 @@ namespace Yuki {
 		YukiUnused(reading->GetControllerButtonState(MaxButtons, s_ButtonStates.data()));
 		for (uint32_t buttonIndex = 0; buttonIndex < buttonCount; buttonIndex++)
 		{
-			device.WriteChannelValue(currentChannel, AxisValue1D{ s_ButtonStates[currentChannel + buttonIndex] ? 1.0f : 0.0f });
+			device.WriteChannelValue(currentChannel + buttonIndex, s_ButtonStates[buttonIndex] ? 1.0f : 0.0f);
 		}
 
 		currentChannel += buttonCount;
@@ -420,15 +394,8 @@ namespace Yuki {
 		YukiUnused(reading->GetControllerSwitchState(switchCount, s_SwitchPositions.data()));
 		for (uint32_t switchIndex = 0; switchIndex < switchCount * 2; switchIndex += 2)
 		{
-			device.WriteChannelValue(currentChannel + switchIndex, AxisValue1D
-			{
-				SwitchPositionToAxisValue(s_SwitchPositions[switchIndex], Axis::X),
-			});
-
-			device.WriteChannelValue(currentChannel + switchIndex + 1, AxisValue1D
-			{
-				SwitchPositionToAxisValue(s_SwitchPositions[switchIndex + 1], Axis::Y)
-			});
+			device.WriteChannelValue(currentChannel + switchIndex, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex], Axis::X));
+			device.WriteChannelValue(currentChannel + switchIndex + 1, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex + 1], Axis::Y));
 		}
 
 		currentChannel += switchCount;

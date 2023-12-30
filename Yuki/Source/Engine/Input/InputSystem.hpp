@@ -16,6 +16,8 @@ namespace Yuki {
 		InputContextID ContextID;
 		AxisType Type;
 
+		InputReading Reading;
+
 		struct TriggerMetadata
 		{
 			Axis TargetAxis;

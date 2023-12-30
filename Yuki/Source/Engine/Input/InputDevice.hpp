@@ -26,14 +26,12 @@ namespace Yuki {
 		std::string_view GetName() const { return m_Name; }
 		std::string_view GetManufacturer() const { return m_Manufacturer; }
 
-		template<AxisValueType T>
 		void RegisterChannel()
 		{
-			m_Channels.emplace_back(ChannelValue{ .Value = T{} });
+			m_Channels.emplace_back();
 		}
 
-		template<AxisValueType T>
-		void WriteChannelValue(uint32_t channelIndex, const T& value)
+		void WriteChannelValue(uint32_t channelIndex, float value)
 		{
 			if (channelIndex >= m_Channels.size())
 			{
@@ -41,14 +39,9 @@ namespace Yuki {
 				throw Exception(msg);
 			}
 
-			auto& channelValue = m_Channels[channelIndex].Value;
-
-			if (!channelValue.Is<T>())
-			{
-				throw Exception("Trying to write a value to a channel of the wrong type.");
-			}
-
-			channelValue.Set(value);
+			auto& channel = m_Channels[channelIndex];
+			channel.PreviousValue = channel.Value;
+			channel.Value = value;
 		}
 
 		const ExternalInputChannel* GetChannel(uint32_t channelIndex) const
@@ -61,7 +54,7 @@ namespace Yuki {
 			return &m_Channels[channelIndex];
 		}
 
-		const ChannelValue& ReadChannelValue(uint32_t channelIndex) const
+		float ReadChannelValue(uint32_t channelIndex) const
 		{
 			if (channelIndex >= m_Channels.size())
 			{

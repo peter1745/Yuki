@@ -37,6 +37,7 @@ namespace Yuki {
 				actionMetadata.ID = actionID;
 				actionMetadata.ContextID = i;
 				actionMetadata.Type = action.Type;
+				actionMetadata.Reading = InputReading(actionMetadata.Type);
 
 				for (const auto& axisBinding : action.AxisBindings)
 				{
@@ -62,25 +63,23 @@ namespace Yuki {
 	{
 		m_Adapter.Update();
 
-		for (const auto& actionMetadata : m_ActionMetadata)
+		for (auto& actionMetadata : m_ActionMetadata)
 		{
 			bool triggered = false;
-
-			InputReading reading(actionMetadata.Type);
 
 			for (const auto& trigger : actionMetadata.Triggers)
 			{
 				if (!trigger.Channel->IsDirty())
 					continue;
 
-				reading.Write(trigger.TargetAxis, trigger.Channel->Value.ReadValue<AxisValue1D>().Value * trigger.Scale);
+				actionMetadata.Reading.Write(trigger.TargetAxis, trigger.Channel->Value * trigger.Scale);
 				triggered = true;
 			}
 
 			if (!triggered)
 				continue;
 
-			m_Contexts[actionMetadata.ContextID].m_ActionBindings[actionMetadata.ID](reading);
+			m_Contexts[actionMetadata.ContextID].m_ActionBindings[actionMetadata.ID](actionMetadata.Reading);
 		}
 	}
 

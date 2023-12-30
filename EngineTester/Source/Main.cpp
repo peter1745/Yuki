@@ -19,7 +19,7 @@ protected:
 
 		InputContext context;
 
-		const uint32_t deviceID = 6;
+		const uint32_t deviceID = 7;
 
 		auto walkAction = m_InputSystem->RegisterAction({
 			.Type = AxisType::Axis2D,
@@ -27,17 +27,18 @@ protected:
 				{
 					.TargetAxis = Axis::X,
 					.Bindings = {
-						{ { deviceID, 'W' }, 1.0f },
-						{ { deviceID, 'S' }, -1.0f },
+						{ { deviceID, 'D'}, 1.0f},
+						{ { deviceID, 'A' }, -1.0f },
 					}
 				},
 				{
 					.TargetAxis = Axis::Y,
 					.Bindings = {
-						{ { deviceID, 'D' }, 1.0f },
-						{ { deviceID, 'A' }, -1.0f },
+						{ { deviceID, 'W' }, 1.0f },
+						{ { deviceID, 'S' }, -1.0f },
+						{{ 0, 6 }, 1.0f }
 					}
-				}
+				},
 			},
 			.ConsumeInputs = true
 		});
@@ -55,13 +56,6 @@ protected:
 
 	void OnUpdate() override
 	{
-		/*const auto& value = m_Controller->ReadChannelValue('W').ReadValue<Yuki::AxisValue1D>();
-
-		if (value.Value)
-		{
-			std::cout << "W is pressed!\n";
-		}*/
-
 		if (m_Window->IsClosed())
 		{
 			m_Running = false;
@@ -70,8 +64,6 @@ protected:
 
 private:
 	Yuki::Window* m_Window;
-	const Yuki::InputDevice* m_Controller;
-
 };
 
 int main()

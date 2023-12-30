@@ -13,6 +13,8 @@ namespace Yuki {
 	class InputReading
 	{
 	public:
+		InputReading() = default;
+
 		template<AxisValueType T>
 		const T& Read() const
 		{
