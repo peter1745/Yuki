@@ -12,6 +12,9 @@ namespace Yuki {
 
 	struct InputBinding {};
 
+	static constexpr uint32_t AnyKeyboardDevice = ~0u - 1;
+	static constexpr uint32_t AnyGamepadDevice = ~0u - 2;
+
 	class InputAdapter
 	{
 	public:

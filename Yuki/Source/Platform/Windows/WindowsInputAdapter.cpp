@@ -45,6 +45,9 @@ namespace Yuki {
 	static GameInputCallbackToken s_DeviceCallbackToken;
 	static std::unordered_map<APP_LOCAL_DEVICE_ID, Unique<InputDevice>> s_InputDevices;
 
+	static Unique<InputDevice> s_GenericKeyboardDevice;
+	static Unique<InputDevice> s_GenericGamepadDevice;
+
 	// Ugly mess to deal with the fact that GameInput doesn't provide us with a user friendly name currently
 	static std::pair<std::string, std::string> FetchDeviceNames(IGameInputDevice* device)
 	{
@@ -254,6 +257,24 @@ namespace Yuki {
 			DeviceCallback,
 			&s_DeviceCallbackToken
 		));
+
+		auto createGenericInputDevice = [](std::string_view type, uint32_t channelCount)
+		{
+			auto inputDevice = Unique<InputDevice>::New(
+				InputDevice::Type::Keyboard,
+				"Internal Keyboard Device",
+				"None",
+				nullptr
+			);
+
+			for (uint32_t i = 0; i < channelCount; i++)
+				inputDevice->RegisterChannel();
+
+			return inputDevice;
+		};
+
+		s_GenericKeyboardDevice = createGenericInputDevice("Keyboard", s_MaxKeyCount);
+		s_GenericGamepadDevice = createGenericInputDevice("Gamepad", 128);
 	}
 
 	InputAdapter::~InputAdapter()
@@ -342,6 +363,7 @@ namespace Yuki {
 		for (uint32_t i = 0; i < readKeys; i++)
 		{
 			device.WriteChannelValue(currentChannel + s_KeyStates[i].virtualKey, 1.0f);
+			s_GenericKeyboardDevice->WriteChannelValue(s_KeyStates[i].virtualKey, 1.0f);
 		}
 
 		// NOTE(Peter): Specifically not using `reading` here because the keyboard implementation for GameInput
@@ -360,10 +382,17 @@ namespace Yuki {
 		static constexpr uint32_t MaxAxes = 256;
 		static std::array<float, MaxAxes> s_AxisValues;
 
+		bool isGamepad = reading->GetInputKind() & GameInputKindGamepad;
+
 		uint32_t axisCount = reading->GetControllerAxisCount();
 		YukiUnused(reading->GetControllerAxisState(MaxAxes, s_AxisValues.data()));
 		for (uint32_t i = 0; i < axisCount; i++)
 		{
+			if (isGamepad)
+			{
+				s_GenericGamepadDevice->WriteChannelValue(currentChannel + i, std::lerp(-1.0f, 1.0f, s_AxisValues[i]));
+			}
+
 			device.WriteChannelValue(currentChannel + i, std::lerp(-1.0f, 1.0f, s_AxisValues[i]));
 		}
 
@@ -375,10 +404,17 @@ namespace Yuki {
 		static constexpr uint32_t MaxButtons = 512;
 		static std::array<bool, MaxButtons> s_ButtonStates;
 
+		bool isGamepad = reading->GetInputKind() & GameInputKindGamepad;
+
 		uint32_t buttonCount = reading->GetControllerButtonCount();
 		YukiUnused(reading->GetControllerButtonState(MaxButtons, s_ButtonStates.data()));
 		for (uint32_t buttonIndex = 0; buttonIndex < buttonCount; buttonIndex++)
 		{
+			if (isGamepad)
+			{
+				s_GenericGamepadDevice->WriteChannelValue(currentChannel + buttonIndex, s_ButtonStates[buttonIndex] ? 1.0f : 0.0f);
+			}
+
 			device.WriteChannelValue(currentChannel + buttonIndex, s_ButtonStates[buttonIndex] ? 1.0f : 0.0f);
 		}
 
@@ -390,10 +426,18 @@ namespace Yuki {
 		static constexpr uint32_t MaxSwitches = 512;
 		static std::array<GameInputSwitchPosition, MaxSwitches> s_SwitchPositions;
 
+		bool isGamepad = reading->GetInputKind() & GameInputKindGamepad;
+
 		uint32_t switchCount = reading->GetControllerSwitchCount();
 		YukiUnused(reading->GetControllerSwitchState(switchCount, s_SwitchPositions.data()));
 		for (uint32_t switchIndex = 0; switchIndex < switchCount * 2; switchIndex += 2)
 		{
+			if (isGamepad)
+			{
+				s_GenericGamepadDevice->WriteChannelValue(currentChannel + switchIndex, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex], Axis::X));
+				s_GenericGamepadDevice->WriteChannelValue(currentChannel + switchIndex + 1, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex + 1], Axis::Y));
+			}
+
 			device.WriteChannelValue(currentChannel + switchIndex, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex], Axis::X));
 			device.WriteChannelValue(currentChannel + switchIndex + 1, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex + 1], Axis::Y));
 		}
@@ -403,6 +447,11 @@ namespace Yuki {
 
 	void InputAdapter::Update()
 	{
+		for (uint32_t i = 0; i < s_MaxKeyCount; i++)
+		{
+			s_GenericKeyboardDevice->WriteChannelValue(i, 0.0f);
+		}
+
 		for (auto& [deviceID, device] : s_InputDevices)
 		{
 			IGameInputReading* reading;
@@ -453,6 +502,15 @@ namespace Yuki {
 
 	const InputDevice& InputAdapter::GetDevice(uint32_t deviceIndex) const
 	{
+		if (deviceIndex == AnyKeyboardDevice)
+		{
+			return s_GenericKeyboardDevice;
+		}
+		else if (deviceIndex == AnyGamepadDevice)
+		{
+			return s_GenericGamepadDevice;
+		}
+
 		if (deviceIndex >= s_InputDevices.size())
 		{
 			throw Exception("Index out of bounds trying to get input device!");
