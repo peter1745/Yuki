@@ -30,6 +30,9 @@ namespace Yuki {
 	class InputSystem
 	{
 	public:
+		InputSystem();
+		~InputSystem();
+
 		InputActionID RegisterAction(const InputAction& action);
 		InputContextID CreateContext();
 

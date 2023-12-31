@@ -1,11 +1,6 @@
-#include "Engine/Input/InputAdapter.hpp"
-
-#include "Engine/Core/Core.hpp"
-#include "Engine/Core/Unique.hpp"
+#include "WindowsInputAdapter.hpp"
 
 #include "WindowsCommon.hpp"
-
-#include <GameInput.h>
 
 #include <initguid.h>
 #include <cfgmgr32.h>
@@ -15,39 +10,7 @@
 #pragma comment(lib, "cfgmgr32.lib")
 #pragma comment(lib, "Hid.lib")
 
-template<>
-struct std::hash<APP_LOCAL_DEVICE_ID>
-{
-	size_t operator()(const APP_LOCAL_DEVICE_ID& id) const
-	{
-		size_t hash = 0;
-		uint32_t componentSize = APP_LOCAL_DEVICE_ID_SIZE / 4;
-
-		for (uint32_t i = 0; i < 4; i++)
-		{
-			size_t component = 0;
-			memcpy(&component, &id.value[i * componentSize], componentSize);
-			hash += component;
-		}
-
-		return hash;
-	}
-};
-
-static bool operator==(const APP_LOCAL_DEVICE_ID& id0, const APP_LOCAL_DEVICE_ID& id1)
-{
-	return memcmp(id0.value, id1.value, APP_LOCAL_DEVICE_ID_SIZE) == 0;
-}
-
 namespace Yuki {
-
-	static IGameInput* s_GameInput;
-	static GameInputCallbackToken s_DeviceCallbackToken;
-	static std::unordered_map<APP_LOCAL_DEVICE_ID, Unique<InputDevice>> s_InputDevices;
-
-	static Unique<InputDevice> s_GenericMouseDevice;
-	static Unique<InputDevice> s_GenericKeyboardDevice;
-	static Unique<InputDevice> s_GenericGamepadDevice;
 
 	static constexpr uint32_t s_MaxKeyCount = 256;
 
@@ -138,154 +101,16 @@ namespace Yuki {
 		GameInputDeviceStatus currentStatus,
 		GameInputDeviceStatus previousStatus)
 	{
-		const auto* deviceInfo = device->GetDeviceInfo();
+		InputAdapter::Impl* impl = static_cast<InputAdapter::Impl*>(context);
 
 		if (!(currentStatus & GameInputDeviceConnected))
 		{
-			if (!s_InputDevices.contains(deviceInfo->deviceId))
-				return;
-
-			s_InputDevices.erase(deviceInfo->deviceId);
+			impl->UnregisterDevice(device);
 		}
 		else
 		{
-			auto[deviceName, manufacturer] = FetchDeviceNames(device);
-
-			InputDevice::Type deviceType = InputDevice::Type::Unknown;
-
-			if (deviceInfo->supportedInput & GameInputKindMouse)
-			{
-				deviceType = InputDevice::Type::Mouse;
-			}
-			else if (deviceInfo->supportedInput & GameInputKindKeyboard)
-			{
-				deviceType = InputDevice::Type::Keyboard;
-			}
-			else if (deviceInfo->supportedInput & GameInputKindGamepad)
-			{
-				deviceType = InputDevice::Type::Gamepad;
-			}
-			else if (deviceInfo->supportedInput & GameInputKindController)
-			{
-				deviceType = InputDevice::Type::Controller;
-			}
-
-			s_InputDevices[deviceInfo->deviceId] = Unique<InputDevice>::New(deviceType, deviceName, manufacturer, device);
-
-			auto& inputDevice = s_InputDevices[deviceInfo->deviceId];
-
-			if (deviceInfo->mouseInfo)
-			{
-				for (uint32_t i = 0; i < s_MaxMouseChannels; i++)
-				{
-					inputDevice->RegisterChannel();
-				}
-			}
-
-			if (deviceInfo->keyboardInfo)
-			{
-				for (uint32_t i = 0; i < s_MaxKeyCount; i++)
-				{
-					inputDevice->RegisterChannel();
-				}
-			}
-
-			for (uint32_t i = 0; i < deviceInfo->controllerAxisCount; i++)
-			{
-				inputDevice->RegisterChannel();
-			}
-
-			for (uint32_t i = 0; i < deviceInfo->controllerButtonCount; i++)
-			{
-				inputDevice->RegisterChannel();
-			}
-
-			for (uint32_t i = 0; i < deviceInfo->controllerSwitchCount; i++)
-			{
-				inputDevice->RegisterChannel();
-				inputDevice->RegisterChannel();
-			}
-
-			std::cout << "Device: " << manufacturer << " " << deviceName << "\n";
-			if (deviceInfo->supportedInput & GameInputKindUnknown)
-				std::cout << "\tUnknown Input Kind\n";
-			if (deviceInfo->supportedInput & GameInputKindRawDeviceReport)
-				std::cout << "\tRaw Device Report\n";
-			if (deviceInfo->supportedInput & GameInputKindControllerAxis)
-				std::cout << "\tController Axis\n";
-			if (deviceInfo->supportedInput & GameInputKindControllerButton)
-				std::cout << "\tController Button\n";
-			if (deviceInfo->supportedInput & GameInputKindControllerSwitch)
-				std::cout << "\tController Switch\n";
-			if (deviceInfo->supportedInput & GameInputKindController)
-				std::cout << "\tController\n";
-			if (deviceInfo->supportedInput & GameInputKindKeyboard)
-				std::cout << "\tKeyboard\n";
-			if (deviceInfo->supportedInput & GameInputKindMouse)
-				std::cout << "\tMouse\n";
-			if (deviceInfo->supportedInput & GameInputKindTouch)
-				std::cout << "\tTouch\n";
-			if (deviceInfo->supportedInput & GameInputKindMotion)
-				std::cout << "\tMotion\n";
-			if (deviceInfo->supportedInput & GameInputKindArcadeStick)
-				std::cout << "\tArcade Stick\n";
-			if (deviceInfo->supportedInput & GameInputKindFlightStick)
-				std::cout << "\tFlight Stick\n";
-			if (deviceInfo->supportedInput & GameInputKindGamepad)
-				std::cout << "\tGamepad\n";
-			if (deviceInfo->supportedInput & GameInputKindRacingWheel)
-				std::cout << "\tRacing Wheel\n";
-			if (deviceInfo->supportedInput & GameInputKindUiNavigation)
-				std::cout << "\tUI Navigation\n";
-
-			std::cout << "Channel Count: " << inputDevice->GetChannelCount() << "\n";
+			impl->RegisterDevice(device);
 		}
-	}
-
-	InputAdapter::InputAdapter()
-	{
-		CheckHR(GameInputCreate(&s_GameInput));
-
-		CheckHR(s_GameInput->RegisterDeviceCallback(
-			nullptr,
-			GameInputKindController |
-			GameInputKindKeyboard |
-			GameInputKindMouse |
-			GameInputKindGamepad |
-			GameInputKindFlightStick |
-			GameInputKindArcadeStick |
-			GameInputKindRacingWheel,
-			GameInputDeviceAnyStatus,
-			GameInputBlockingEnumeration,
-			nullptr,
-			DeviceCallback,
-			&s_DeviceCallbackToken
-		));
-
-		auto createGenericInputDevice = [](std::string_view type, uint32_t channelCount)
-		{
-			auto inputDevice = Unique<InputDevice>::New(
-				InputDevice::Type::Keyboard,
-				std::format("Internal {} Device", type),
-				"None",
-				nullptr
-			);
-
-			for (uint32_t i = 0; i < channelCount; i++)
-				inputDevice->RegisterChannel();
-
-			return inputDevice;
-		};
-
-		s_GenericMouseDevice = createGenericInputDevice("Mouse", s_MaxMouseChannels);
-		s_GenericKeyboardDevice = createGenericInputDevice("Keyboard", s_MaxKeyCount);
-		s_GenericGamepadDevice = createGenericInputDevice("Gamepad", 128);
-	}
-
-	InputAdapter::~InputAdapter()
-	{
-		s_GameInput->UnregisterCallback(s_DeviceCallbackToken, 0);
-		s_GameInput->Release();
 	}
 
 	static float SwitchPositionToAxisValue(GameInputSwitchPosition position, Axis axis)
@@ -323,68 +148,87 @@ namespace Yuki {
 		return 0.0f;
 	}
 
-	static void ReadMouseInput(IGameInputReading* reading, const GameInputMouseInfo* mouseInfo, InputDevice& device, uint32_t& currentChannel)
+	std::string_view InputDevice::GetName() const { return m_Impl->Name; }
+	std::string_view InputDevice::GetManufacturerName() const { return m_Impl->ManufacturerName; }
+
+	const ExternalInputChannel* InputDevice::GetChannel(uint32_t channelIndex) const
+	{
+		if (channelIndex >= m_Impl->Channels.size())
+		{
+			return nullptr;
+		}
+
+		return &m_Impl->Channels[channelIndex];
+	}
+
+	void InputDevice::Impl::ReadMouseInput(IGameInputReading* reading, uint32_t& currentChannel)
 	{
 		GameInputMouseState mouseState;
+
 		if (!reading->GetMouseState(&mouseState))
 			return;
+
+		auto genericMouse = Adapter->GenericDevices[AnyMouseDevice];
 
 		for (uint32_t i = 0; i < s_MaxMouseChannels - 2; i++)
 		{
 			uint32_t buttonID = 1 << i;
 
 			// If the device doesn't have this mouse button we simply skip
-			if (!(mouseInfo->supportedButtons & buttonID))
+			if (!(Info->mouseInfo->supportedButtons & buttonID))
 				continue;
 
-			s_GenericMouseDevice->WriteChannelValue(currentChannel + i, (mouseState.buttons & buttonID) ? 1.0f : 0.0f);
-			device.WriteChannelValue(currentChannel + i, (mouseState.buttons & buttonID) ? 1.0f : 0.0f);
+			genericMouse->WriteChannelValue(currentChannel + i, (mouseState.buttons & buttonID) ? 1.0f : 0.0f);
+			WriteChannelValue(currentChannel + i, (mouseState.buttons & buttonID) ? 1.0f : 0.0f);
 		}
 		currentChannel += s_MaxMouseChannels - 2;
 
-		if (mouseInfo->hasWheelX)
+		if (Info->mouseInfo->hasWheelX)
 		{
-			s_GenericMouseDevice->WriteChannelValue(currentChannel, static_cast<float>(mouseState.wheelX));
-			device.WriteChannelValue(currentChannel, static_cast<float>(mouseState.wheelX));
+			int64_t delta = mouseState.wheelX - PreviousScrollX;
+			genericMouse->WriteChannelValue(currentChannel, static_cast<float>(delta));
+			WriteChannelValue(currentChannel, static_cast<float>(delta));
+			PreviousScrollX = mouseState.wheelX;
 		}
 		currentChannel++;
 
-		if (mouseInfo->hasWheelY)
+		if (Info->mouseInfo->hasWheelY)
 		{
-			// NOTE(Peter): This causes the generic device to miss 0, this should firstly be a delta, not absolute, and we only write to the generic device if there's been a change
-			//				This is just a quick hack to deal with non-mouse mouse devices showing up
-			if (mouseState.wheelY != 0.0f)
-				s_GenericMouseDevice->WriteChannelValue(currentChannel, static_cast<float>(mouseState.wheelY));
-
-			device.WriteChannelValue(currentChannel, static_cast<float>(mouseState.wheelY));
+			int64_t delta = mouseState.wheelY - PreviousScrollY;
+			genericMouse->WriteChannelValue(currentChannel, static_cast<float>(delta));
+			WriteChannelValue(currentChannel, static_cast<float>(delta));
+			PreviousScrollY = mouseState.wheelY;
 		}
 		currentChannel++;
 	}
 
-	static void ReadKeyboardInput(IGameInputReading* reading, const GameInputKeyboardInfo* keyboardInfo, InputDevice& device, uint32_t& currentChannel)
+	void InputDevice::Impl::ReadKeyboardInput(IGameInputReading* reading, uint32_t& currentChannel)
 	{
 		static std::array<GameInputKeyState, s_MaxKeyCount> s_KeyStates;
-		
+
 		for (uint32_t i = 0; i < s_MaxKeyCount; i++)
 		{
-			device.WriteChannelValue(currentChannel + i, 0.0f);
+			WriteChannelValue(currentChannel + i, 0.0f);
 		}
+
+		auto genericKeyboard = Adapter->GenericDevices[AnyKeyboardDevice];
 
 		uint32_t readKeys = reading->GetKeyState(s_MaxKeyCount, s_KeyStates.data());
 		for (uint32_t i = 0; i < readKeys; i++)
 		{
-			device.WriteChannelValue(currentChannel + s_KeyStates[i].virtualKey, 1.0f);
-			s_GenericKeyboardDevice->WriteChannelValue(s_KeyStates[i].virtualKey, 1.0f);
+			genericKeyboard->WriteChannelValue(s_KeyStates[i].virtualKey, 1.0f);
+			WriteChannelValue(currentChannel + s_KeyStates[i].virtualKey, 1.0f);
 		}
 
 		currentChannel += s_MaxKeyCount;
 	}
 
-	static void ReadControllerAxisInput(IGameInputReading* reading, const GameInputControllerAxisInfo* axisInfo, InputDevice& device, uint32_t& currentChannel)
+	void InputDevice::Impl::ReadControllerAxisInput(IGameInputReading* reading, uint32_t& currentChannel)
 	{
 		static constexpr uint32_t MaxAxes = 256;
 		static std::array<float, MaxAxes> s_AxisValues;
 
+		auto genericGamepad = Adapter->GenericDevices[AnyGamepadDevice];
 		bool isGamepad = reading->GetInputKind() & GameInputKindGamepad;
 
 		uint32_t axisCount = reading->GetControllerAxisCount();
@@ -393,20 +237,21 @@ namespace Yuki {
 		{
 			if (isGamepad)
 			{
-				s_GenericGamepadDevice->WriteChannelValue(currentChannel + i, std::lerp(-1.0f, 1.0f, s_AxisValues[i]));
+				genericGamepad->WriteChannelValue(currentChannel + i, std::lerp(-1.0f, 1.0f, s_AxisValues[i]));
 			}
 
-			device.WriteChannelValue(currentChannel + i, std::lerp(-1.0f, 1.0f, s_AxisValues[i]));
+			WriteChannelValue(currentChannel + i, std::lerp(-1.0f, 1.0f, s_AxisValues[i]));
 		}
 
 		currentChannel += axisCount;
 	}
 
-	static void ReadControllerButtonInput(IGameInputReading* reading, const GameInputControllerButtonInfo* buttonInfo, InputDevice& device, uint32_t& currentChannel)
+	void InputDevice::Impl::ReadControllerButtonInput(IGameInputReading* reading, uint32_t& currentChannel)
 	{
 		static constexpr uint32_t MaxButtons = 512;
 		static std::array<bool, MaxButtons> s_ButtonStates;
 
+		auto genericGamepad = Adapter->GenericDevices[AnyGamepadDevice];
 		bool isGamepad = reading->GetInputKind() & GameInputKindGamepad;
 
 		uint32_t buttonCount = reading->GetControllerButtonCount();
@@ -415,20 +260,21 @@ namespace Yuki {
 		{
 			if (isGamepad)
 			{
-				s_GenericGamepadDevice->WriteChannelValue(currentChannel + buttonIndex, s_ButtonStates[buttonIndex] ? 1.0f : 0.0f);
+				genericGamepad->WriteChannelValue(currentChannel + buttonIndex, s_ButtonStates[buttonIndex] ? 1.0f : 0.0f);
 			}
 
-			device.WriteChannelValue(currentChannel + buttonIndex, s_ButtonStates[buttonIndex] ? 1.0f : 0.0f);
+			WriteChannelValue(currentChannel + buttonIndex, s_ButtonStates[buttonIndex] ? 1.0f : 0.0f);
 		}
 
 		currentChannel += buttonCount;
 	}
 
-	static void ReadControllerSwitchInput(IGameInputReading* reading, const GameInputControllerSwitchInfo* axisInfo, InputDevice& device, uint32_t& currentChannel)
+	void InputDevice::Impl::ReadControllerSwitchInput(IGameInputReading* reading, uint32_t& currentChannel)
 	{
 		static constexpr uint32_t MaxSwitches = 512;
 		static std::array<GameInputSwitchPosition, MaxSwitches> s_SwitchPositions;
 
+		auto genericGamepad = Adapter->GenericDevices[AnyGamepadDevice];
 		bool isGamepad = reading->GetInputKind() & GameInputKindGamepad;
 
 		uint32_t switchCount = reading->GetControllerSwitchCount();
@@ -437,32 +283,140 @@ namespace Yuki {
 		{
 			if (isGamepad)
 			{
-				s_GenericGamepadDevice->WriteChannelValue(currentChannel + switchIndex, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex], Axis::X));
-				s_GenericGamepadDevice->WriteChannelValue(currentChannel + switchIndex + 1, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex + 1], Axis::Y));
+				genericGamepad->WriteChannelValue(currentChannel + switchIndex, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex], Axis::X));
+				genericGamepad->WriteChannelValue(currentChannel + switchIndex + 1, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex + 1], Axis::Y));
 			}
 
-			device.WriteChannelValue(currentChannel + switchIndex, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex], Axis::X));
-			device.WriteChannelValue(currentChannel + switchIndex + 1, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex + 1], Axis::Y));
+			WriteChannelValue(currentChannel + switchIndex, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex], Axis::X));
+			WriteChannelValue(currentChannel + switchIndex + 1, SwitchPositionToAxisValue(s_SwitchPositions[switchIndex + 1], Axis::Y));
 		}
 
 		currentChannel += switchCount;
 	}
 
-	void InputAdapter::Update()
+	void InputDevice::Impl::WriteChannelValue(uint32_t channelIndex, float value)
 	{
-		for (uint32_t i = 0; i < s_MaxKeyCount; i++)
+		if (channelIndex >= Channels.size())
 		{
-			s_GenericKeyboardDevice->WriteChannelValue(i, 0.0f);
+			auto msg = std::format("Tried writing to channel {} which is not a valid channel!", channelIndex);
+			throw Exception(msg);
 		}
 
-		for (auto& [deviceID, device] : s_InputDevices)
+		auto& channel = Channels[channelIndex];
+		channel.PreviousValue = channel.Value;
+		channel.Value = value;
+	}
+
+	InputAdapter InputAdapter::Create()
+	{
+		auto* impl = new Impl();
+
+		CheckHR(GameInputCreate(&impl->Context));
+
+		CheckHR(impl->Context->RegisterDeviceCallback(
+			nullptr,
+			GameInputKindController |
+			GameInputKindKeyboard |
+			GameInputKindMouse |
+			GameInputKindGamepad |
+			GameInputKindFlightStick |
+			GameInputKindArcadeStick |
+			GameInputKindRacingWheel,
+			GameInputDeviceAnyStatus,
+			GameInputBlockingEnumeration,
+			impl,
+			DeviceCallback,
+			&impl->DeviceCallbackToken
+		));
+
+		auto createGenericInputDevice = [&](uint32_t deviceID, std::string_view type, uint32_t channelCount)
+		{
+			auto inputDevice = InputDevice{ new InputDevice::Impl() };
+			inputDevice->Name = std::format("Internal {} Device", type);
+			inputDevice->ManufacturerName = "None";
+
+			for (uint32_t i = 0; i < channelCount; i++)
+				inputDevice->Channels.push_back({});
+
+			impl->GenericDevices[deviceID] = inputDevice;
+		};
+
+		createGenericInputDevice(AnyMouseDevice, "Mouse", s_MaxMouseChannels);
+		createGenericInputDevice(AnyKeyboardDevice, "Keyboard", s_MaxKeyCount);
+		createGenericInputDevice(AnyGamepadDevice, "Gamepad", 128);
+
+		return { impl };
+	}
+
+	void InputAdapter::Destroy()
+	{
+		m_Impl->Context->UnregisterCallback(m_Impl->DeviceCallbackToken, 0);
+		m_Impl->Context->Release();
+
+		delete m_Impl;
+	}
+
+	void InputAdapter::Impl::RegisterDevice(IGameInputDevice* device)
+	{
+		auto [deviceName, manufacturer] = FetchDeviceNames(device);
+
+		InputDeviceID deviceID = static_cast<InputDeviceID>(Devices.size());
+
+		auto* deviceImpl = new InputDevice::Impl();
+		deviceImpl->Adapter = { this };
+		deviceImpl->Device = device;
+		deviceImpl->Info = device->GetDeviceInfo();
+		deviceImpl->Name = deviceName;
+		deviceImpl->ManufacturerName = manufacturer;
+
+		const auto* deviceInfo = device->GetDeviceInfo();
+
+		uint32_t requiredChannels = 0;
+
+		if (deviceInfo->supportedInput & GameInputKindMouse)
+			requiredChannels += s_MaxMouseChannels;
+		
+		if (deviceInfo->supportedInput & GameInputKindKeyboard)
+			requiredChannels += s_MaxKeyCount;
+
+		if (deviceInfo->supportedInput & GameInputKindControllerAxis)
+			requiredChannels += deviceInfo->controllerAxisCount;
+
+		if (deviceInfo->supportedInput & GameInputKindControllerButton)
+			requiredChannels += deviceInfo->controllerButtonCount;
+
+		if (deviceInfo->supportedInput & GameInputKindControllerSwitch)
+			requiredChannels += deviceInfo->controllerSwitchCount * 2;
+
+		deviceImpl->Channels.resize(requiredChannels, { 0.0f, 0.0f });
+
+		Devices[deviceID] = { deviceImpl };
+	}
+
+	void InputAdapter::Impl::UnregisterDevice(IGameInputDevice* device)
+	{
+		std::erase_if(Devices, [device](const auto& keyValue)
+		{
+			return keyValue.second->Device == device;
+		});
+
+		// TODO(Peter): Verify that this is necessary
+		device->Release();
+	}
+
+	void InputAdapter::Update() const
+	{
+		auto genericKeyboard = m_Impl->GenericDevices[AnyKeyboardDevice];
+		for (uint32_t i = 0; i < s_MaxKeyCount; i++)
+		{
+			genericKeyboard->WriteChannelValue(i, 0.0f);
+		}
+
+		for (auto device : m_Impl->Devices | std::views::values)
 		{
 			IGameInputReading* reading;
 
-			auto* nativeDevice = device->GetPrivateData<IGameInputDevice>();
-			const auto* deviceInfo = nativeDevice->GetDeviceInfo();
-
-			if (SUCCEEDED(s_GameInput->GetCurrentReading(deviceInfo->supportedInput, nativeDevice, &reading)))
+			if (SUCCEEDED(m_Impl->Context->GetCurrentReading(device->Info->supportedInput, device->Device, &reading)))
 			{
 				uint32_t currentChannel = 0;
 
@@ -470,27 +424,27 @@ namespace Yuki {
 
 				if (inputKind & GameInputKindMouse)
 				{
-					ReadMouseInput(reading, deviceInfo->mouseInfo, device, currentChannel);
+					device->ReadMouseInput(reading, currentChannel);
 				}
 
 				if (inputKind & GameInputKindKeyboard)
 				{
-					ReadKeyboardInput(reading, deviceInfo->keyboardInfo, device, currentChannel);
+					device->ReadKeyboardInput(reading, currentChannel);
 				}
 
 				if (inputKind & GameInputKindControllerAxis)
 				{
-					ReadControllerAxisInput(reading, deviceInfo->controllerAxisInfo, device, currentChannel);
+					device->ReadControllerAxisInput(reading, currentChannel);
 				}
 
 				if (inputKind & GameInputKindControllerButton)
 				{
-					ReadControllerButtonInput(reading, deviceInfo->controllerButtonInfo, device, currentChannel);
+					device->ReadControllerButtonInput(reading, currentChannel);
 				}
 
 				if (inputKind & GameInputKindControllerSwitch)
 				{
-					ReadControllerSwitchInput(reading, deviceInfo->controllerSwitchInfo, device, currentChannel);
+					device->ReadControllerSwitchInput(reading, currentChannel);
 				}
 
 				reading->Release();
@@ -498,36 +452,19 @@ namespace Yuki {
 		}
 	}
 
-	uint32_t InputAdapter::GetDeviceCount() const
+	const InputDevice InputAdapter::GetDevice(uint32_t deviceIndex) const
 	{
-		return static_cast<uint32_t>(s_InputDevices.size());
-	}
-
-	const InputDevice* InputAdapter::GetDevice(uint32_t deviceIndex) const
-	{
-		if (deviceIndex == AnyMouseDevice)
+		if (m_Impl->GenericDevices.contains(deviceIndex))
 		{
-			return s_GenericMouseDevice.Raw();
-		}
-		else if (deviceIndex == AnyKeyboardDevice)
-		{
-			return s_GenericKeyboardDevice.Raw();
-		}
-		else if (deviceIndex == AnyGamepadDevice)
-		{
-			return s_GenericGamepadDevice.Raw();
+			return m_Impl->GenericDevices.at(deviceIndex);
 		}
 
-		uint32_t i = 0;
-		for (const auto& [deviceID, device] : s_InputDevices)
+		if (m_Impl->Devices.contains(deviceIndex))
 		{
-			if (i == deviceIndex)
-				return device.Raw();
-
-			i++;
+			return m_Impl->Devices.at(deviceIndex);
 		}
 
-		return nullptr;
+		return {};
 	}
 
 }

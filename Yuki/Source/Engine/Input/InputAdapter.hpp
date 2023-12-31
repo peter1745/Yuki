@@ -4,16 +4,14 @@
 
 namespace Yuki {
 
-	class InputAdapter
+	struct InputAdapter : public Handle<InputAdapter>
 	{
-	public:
-		InputAdapter();
-		~InputAdapter();
+		static InputAdapter Create();
+		void Destroy();
 
-		void Update();
+		void Update() const;
 
-		uint32_t GetDeviceCount() const;
-		const InputDevice* GetDevice(uint32_t deviceIndex) const;
+		const InputDevice GetDevice(uint32_t deviceIndex) const;
 	};
 
 }

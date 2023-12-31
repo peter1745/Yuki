@@ -4,6 +4,16 @@
 
 namespace Yuki {
 
+	InputSystem::InputSystem()
+	{
+		m_Adapter = InputAdapter::Create();
+	}
+
+	InputSystem::~InputSystem()
+	{
+		m_Adapter.Destroy();
+	}
+
 	InputActionID InputSystem::RegisterAction(const InputAction& action)
 	{
 		InputActionID id = static_cast<InputActionID>(m_Actions.size());
@@ -96,12 +106,12 @@ namespace Yuki {
 
 					for (const auto& triggerBinding : axisBinding.Bindings)
 					{
-						const auto* device = m_Adapter.GetDevice(triggerBinding.ID.DeviceID);
+						const auto device = m_Adapter.GetDevice(triggerBinding.ID.DeviceID);
 
-						if (device == nullptr)
+						if (!device)
 							continue;
 
-						const auto* channel = device->GetChannel(triggerBinding.ID.InputID);
+						const auto* channel = device.GetChannel(triggerBinding.ID.InputID);
 
 						if (channel == nullptr)
 							continue;
