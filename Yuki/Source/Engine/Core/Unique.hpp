@@ -75,7 +75,7 @@ namespace Yuki {
 		T* operator->() const { return m_Instance; }
 
 		template<typename U>
-		operator U& () const& { return *PointerCast<U, T>(m_Instance); }
+		operator U&() const & { return *static_cast<U*>(m_Instance); }
 
 	public:
 		template<typename... TArgs>

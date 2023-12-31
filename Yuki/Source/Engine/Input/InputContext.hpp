@@ -10,9 +10,6 @@ namespace Yuki {
 
 	using InputActionID = uint32_t;
 
-	template<typename From, typename To>
-	concept CastableTo = requires { static_cast<To>(std::declval<From>()); };
-
 	class InputReading
 	{
 	public:
@@ -21,7 +18,7 @@ namespace Yuki {
 		template<size_t N>
 		std::array<float, N> Read() const
 		{
-			if (N >= m_Values.size())
+			if (N > m_Values.size())
 			{
 				throw Exception("Reading out of bounds");
 			}
@@ -53,12 +50,21 @@ namespace Yuki {
 		friend class InputSystem;
 	};
 
-	using InputActionFunction = std::function<void(InputReading)>;
+	using InputActionFunction = std::function<void(const InputReading&)>;
 
 	class InputContext
 	{
 	public:
 		bool Active = false;
+
+	private:
+		void InvokeActionFunction(InputActionID actionID, const InputReading& reading)
+		{
+			if (!m_ActionBindings.contains(actionID))
+				return;
+
+			m_ActionBindings.at(actionID)(reading);
+		}
 
 	private:
 		std::unordered_map<InputActionID, InputActionFunction> m_ActionBindings;

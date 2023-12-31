@@ -7,25 +7,15 @@
 
 #include <iostream>
 #include <ranges>
-#include <Windows.h>
 
-class EngineTester final : public Yuki::Application
+using namespace Yuki;
+
+class EngineTester final : public Application
 {
 protected:
 	void OnRun() override
 	{
 		m_Window = m_WindowSystem->NewWindow("Input Testing");
-
-		using namespace Yuki;
-
-		InputContext context;
-
-		/*
-		TODO(Peter):
-			- Implement InputID detection (e.g press thumbstick forward and get the input id for that device + input)
-			- Add support for Pressed / Released / Held behavior for triggers
-			- Input Mixers
-		*/
 
 		auto walkAction = m_InputSystem->RegisterAction({
 			.ValueCount = 2,
@@ -46,15 +36,41 @@ protected:
 			.ConsumeInputs = true
 		});
 
-		InputContextID contextID = m_InputSystem->RegisterContext(context);
+		auto mouseAction = m_InputSystem->RegisterAction({
+			.ValueCount = 1,
+			.AxisBindings = {
+				{
+					.Bindings = {
+						{ { AnyMouseDevice, MouseCode::ButtonLeft },     1.0f },
+						{ { AnyMouseDevice, MouseCode::ButtonRight },    2.0f },
+						{ { AnyMouseDevice, MouseCode::ButtonMiddle },   3.0f },
+						{ { AnyMouseDevice, MouseCode::Button4 },        4.0f },
+						{ { AnyMouseDevice, MouseCode::Button5 },        5.0f },
+						{ { AnyMouseDevice, MouseCode::WheelTiltLeft },  6.0f },
+						{ { AnyMouseDevice, MouseCode::WheelTiltRight }, 7.0f },
+						{ { AnyMouseDevice, MouseCode::WheelScrollX },   8.0f },
+						{ { AnyMouseDevice, MouseCode::WheelScrollY },   9.0f },
+					}
+				}
+			},
+			.ConsumeInputs = true
+		});
 
-		m_InputSystem->BindAction(contextID, walkAction, [&](InputReading reading)
+		m_ContextID = m_InputSystem->CreateContext();
+
+		m_InputSystem->BindAction(m_ContextID, walkAction, [&](const InputReading& reading)
 		{
 			auto [x, y] = reading.Read<2>();
 			std::cout << "X: " << x << ", Y: " << y << "\n";
 		});
 
-		m_InputSystem->ActivateContext(contextID);
+		m_InputSystem->BindAction(m_ContextID, mouseAction, [&](const InputReading& reading)
+		{
+			auto [x] = reading.Read<1>();
+			std::cout << "Mouse Button: " << x << "\n";
+		});
+
+		m_InputSystem->ActivateContext(m_ContextID);
 	}
 
 	void OnUpdate() override
@@ -66,11 +82,13 @@ protected:
 	}
 
 private:
-	Yuki::Window* m_Window;
+	Window* m_Window;
+	InputContextID m_ContextID;
+
 };
 
 int main()
 {
-	Yuki::AppRunner<EngineTester>().Run();
+	AppRunner<EngineTester>().Run();
 	return 0;
 }

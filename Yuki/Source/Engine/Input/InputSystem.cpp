@@ -11,10 +11,10 @@ namespace Yuki {
 		return id;
 	}
 
-	InputContextID InputSystem::RegisterContext(const InputContext& context)
+	InputContextID InputSystem::CreateContext()
 	{
 		InputContextID id = static_cast<InputContextID>(m_Contexts.size());
-		m_Contexts.push_back(context); // TODO: std::move
+		m_Contexts.push_back({});
 		return id;
 	}
 
@@ -45,23 +45,26 @@ namespace Yuki {
 	{
 		m_Adapter.Update();
 
+		// Dispatch input events to the active actions
 		for (auto& actionMetadata : m_ActionMetadata)
 		{
 			bool triggered = false;
 
 			for (const auto& trigger : actionMetadata.Triggers)
 			{
+				// If the channel hasn't changed we don't need to do anything (this will require more complex behavior in the future)
 				if (!trigger.Channel->IsDirty())
 					continue;
 
-				actionMetadata.Reading.Write(trigger.Index, trigger.Channel->Value * trigger.Scale);
+				actionMetadata.Reading.Write(trigger.AxisIndex, trigger.Channel->Value * trigger.Scale);
 				triggered = true;
 			}
 
 			if (!triggered)
 				continue;
 
-			m_Contexts[actionMetadata.ContextID].m_ActionBindings[actionMetadata.ID](actionMetadata.Reading);
+			// Dispatch the reading to the bound action
+			m_Contexts[actionMetadata.ContextID].InvokeActionFunction(actionMetadata.ID, actionMetadata.Reading);
 		}
 	}
 
@@ -71,9 +74,9 @@ namespace Yuki {
 
 		std::vector<const ExternalInputChannel*> consumedChannels;
 
-		for (uint32_t i = 0; i < m_Contexts.size(); i++)
+		for (uint32_t contextIndex = 0; contextIndex < m_Contexts.size(); contextIndex++)
 		{
-			const auto& context = m_Contexts[i];
+			const auto& context = m_Contexts[contextIndex];
 
 			if (!context.Active)
 				continue;
@@ -84,29 +87,37 @@ namespace Yuki {
 
 				auto& actionMetadata = m_ActionMetadata.emplace_back();
 				actionMetadata.ID = actionID;
-				actionMetadata.ContextID = i;
+				actionMetadata.ContextID = contextIndex;
 				actionMetadata.Reading = InputReading(action.ValueCount);
 
-				for (uint32_t j = 0; j < action.AxisBindings.size(); j++)
+				for (uint32_t axisIndex = 0; axisIndex < action.AxisBindings.size(); axisIndex++)
 				{
-					const auto& axisBinding = action.AxisBindings[j];
+					const auto& axisBinding = action.AxisBindings[axisIndex];
 
 					for (const auto& triggerBinding : axisBinding.Bindings)
 					{
-						const auto& device = m_Adapter.GetDevice(triggerBinding.ID.DeviceID);
-						const auto* channel = device.GetChannel(triggerBinding.ID.InputID);
+						const auto* device = m_Adapter.GetDevice(triggerBinding.ID.DeviceID);
+
+						if (device == nullptr)
+							continue;
+
+						const auto* channel = device->GetChannel(triggerBinding.ID.InputID);
+
+						if (channel == nullptr)
+							continue;
 
 						// If our channel has been marked as consumed already we just ignore this trigger (other triggers may still work)
 						if (std::ranges::find(consumedChannels, channel) != consumedChannels.end())
 							continue;
 
 						auto& actionTrigger = actionMetadata.Triggers.emplace_back();
-						actionTrigger.Index = j;
+						actionTrigger.AxisIndex = axisIndex;
 						actionTrigger.Channel = channel;
 						actionTrigger.Scale = triggerBinding.Scale;
 
 						if (action.ConsumeInputs)
 						{
+							// Make sure that no other trigger bindings can use our channel if we consume it
 							consumedChannels.push_back(channel);
 						}
 					}

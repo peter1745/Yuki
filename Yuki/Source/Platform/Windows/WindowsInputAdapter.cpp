@@ -45,8 +45,14 @@ namespace Yuki {
 	static GameInputCallbackToken s_DeviceCallbackToken;
 	static std::unordered_map<APP_LOCAL_DEVICE_ID, Unique<InputDevice>> s_InputDevices;
 
+	static Unique<InputDevice> s_GenericMouseDevice;
 	static Unique<InputDevice> s_GenericKeyboardDevice;
 	static Unique<InputDevice> s_GenericGamepadDevice;
+
+	static constexpr uint32_t s_MaxKeyCount = 256;
+
+	// Max supported mouse buttons according to GameInput + scroll wheel x and y
+	static constexpr uint32_t s_MaxMouseChannels = 7 + 2;
 
 	// Ugly mess to deal with the fact that GameInput doesn't provide us with a user friendly name currently
 	static std::pair<std::string, std::string> FetchDeviceNames(IGameInputDevice* device)
@@ -124,8 +130,6 @@ namespace Yuki {
 		return { "Generic HID Device", "Unknown Manufacturer" };
 	}
 
-	static constexpr uint32_t s_MaxKeyCount = 256;
-
 	static void CALLBACK DeviceCallback(
 		GameInputCallbackToken callbackToken,
 		void* context,
@@ -157,6 +161,10 @@ namespace Yuki {
 			{
 				deviceType = InputDevice::Type::Keyboard;
 			}
+			else if (deviceInfo->supportedInput & GameInputKindGamepad)
+			{
+				deviceType = InputDevice::Type::Gamepad;
+			}
 			else if (deviceInfo->supportedInput & GameInputKindController)
 			{
 				deviceType = InputDevice::Type::Controller;
@@ -168,11 +176,7 @@ namespace Yuki {
 
 			if (deviceInfo->mouseInfo)
 			{
-				uint32_t buttonCount = std::popcount(static_cast<uint32_t>(deviceInfo->mouseInfo->supportedButtons));
-				buttonCount += deviceInfo->mouseInfo->hasWheelX;
-				buttonCount += deviceInfo->mouseInfo->hasWheelY;
-
-				for (uint32_t i = 0; i < buttonCount; i++)
+				for (uint32_t i = 0; i < s_MaxMouseChannels; i++)
 				{
 					inputDevice->RegisterChannel();
 				}
@@ -262,7 +266,7 @@ namespace Yuki {
 		{
 			auto inputDevice = Unique<InputDevice>::New(
 				InputDevice::Type::Keyboard,
-				"Internal Keyboard Device",
+				std::format("Internal {} Device", type),
 				"None",
 				nullptr
 			);
@@ -273,6 +277,7 @@ namespace Yuki {
 			return inputDevice;
 		};
 
+		s_GenericMouseDevice = createGenericInputDevice("Mouse", s_MaxMouseChannels);
 		s_GenericKeyboardDevice = createGenericInputDevice("Keyboard", s_MaxKeyCount);
 		s_GenericGamepadDevice = createGenericInputDevice("Gamepad", 128);
 	}
@@ -324,8 +329,7 @@ namespace Yuki {
 		if (!reading->GetMouseState(&mouseState))
 			return;
 
-		static constexpr uint32_t MaxMouseButtonCount = 7;
-		for (uint32_t i = 0; i < MaxMouseButtonCount; i++)
+		for (uint32_t i = 0; i < s_MaxMouseChannels - 2; i++)
 		{
 			uint32_t buttonID = 1 << i;
 
@@ -333,21 +337,28 @@ namespace Yuki {
 			if (!(mouseInfo->supportedButtons & buttonID))
 				continue;
 
-			device.WriteChannelValue(currentChannel, (mouseState.buttons & buttonID) ? 1.0f : 0.0f);
-			currentChannel++;
+			s_GenericMouseDevice->WriteChannelValue(currentChannel + i, (mouseState.buttons & buttonID) ? 1.0f : 0.0f);
+			device.WriteChannelValue(currentChannel + i, (mouseState.buttons & buttonID) ? 1.0f : 0.0f);
 		}
+		currentChannel += s_MaxMouseChannels - 2;
 
 		if (mouseInfo->hasWheelX)
 		{
+			s_GenericMouseDevice->WriteChannelValue(currentChannel, static_cast<float>(mouseState.wheelX));
 			device.WriteChannelValue(currentChannel, static_cast<float>(mouseState.wheelX));
-			currentChannel++;
 		}
+		currentChannel++;
 
 		if (mouseInfo->hasWheelY)
 		{
+			// NOTE(Peter): This causes the generic device to miss 0, this should firstly be a delta, not absolute, and we only write to the generic device if there's been a change
+			//				This is just a quick hack to deal with non-mouse mouse devices showing up
+			if (mouseState.wheelY != 0.0f)
+				s_GenericMouseDevice->WriteChannelValue(currentChannel, static_cast<float>(mouseState.wheelY));
+
 			device.WriteChannelValue(currentChannel, static_cast<float>(mouseState.wheelY));
-			currentChannel++;
 		}
+		currentChannel++;
 	}
 
 	static void ReadKeyboardInput(IGameInputReading* reading, const GameInputKeyboardInfo* keyboardInfo, InputDevice& device, uint32_t& currentChannel)
@@ -365,14 +376,6 @@ namespace Yuki {
 			device.WriteChannelValue(currentChannel + s_KeyStates[i].virtualKey, 1.0f);
 			s_GenericKeyboardDevice->WriteChannelValue(s_KeyStates[i].virtualKey, 1.0f);
 		}
-
-		// NOTE(Peter): Specifically not using `reading` here because the keyboard implementation for GameInput
-		//				doesn't let us easily index a channel based on the key
-		/*for (uint32_t i = 0; i < s_MaxKeyCount; i++)
-		{
-			bool state = GetAsyncKeyState(i) & 0x8000;
-			device.WriteChannelValue(currentChannel + i, AxisValue1D{ state ? 1.0f : 0.0f });
-		}*/
 
 		currentChannel += s_MaxKeyCount;
 	}
@@ -500,30 +503,31 @@ namespace Yuki {
 		return static_cast<uint32_t>(s_InputDevices.size());
 	}
 
-	const InputDevice& InputAdapter::GetDevice(uint32_t deviceIndex) const
+	const InputDevice* InputAdapter::GetDevice(uint32_t deviceIndex) const
 	{
-		if (deviceIndex == AnyKeyboardDevice)
+		if (deviceIndex == AnyMouseDevice)
 		{
-			return s_GenericKeyboardDevice;
+			return s_GenericMouseDevice.Raw();
+		}
+		else if (deviceIndex == AnyKeyboardDevice)
+		{
+			return s_GenericKeyboardDevice.Raw();
 		}
 		else if (deviceIndex == AnyGamepadDevice)
 		{
-			return s_GenericGamepadDevice;
-		}
-
-		if (deviceIndex >= s_InputDevices.size())
-		{
-			throw Exception("Index out of bounds trying to get input device!");
+			return s_GenericGamepadDevice.Raw();
 		}
 
 		uint32_t i = 0;
 		for (const auto& [deviceID, device] : s_InputDevices)
 		{
 			if (i == deviceIndex)
-				return device;
+				return device.Raw();
 
 			i++;
 		}
+
+		return nullptr;
 	}
 
 }

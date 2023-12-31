@@ -6,6 +6,10 @@
 
 namespace Yuki {
 
+	inline constexpr uint32_t AnyMouseDevice =    ~0u - 1;
+	inline constexpr uint32_t AnyKeyboardDevice = ~0u - 2;
+	inline constexpr uint32_t AnyGamepadDevice =  ~0u - 3;
+
 	class InputDevice
 	{
 	public:
@@ -14,6 +18,7 @@ namespace Yuki {
 			Unknown,
 			Mouse,
 			Keyboard,
+			Gamepad,
 			Controller
 		};
 
@@ -48,7 +53,7 @@ namespace Yuki {
 		{
 			if (channelIndex >= m_Channels.size())
 			{
-				throw Exception("Channel index out of range!");
+				return nullptr;
 			}
 
 			return &m_Channels[channelIndex];
@@ -58,8 +63,7 @@ namespace Yuki {
 		{
 			if (channelIndex >= m_Channels.size())
 			{
-				auto msg = std::format("Tried reading from channel {} which is not a valid channel!", channelIndex);
-				throw Exception(msg);
+				throw Exception(std::format("Tried reading from channel {} which is not a valid channel!", channelIndex));
 			}
 
 			return m_Channels[channelIndex].Value;

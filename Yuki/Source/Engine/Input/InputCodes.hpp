@@ -149,4 +149,18 @@ namespace Yuki {
 		RightThumbstickButton,
 	};
 
+	enum class MouseCode
+	{
+		ButtonLeft,
+		ButtonRight,
+		ButtonMiddle,
+		Button4,
+		Button5,
+		WheelTiltLeft,
+		WheelTiltRight,
+
+		WheelScrollX,
+		WheelScrollY,
+	};
+
 }

@@ -19,7 +19,7 @@ namespace Yuki {
 
 		struct TriggerMetadata
 		{
-			uint32_t Index;
+			uint32_t AxisIndex;
 			const ExternalInputChannel* Channel = nullptr;
 			float Scale;
 		};
@@ -31,7 +31,7 @@ namespace Yuki {
 	{
 	public:
 		InputActionID RegisterAction(const InputAction& action);
-		InputContextID RegisterContext(const InputContext& context);
+		InputContextID CreateContext();
 
 		void BindAction(InputContextID contextID, InputActionID actionID, InputActionFunction func);
 

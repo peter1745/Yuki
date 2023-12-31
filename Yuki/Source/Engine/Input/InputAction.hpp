@@ -14,6 +14,9 @@ namespace Yuki {
 		InputIDWrapper(uint32_t id)
 			: InputID(id) {}
 
+		InputIDWrapper(MouseCode code)
+			: InputID(std::to_underlying(code)) {}
+
 		InputIDWrapper(KeyCode code)
 			: InputID(std::to_underlying(code)) {}
 
