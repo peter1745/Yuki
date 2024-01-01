@@ -56,7 +56,7 @@ namespace Yuki {
 		m_Adapter.Update();
 
 		// Dispatch input events to the active actions
-		for (auto& [actionID, actionMetadata] : m_ActionMetadata)
+		for (auto& actionMetadata : m_ActionMetadata)
 		{
 			bool triggered = false;
 
@@ -74,10 +74,7 @@ namespace Yuki {
 				continue;
 
 			// Dispatch the reading to the bound action
-			for (const auto& contextID : actionMetadata.ContextIDs)
-			{
-				m_Contexts[contextID].InvokeActionFunction(actionMetadata.ID, actionMetadata.Reading);
-			}
+			m_Contexts[actionMetadata.ContextID].InvokeActionFunction(actionMetadata.ID, actionMetadata.Reading);
 		}
 	}
 
@@ -85,7 +82,7 @@ namespace Yuki {
 	{
 		m_ActionMetadata.clear();
 
-		std::vector<const ExternalInputChannel*> consumedChannels;
+		std::unordered_map<InputActionID, const ExternalInputChannel*> consumedChannels;
 
 		for (uint32_t contextIndex = 0; contextIndex < m_Contexts.size(); contextIndex++)
 		{
@@ -98,15 +95,9 @@ namespace Yuki {
 			{
 				const auto& action = m_Actions[actionID];
 
-				if (m_ActionMetadata.contains(actionID))
-				{
-					m_ActionMetadata[actionID].ContextIDs.push_back(contextIndex);
-					continue;
-				}
-
-				auto& actionMetadata = m_ActionMetadata[actionID];
+				auto& actionMetadata = m_ActionMetadata.emplace_back();
 				actionMetadata.ID = actionID;
-				actionMetadata.ContextIDs.push_back(contextIndex);
+				actionMetadata.ContextID = contextIndex;
 				actionMetadata.Reading = InputReading(action.ValueCount);
 
 				for (uint32_t axisIndex = 0; axisIndex < action.AxisBindings.size(); axisIndex++)
@@ -126,7 +117,17 @@ namespace Yuki {
 							continue;
 
 						// If our channel has been marked as consumed already we just ignore this trigger (other triggers may still work)
-						if (std::ranges::find(consumedChannels, channel) != consumedChannels.end())
+						bool usesConsumedChanel = false;
+						for (auto [otherActionID, consumedChannel] : consumedChannels)
+						{
+							if (otherActionID != actionID && channel == consumedChannel)
+							{
+								usesConsumedChanel = true;
+								break;
+							}
+						}
+
+						if (usesConsumedChanel)
 							continue;
 
 						auto& actionTrigger = actionMetadata.Triggers.emplace_back();
@@ -137,11 +138,31 @@ namespace Yuki {
 						if (action.ConsumeInputs)
 						{
 							// Make sure that no other trigger bindings can use our channel if we consume it
-							consumedChannels.push_back(channel);
+							consumedChannels[actionID] = channel;
 						}
 					}
 				}
 			}
+		}
+
+		// Ensures that channel consumption is respected regardless of context creation order or binding order
+		// while ensuring that context layering still works
+		for (auto& actionMetadata : m_ActionMetadata)
+		{
+			std::erase_if(actionMetadata.Triggers, [&](const ActionMetadata::TriggerMetadata& trigger)
+			{
+				for (auto [otherActionID, consumedChannel] : consumedChannels)
+				{
+					if (otherActionID != actionMetadata.ID && trigger.Channel == consumedChannel)
+					{
+						// Remove this trigger if it uses a channel that has been marked as consumed
+						// by a *different* action
+						return true;
+					}
+				}
+
+				return false;
+			});
 		}
 	}
 
