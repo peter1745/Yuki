@@ -56,7 +56,7 @@ namespace Yuki {
 		m_Adapter.Update();
 
 		// Dispatch input events to the active actions
-		for (auto& actionMetadata : m_ActionMetadata)
+		for (auto& [actionID, actionMetadata] : m_ActionMetadata)
 		{
 			bool triggered = false;
 
@@ -74,7 +74,10 @@ namespace Yuki {
 				continue;
 
 			// Dispatch the reading to the bound action
-			m_Contexts[actionMetadata.ContextID].InvokeActionFunction(actionMetadata.ID, actionMetadata.Reading);
+			for (const auto& contextID : actionMetadata.ContextIDs)
+			{
+				m_Contexts[contextID].InvokeActionFunction(actionMetadata.ID, actionMetadata.Reading);
+			}
 		}
 	}
 
@@ -95,9 +98,15 @@ namespace Yuki {
 			{
 				const auto& action = m_Actions[actionID];
 
-				auto& actionMetadata = m_ActionMetadata.emplace_back();
+				if (m_ActionMetadata.contains(actionID))
+				{
+					m_ActionMetadata[actionID].ContextIDs.push_back(contextIndex);
+					continue;
+				}
+
+				auto& actionMetadata = m_ActionMetadata[actionID];
 				actionMetadata.ID = actionID;
-				actionMetadata.ContextID = contextIndex;
+				actionMetadata.ContextIDs.push_back(contextIndex);
 				actionMetadata.Reading = InputReading(action.ValueCount);
 
 				for (uint32_t axisIndex = 0; axisIndex < action.AxisBindings.size(); axisIndex++)

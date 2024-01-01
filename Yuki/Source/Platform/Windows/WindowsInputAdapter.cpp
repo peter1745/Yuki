@@ -339,7 +339,7 @@ namespace Yuki {
 			GameInputKindArcadeStick |
 			GameInputKindRacingWheel,
 			GameInputDeviceAnyStatus,
-			GameInputAsyncEnumeration,
+			GameInputBlockingEnumeration,
 			impl,
 			DeviceCallback,
 			&impl->DeviceCallbackToken
@@ -434,6 +434,9 @@ namespace Yuki {
 	{
 		for (auto device : m_Impl->Devices | std::views::values)
 		{
+			if (!device)
+				continue;
+
 			for (auto& channel : device->Channels)
 			{
 				channel.PreviousValue = channel.Value;

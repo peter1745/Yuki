@@ -13,7 +13,7 @@ namespace Yuki {
 	struct ActionMetadata
 	{
 		InputActionID ID;
-		InputContextID ContextID;
+		std::vector<InputContextID> ContextIDs;
 
 		InputReading Reading;
 
@@ -52,7 +52,7 @@ namespace Yuki {
 		std::vector<InputAction> m_Actions;
 		std::vector<InputContext> m_Contexts;
 
-		std::vector<ActionMetadata> m_ActionMetadata;
+		std::unordered_map<InputActionID, ActionMetadata> m_ActionMetadata;
 
 		friend class Application;
 	};

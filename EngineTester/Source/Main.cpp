@@ -57,11 +57,19 @@ protected:
 		});
 
 		m_ContextID = m_InputSystem->CreateContext();
+		m_OtherContext = m_InputSystem->CreateContext();
 
 		m_InputSystem->BindAction(m_ContextID, walkAction, [&](const InputReading& reading)
 		{
 			auto [x, y] = reading.Read<2>();
-			std::cout << "X: " << x << ", Y: " << y << "\n";
+			//std::cout << "X: " << x << ", Y: " << y << "\n";
+			std::cout << "Main Context\n";
+		});
+
+		m_InputSystem->BindAction(m_OtherContext, walkAction, [&](const InputReading& reading)
+		{
+			auto [x, y] = reading.Read<2>();
+			std::cout << "Other Context\n";
 		});
 
 		m_InputSystem->BindAction(m_ContextID, mouseAction, [&](const InputReading& reading)
@@ -71,6 +79,7 @@ protected:
 		});
 
 		m_InputSystem->ActivateContext(m_ContextID);
+		m_InputSystem->ActivateContext(m_OtherContext);
 	}
 
 	void OnUpdate() override
@@ -83,7 +92,7 @@ protected:
 
 private:
 	Window* m_Window;
-	InputContextID m_ContextID;
+	InputContextID m_ContextID, m_OtherContext;
 
 };
 
