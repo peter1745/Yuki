@@ -17,6 +17,30 @@ protected:
 	{
 		m_Window = m_WindowSystem->NewWindow("Input Testing");
 
+		auto consuming = m_InputSystem->RegisterAction({
+			.ValueCount = 1,
+			.AxisBindings = {
+				{
+					.Bindings = {
+						{ { GenericKeyboard, KeyCode::K },  1.0f},
+					}
+				}
+			},
+			.ConsumeInputs = true
+		});
+
+		auto nonConsuming = m_InputSystem->RegisterAction({
+			.ValueCount = 1,
+			.AxisBindings = {
+				{
+					.Bindings = {
+						{ { GenericKeyboard, KeyCode::K },  1.0f},
+					}
+				}
+			},
+			.ConsumeInputs = false
+		});
+
 		auto walkAction = m_InputSystem->RegisterAction({
 			.ValueCount = 2,
 			.AxisBindings = {
@@ -41,23 +65,30 @@ protected:
 			.AxisBindings = {
 				{
 					.Bindings = {
-						{ { GenericMouse, MouseCode::ButtonLeft },     1.0f },
-						{ { GenericMouse, MouseCode::ButtonRight },    2.0f },
-						{ { GenericMouse, MouseCode::ButtonMiddle },   3.0f },
-						{ { GenericMouse, MouseCode::Button4 },        4.0f },
-						{ { GenericMouse, MouseCode::Button5 },        5.0f },
-						{ { GenericMouse, MouseCode::WheelTiltLeft },  6.0f },
-						{ { GenericMouse, MouseCode::WheelTiltRight }, 7.0f },
-						{ { GenericMouse, MouseCode::WheelScrollX },   8.0f },
-						{ { GenericMouse, MouseCode::WheelScrollY },   9.0f },
+						{ { GenericMouse, MouseCode::WheelScrollY },   1.0f },
 					}
 				}
 			},
 			.ConsumeInputs = true
 		});
 
-		m_ContextID = m_InputSystem->CreateContext();
 		m_OtherContext = m_InputSystem->CreateContext();
+		m_ContextID = m_InputSystem->CreateContext();
+
+		m_InputSystem->BindAction(m_ContextID, nonConsuming, [&](const InputReading& reading)
+		{
+			std::cout << "We should NOT see this\n";
+		});
+
+		m_InputSystem->BindAction(m_OtherContext, consuming, [&](const InputReading& reading)
+		{
+			std::cout << "We should see this\n";
+		});
+
+		m_InputSystem->BindAction(m_OtherContext, nonConsuming, [&](const InputReading& reading)
+		{
+			std::cout << "We should NOT see this either\n";
+		});
 
 		m_InputSystem->BindAction(m_ContextID, walkAction, [&](const InputReading& reading)
 		{
@@ -75,7 +106,7 @@ protected:
 		m_InputSystem->BindAction(m_ContextID, mouseAction, [&](const InputReading& reading)
 		{
 			auto [x] = reading.Read<1>();
-			std::cout << "Mouse Button: " << x << "\n";
+			std::cout << "Scroll Delta: " << x << "\n";
 		});
 
 		m_InputSystem->ActivateContext(m_ContextID);
