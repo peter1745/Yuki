@@ -21,7 +21,7 @@ namespace Yuki {
 		{
 			uint32_t AxisIndex;
 			const ExternalInputChannel* Channel = nullptr;
-			float Scale;
+			float32_t Scale;
 		};
 
 		std::vector<TriggerMetadata> Triggers;

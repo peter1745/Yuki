@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Engine/Core/Core.hpp"
+
 #include "InputAxis.hpp"
 #include "InputCodes.hpp"
 
@@ -11,17 +13,11 @@ namespace Yuki {
 	{
 		uint32_t InputID;
 
-		InputIDWrapper(uint32_t id)
-			: InputID(id) {}
-
-		InputIDWrapper(MouseCode code)
-			: InputID(std::to_underlying(code)) {}
-
-		InputIDWrapper(KeyCode code)
-			: InputID(std::to_underlying(code)) {}
-
-		InputIDWrapper(GamepadInput code)
-			: InputID(std::to_underlying(code)) {}
+		template<CastableTo<uint32_t> T>
+		InputIDWrapper(T value)
+			: InputID(static_cast<uint32_t>(value))
+		{
+		}
 
 		operator uint32_t() const { return InputID; }
 	};
@@ -35,7 +31,7 @@ namespace Yuki {
 	struct TriggerBinding
 	{
 		TriggerID ID;
-		float Scale;
+		float32_t Scale;
 	};
 
 	struct AxisBinding

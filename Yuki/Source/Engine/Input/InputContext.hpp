@@ -2,6 +2,7 @@
 
 #include "InputAxis.hpp"
 
+#include "Engine/Core/Core.hpp"
 #include "Engine/Core/Exception.hpp"
 
 #include <functional>
@@ -16,15 +17,15 @@ namespace Yuki {
 		InputReading() = default;
 
 		template<size_t N>
-		std::array<float, N> Read() const
+		std::array<float32_t, N> Read() const
 		{
 			if (N > m_Values.size())
 			{
 				throw Exception("Reading out of bounds");
 			}
 
-			std::array<float, N> values;
-			memcpy(values.data(), m_Values.data(), N * sizeof(float));
+			std::array<float32_t, N> values;
+			memcpy(values.data(), m_Values.data(), N * sizeof(float32_t));
 			return values;
 		}
 
@@ -34,7 +35,7 @@ namespace Yuki {
 			m_Values.resize(valueCount, 0.0f);
 		}
 
-		void Write(uint32_t index, float value)
+		void Write(uint32_t index, float32_t value)
 		{
 			if (index >= m_Values.size())
 			{
@@ -45,7 +46,7 @@ namespace Yuki {
 		}
 
 	private:
-		std::vector<float> m_Values;
+		std::vector<float32_t> m_Values;
 
 		friend class InputSystem;
 	};

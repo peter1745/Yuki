@@ -22,14 +22,14 @@ protected:
 			.AxisBindings = {
 				{
 					.Bindings = {
-						{ { AnyKeyboardDevice, KeyCode::D },  1.0f},
-						{ { AnyKeyboardDevice, KeyCode::A }, -1.0f},
+						{ { GenericKeyboard, KeyCode::D },  1.0f},
+						{ { GenericKeyboard, KeyCode::A }, -1.0f},
 					}
 				},
 				{
 					.Bindings = {
-						{ { AnyKeyboardDevice, KeyCode::W },  1.0f},
-						{ { AnyKeyboardDevice, KeyCode::S }, -1.0f},
+						{ { GenericKeyboard, KeyCode::W },  1.0f},
+						{ { GenericKeyboard, KeyCode::S }, -1.0f},
 					}
 				}
 			},
@@ -41,15 +41,15 @@ protected:
 			.AxisBindings = {
 				{
 					.Bindings = {
-						{ { AnyMouseDevice, MouseCode::ButtonLeft },     1.0f },
-						{ { AnyMouseDevice, MouseCode::ButtonRight },    2.0f },
-						{ { AnyMouseDevice, MouseCode::ButtonMiddle },   3.0f },
-						{ { AnyMouseDevice, MouseCode::Button4 },        4.0f },
-						{ { AnyMouseDevice, MouseCode::Button5 },        5.0f },
-						{ { AnyMouseDevice, MouseCode::WheelTiltLeft },  6.0f },
-						{ { AnyMouseDevice, MouseCode::WheelTiltRight }, 7.0f },
-						{ { AnyMouseDevice, MouseCode::WheelScrollX },   8.0f },
-						{ { AnyMouseDevice, MouseCode::WheelScrollY },   9.0f },
+						{ { GenericMouse, MouseCode::ButtonLeft },     1.0f },
+						{ { GenericMouse, MouseCode::ButtonRight },    2.0f },
+						{ { GenericMouse, MouseCode::ButtonMiddle },   3.0f },
+						{ { GenericMouse, MouseCode::Button4 },        4.0f },
+						{ { GenericMouse, MouseCode::Button5 },        5.0f },
+						{ { GenericMouse, MouseCode::WheelTiltLeft },  6.0f },
+						{ { GenericMouse, MouseCode::WheelTiltRight }, 7.0f },
+						{ { GenericMouse, MouseCode::WheelScrollX },   8.0f },
+						{ { GenericMouse, MouseCode::WheelScrollY },   9.0f },
 					}
 				}
 			},

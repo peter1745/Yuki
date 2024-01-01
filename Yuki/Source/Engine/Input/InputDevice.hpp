@@ -7,9 +7,9 @@
 
 namespace Yuki {
 
-	inline constexpr uint32_t AnyMouseDevice =    ~0u - 1;
-	inline constexpr uint32_t AnyKeyboardDevice = ~0u - 2;
-	inline constexpr uint32_t AnyGamepadDevice =  ~0u - 3;
+	inline constexpr uint32_t GenericMouse    = ~0u - 1;
+	inline constexpr uint32_t GenericKeyboard = ~0u - 2;
+	inline constexpr uint32_t GenericGamepad  = ~0u - 3;
 
 	using InputDeviceID = uint32_t;
 
