@@ -4,6 +4,46 @@
 
 namespace Yuki {
 
+	template<>
+	struct Handle<InputContext>::Impl
+	{
+		bool IsDirty = false;
+		bool IsActive = false;
+
+		std::vector<InputAction> Actions;
+		std::unordered_map<InputAction::ID, InputActionFunction> ActionFunctions;
+
+		void InvokeAction(InputAction action, const InputReading& reading)
+		{
+			ActionFunctions[action.GetID()](reading);
+		}
+	};
+
+	template<>
+	struct Handle<InputAction>::Impl
+	{
+		InputActionData Data;
+	};
+
+	void InputContext::Activate()
+	{
+		m_Impl->IsActive = true;
+		m_Impl->IsDirty = true;
+	}
+
+	void InputContext::Deactivate()
+	{
+		m_Impl->IsActive = false;
+		m_Impl->IsDirty = true;
+	}
+
+	void InputContext::BindAction(InputAction action, InputActionFunction&& func)
+	{
+		m_Impl->Actions.push_back(action);
+		m_Impl->ActionFunctions[action.GetID()] = std::move(func);
+		m_Impl->IsDirty = true;
+	}
+
 	InputSystem::InputSystem()
 	{
 		m_Adapter = InputAdapter::Create();
@@ -14,46 +54,34 @@ namespace Yuki {
 		m_Adapter.Destroy();
 	}
 
-	InputActionID InputSystem::RegisterAction(const InputAction& action)
+	InputAction InputSystem::RegisterAction(const InputActionData& actionData)
 	{
-		InputActionID id = static_cast<InputActionID>(m_Actions.size());
-		m_Actions.push_back(action);
-		return id;
+		auto* action = new InputAction::Impl();
+		action->Data = actionData;
+		m_Actions.push_back({ action });
+		return { action };
 	}
 
-	InputContextID InputSystem::CreateContext()
+	InputContext InputSystem::CreateContext()
 	{
-		InputContextID id = static_cast<InputContextID>(m_Contexts.size());
-		m_Contexts.push_back({});
-		return id;
-	}
-
-	void InputSystem::BindAction(InputContextID contextID, InputActionID actionID, InputActionFunction func)
-	{
-		auto& context = m_Contexts[contextID];
-		context.m_ActionBindings[actionID] = std::move(func);
-
-		if (context.Active)
-		{
-			GenerateActionMetadata();
-		}
-	}
-
-	void InputSystem::ActivateContext(InputContextID contextID)
-	{
-		m_Contexts[contextID].Active = true;
-		GenerateActionMetadata();
-	}
-
-	void InputSystem::DeactivateContext(InputContextID contextID)
-	{
-		m_Contexts[contextID].Active = false;
-		GenerateActionMetadata();
+		auto* contextImpl = new InputContext::Impl();
+		m_Contexts.push_back({ contextImpl });
+		return { contextImpl };
 	}
 
 	void InputSystem::Update()
 	{
 		m_Adapter.Update();
+
+		// Rebuild action metadata if necessary
+		for (auto context : m_Contexts)
+		{
+			if (context->IsActive && context->IsDirty)
+			{
+				GenerateActionMetadata();
+				break;
+			}
+		}
 
 		// Dispatch input events to the active actions
 		for (auto& actionMetadata : m_ActionMetadata)
@@ -74,7 +102,7 @@ namespace Yuki {
 				continue;
 
 			// Dispatch the reading to the bound action
-			m_Contexts[actionMetadata.ContextID].InvokeActionFunction(actionMetadata.ID, actionMetadata.Reading);
+			actionMetadata.Context->InvokeAction(actionMetadata.Action, actionMetadata.Reading);
 		}
 	}
 
@@ -82,27 +110,23 @@ namespace Yuki {
 	{
 		m_ActionMetadata.clear();
 
-		std::unordered_map<InputActionID, const ExternalInputChannel*> consumedChannels;
+		std::unordered_map<InputAction::ID, const ExternalInputChannel*> consumedChannels;
 
-		for (uint32_t contextIndex = 0; contextIndex < m_Contexts.size(); contextIndex++)
+		for (auto context : m_Contexts)
 		{
-			const auto& context = m_Contexts[contextIndex];
-
-			if (!context.Active)
+			if (!context->IsActive)
 				continue;
 
-			for (const auto& [actionID, actionFunc] : context.m_ActionBindings)
+			for (auto action : context->Actions)
 			{
-				const auto& action = m_Actions[actionID];
-
 				auto& actionMetadata = m_ActionMetadata.emplace_back();
-				actionMetadata.ID = actionID;
-				actionMetadata.ContextID = contextIndex;
-				actionMetadata.Reading = InputReading(action.ValueCount);
+				actionMetadata.Action = action;
+				actionMetadata.Context = context;
+				actionMetadata.Reading = InputReading(action->Data.ValueCount);
 
-				for (uint32_t axisIndex = 0; axisIndex < action.AxisBindings.size(); axisIndex++)
+				for (uint32_t axisIndex = 0; axisIndex < action->Data.AxisBindings.size(); axisIndex++)
 				{
-					const auto& axisBinding = action.AxisBindings[axisIndex];
+					const auto& axisBinding = action->Data.AxisBindings[axisIndex];
 
 					for (const auto& triggerBinding : axisBinding.Bindings)
 					{
@@ -120,7 +144,7 @@ namespace Yuki {
 						bool usesConsumedChanel = false;
 						for (auto [otherActionID, consumedChannel] : consumedChannels)
 						{
-							if (otherActionID != actionID && channel == consumedChannel)
+							if (otherActionID != action.GetID() && channel == consumedChannel)
 							{
 								usesConsumedChanel = true;
 								break;
@@ -135,10 +159,10 @@ namespace Yuki {
 						actionTrigger.Channel = channel;
 						actionTrigger.Scale = triggerBinding.Scale;
 
-						if (action.ConsumeInputs)
+						if (action->Data.ConsumeInputs)
 						{
 							// Make sure that no other trigger bindings can use our channel if we consume it
-							consumedChannels[actionID] = channel;
+							consumedChannels[action.GetID()] = channel;
 						}
 					}
 				}
@@ -153,7 +177,7 @@ namespace Yuki {
 			{
 				for (auto [otherActionID, consumedChannel] : consumedChannels)
 				{
-					if (otherActionID != actionMetadata.ID && trigger.Channel == consumedChannel)
+					if (otherActionID != actionMetadata.Action.GetID() && trigger.Channel == consumedChannel)
 					{
 						// Remove this trigger if it uses a channel that has been marked as consumed
 						// by a *different* action

@@ -1,15 +1,13 @@
 #pragma once
 
+#include "InputAction.hpp"
 #include "InputAxis.hpp"
 
-#include "Engine/Core/Core.hpp"
 #include "Engine/Core/Exception.hpp"
 
 #include <functional>
 
 namespace Yuki {
-
-	using InputActionID = uint32_t;
 
 	class InputReading
 	{
@@ -53,24 +51,12 @@ namespace Yuki {
 
 	using InputActionFunction = std::function<void(const InputReading&)>;
 
-	class InputContext
+	struct InputContext : Handle<InputContext>
 	{
-	public:
-		bool Active = false;
+		void BindAction(InputAction action, InputActionFunction&& func);
 
-	private:
-		void InvokeActionFunction(InputActionID actionID, const InputReading& reading)
-		{
-			if (!m_ActionBindings.contains(actionID))
-				return;
-
-			m_ActionBindings.at(actionID)(reading);
-		}
-
-	private:
-		std::unordered_map<InputActionID, InputActionFunction> m_ActionBindings;
-
-		friend class InputSystem;
+		void Activate();
+		void Deactivate();
 	};
 
 }

@@ -17,29 +17,8 @@ protected:
 	{
 		m_Window = m_WindowSystem->NewWindow("Input Testing");
 
-		auto consuming = m_InputSystem->RegisterAction({
-			.ValueCount = 1,
-			.AxisBindings = {
-				{
-					.Bindings = {
-						{ { GenericKeyboard, KeyCode::K },  1.0f},
-					}
-				}
-			},
-			.ConsumeInputs = true
-		});
-
-		auto nonConsuming = m_InputSystem->RegisterAction({
-			.ValueCount = 1,
-			.AxisBindings = {
-				{
-					.Bindings = {
-						{ { GenericKeyboard, KeyCode::K },  1.0f},
-					}
-				}
-			},
-			.ConsumeInputs = false
-		});
+		m_Context = m_InputSystem->CreateContext();
+		m_OtherContext = m_InputSystem->CreateContext();
 
 		auto walkAction = m_InputSystem->RegisterAction({
 			.ValueCount = 2,
@@ -60,6 +39,19 @@ protected:
 			.ConsumeInputs = true
 		});
 
+		m_Context.BindAction(walkAction, [](const InputReading& reading)
+		{
+			auto [x, y] = reading.Read<2>();
+			//std::cout << "X: " << x << ", Y: " << y << "\n";
+			std::cout << "Main Context\n";
+		});
+
+		m_OtherContext.BindAction(walkAction, [](const InputReading& reading)
+		{
+			auto [x, y] = reading.Read<2>();
+			std::cout << "Other Context\n";
+		});
+
 		auto mouseAction = m_InputSystem->RegisterAction({
 			.ValueCount = 1,
 			.AxisBindings = {
@@ -72,45 +64,14 @@ protected:
 			.ConsumeInputs = true
 		});
 
-		m_OtherContext = m_InputSystem->CreateContext();
-		m_ContextID = m_InputSystem->CreateContext();
-
-		m_InputSystem->BindAction(m_ContextID, nonConsuming, [&](const InputReading& reading)
-		{
-			std::cout << "We should NOT see this\n";
-		});
-
-		m_InputSystem->BindAction(m_OtherContext, consuming, [&](const InputReading& reading)
-		{
-			std::cout << "We should see this\n";
-		});
-
-		m_InputSystem->BindAction(m_OtherContext, nonConsuming, [&](const InputReading& reading)
-		{
-			std::cout << "We should NOT see this either\n";
-		});
-
-		m_InputSystem->BindAction(m_ContextID, walkAction, [&](const InputReading& reading)
-		{
-			auto [x, y] = reading.Read<2>();
-			//std::cout << "X: " << x << ", Y: " << y << "\n";
-			std::cout << "Main Context\n";
-		});
-
-		m_InputSystem->BindAction(m_OtherContext, walkAction, [&](const InputReading& reading)
-		{
-			auto [x, y] = reading.Read<2>();
-			std::cout << "Other Context\n";
-		});
-
-		m_InputSystem->BindAction(m_ContextID, mouseAction, [&](const InputReading& reading)
+		m_Context.BindAction(mouseAction, [&](const InputReading& reading)
 		{
 			auto [x] = reading.Read<1>();
 			std::cout << "Scroll Delta: " << x << "\n";
 		});
 
-		m_InputSystem->ActivateContext(m_ContextID);
-		m_InputSystem->ActivateContext(m_OtherContext);
+		m_Context.Activate();
+		m_OtherContext.Activate();
 	}
 
 	void OnUpdate() override
@@ -123,7 +84,7 @@ protected:
 
 private:
 	Window* m_Window;
-	InputContextID m_ContextID, m_OtherContext;
+	InputContext m_Context, m_OtherContext;
 
 };
 

@@ -8,12 +8,10 @@
 
 namespace Yuki {
 
-	using InputContextID = uint32_t;
-
 	struct ActionMetadata
 	{
-		InputActionID ID;
-		InputContextID ContextID;
+		InputAction Action;
+		InputContext Context;
 
 		InputReading Reading;
 
@@ -33,13 +31,8 @@ namespace Yuki {
 		InputSystem();
 		~InputSystem();
 
-		InputActionID RegisterAction(const InputAction& action);
-		InputContextID CreateContext();
-
-		void BindAction(InputContextID contextID, InputActionID actionID, InputActionFunction func);
-
-		void ActivateContext(InputContextID contextID);
-		void DeactivateContext(InputContextID contextID);
+		InputAction RegisterAction(const InputActionData& actionData);
+		InputContext CreateContext();
 
 	private:
 		void Update();

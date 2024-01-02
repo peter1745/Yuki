@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Core/Core.hpp"
+#include "Engine/Core/Handle.hpp"
 
 #include "InputAxis.hpp"
 #include "InputCodes.hpp"
@@ -39,11 +40,15 @@ namespace Yuki {
 		std::vector<TriggerBinding> Bindings;
 	};
 
-	struct InputAction
+	struct InputActionData
 	{
 		uint32_t ValueCount;
 		std::vector<AxisBinding> AxisBindings;
 		bool ConsumeInputs;
+	};
+
+	struct InputAction : Handle<InputAction>
+	{
 	};
 
 }
