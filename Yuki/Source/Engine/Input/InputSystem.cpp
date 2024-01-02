@@ -115,19 +115,20 @@ namespace Yuki {
 	void InputContext::Activate()
 	{
 		m_Impl->IsActive = true;
-		m_Impl->MetadataBuilder->BuildMetadata();
+		m_Impl->MetadataBuilder->IsDirty = true;
 	}
 
 	void InputContext::Deactivate()
 	{
 		m_Impl->IsActive = false;
-		m_Impl->MetadataBuilder->BuildMetadata();
+		m_Impl->MetadataBuilder->IsDirty = true;
 	}
 
 	void InputContext::BindAction(InputAction action, InputActionFunction&& func)
 	{
 		m_Impl->Actions.push_back(action);
 		m_Impl->ActionFunctions[action.GetID()] = std::move(func);
+		m_Impl->MetadataBuilder->IsDirty = true;
 	}
 
 	void InputAction::AddTrigger(uint32_t axis, const TriggerBinding& triggerBinding)
@@ -139,7 +140,7 @@ namespace Yuki {
 
 		m_Impl->Data.AxisBindings[axis].Bindings.push_back(triggerBinding);
 
-		m_Impl->MetadataBuilder->BuildMetadata();
+		m_Impl->MetadataBuilder->IsDirty = true;
 	}
 
 	void InputAction::RemoveTrigger(uint32_t axis, uint32_t trigger)
@@ -158,7 +159,7 @@ namespace Yuki {
 
 		bindings.erase(std::next(bindings.begin(), trigger));
 
-		m_Impl->MetadataBuilder->BuildMetadata();
+		m_Impl->MetadataBuilder->IsDirty = true;
 	}
 
 	void InputAction::ReplaceTrigger(uint32_t axis, uint32_t trigger, TriggerID triggerID)
@@ -177,7 +178,7 @@ namespace Yuki {
 
 		bindings[trigger].ID = triggerID;
 
-		m_Impl->MetadataBuilder->BuildMetadata();
+		m_Impl->MetadataBuilder->IsDirty = true;
 	}
 
 	void InputSystem::Impl::Init()
@@ -214,6 +215,12 @@ namespace Yuki {
 	void InputSystem::Impl::Update()
 	{
 		Adapter.Update();
+
+		if (MetadataBuilder->IsDirty)
+		{
+			MetadataBuilder->BuildMetadata();
+			MetadataBuilder->IsDirty = false;
+		}
 
 		// Dispatch input events to the active actions
 		for (auto& actionMetadata : MetadataBuilder->Metadata)

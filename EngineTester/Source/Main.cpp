@@ -39,7 +39,7 @@ protected:
 			.ConsumeInputs = true
 		});
 
-		m_Context.BindAction(walkAction, [](const InputReading& reading)
+		m_Context.BindAction(walkAction, [&](const InputReading& reading)
 		{
 			auto [x, y] = reading.Read<2>();
 			//std::cout << "X: " << x << ", Y: " << y << "\n";

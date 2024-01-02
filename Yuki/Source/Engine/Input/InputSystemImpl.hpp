@@ -32,6 +32,7 @@ namespace Yuki {
 		InputAdapter Adapter;
 		std::vector<InputContext> Contexts;
 		std::vector<ActionMetadata> Metadata;
+		bool IsDirty = false;
 
 		void BuildMetadata();
 	};
