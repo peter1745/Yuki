@@ -17,10 +17,10 @@ protected:
 	{
 		m_Window = m_WindowSystem->NewWindow("Input Testing");
 
-		m_Context = m_InputSystem->CreateContext();
-		m_OtherContext = m_InputSystem->CreateContext();
+		m_Context = m_InputSystem.CreateContext();
+		m_OtherContext = m_InputSystem.CreateContext();
 
-		auto walkAction = m_InputSystem->RegisterAction({
+		auto walkAction = m_InputSystem.RegisterAction({
 			.ValueCount = 2,
 			.AxisBindings = {
 				{
@@ -52,7 +52,7 @@ protected:
 			std::cout << "Other Context\n";
 		});
 
-		auto mouseAction = m_InputSystem->RegisterAction({
+		auto mouseAction = m_InputSystem.RegisterAction({
 			.ValueCount = 1,
 			.AxisBindings = {
 				{

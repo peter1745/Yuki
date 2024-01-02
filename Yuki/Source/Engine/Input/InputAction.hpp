@@ -6,6 +6,8 @@
 #include "InputAxis.hpp"
 #include "InputCodes.hpp"
 
+#include <vector>
+
 namespace Yuki {
 
 	inline constexpr uint32_t AnyDevice = ~0u;
@@ -49,6 +51,9 @@ namespace Yuki {
 
 	struct InputAction : Handle<InputAction>
 	{
+		void AddTrigger(uint32_t axis, const TriggerBinding& triggerBinding);
+		void RemoveTrigger(uint32_t axis, uint32_t trigger);
+		void ReplaceTrigger(uint32_t axis, uint32_t trigger, TriggerID triggerID);
 	};
 
 }

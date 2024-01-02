@@ -13,21 +13,6 @@ namespace Yuki {
 	{
 	public:
 		InputReading() = default;
-
-		template<size_t N>
-		std::array<float32_t, N> Read() const
-		{
-			if (N > m_Values.size())
-			{
-				throw Exception("Reading out of bounds");
-			}
-
-			std::array<float32_t, N> values;
-			memcpy(values.data(), m_Values.data(), N * sizeof(float32_t));
-			return values;
-		}
-
-	private:
 		InputReading(uint32_t valueCount)
 		{
 			m_Values.resize(valueCount, 0.0f);
@@ -43,10 +28,21 @@ namespace Yuki {
 			m_Values[index] = value;
 		}
 
+		template<size_t N>
+		std::array<float32_t, N> Read() const
+		{
+			if (N > m_Values.size())
+			{
+				throw Exception("Reading out of bounds");
+			}
+
+			std::array<float32_t, N> values;
+			memcpy(values.data(), m_Values.data(), N * sizeof(float32_t));
+			return values;
+		}
+
 	private:
 		std::vector<float32_t> m_Values;
-
-		friend class InputSystem;
 	};
 
 	using InputActionFunction = std::function<void(const InputReading&)>;

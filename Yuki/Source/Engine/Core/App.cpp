@@ -1,14 +1,16 @@
 #include "App.hpp"
 #include "Window.hpp"
 
-#include "Engine/Input/InputSystem.hpp"
+#include "Engine/Input/InputSystemImpl.hpp"
 
 namespace Yuki {
 
 	Application::Application()
 	{
 		m_WindowSystem = Unique<WindowSystem>::New();
-		m_InputSystem = Unique<InputSystem>::New();
+
+		m_InputSystem = { new InputSystem::Impl() };
+		m_InputSystem->Init();
 	}
 
 	void Application::Run()
@@ -22,6 +24,8 @@ namespace Yuki {
 
 			OnUpdate();
 		}
+
+		m_InputSystem->Shutdown();
 	}
 
 }

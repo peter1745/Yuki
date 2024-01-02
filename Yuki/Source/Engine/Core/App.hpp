@@ -2,12 +2,13 @@
 
 #include "Unique.hpp"
 
+#include "Engine/Input/InputSystem.hpp"
+
 #include <concepts>
 
 namespace Yuki {
 
 	class WindowSystem;
-	class InputSystem;
 
 	class Application
 	{
@@ -27,7 +28,7 @@ namespace Yuki {
 		bool m_Running = true;
 
 		Unique<WindowSystem> m_WindowSystem = nullptr;
-		Unique<InputSystem> m_InputSystem = nullptr;
+		InputSystem m_InputSystem;
 
 	private:
 		template<std::derived_from<Application> T>

@@ -1,4 +1,5 @@
 #include "InputSystem.hpp"
+#include "InputSystemImpl.hpp"
 
 #include <ranges>
 
@@ -7,11 +8,12 @@ namespace Yuki {
 	template<>
 	struct Handle<InputContext>::Impl
 	{
-		bool IsDirty = false;
 		bool IsActive = false;
 
 		std::vector<InputAction> Actions;
 		std::unordered_map<InputAction::ID, InputActionFunction> ActionFunctions;
+
+		InputMetadataBuilder MetadataBuilder;
 
 		void InvokeAction(InputAction action, const InputReading& reading)
 		{
@@ -23,103 +25,23 @@ namespace Yuki {
 	struct Handle<InputAction>::Impl
 	{
 		InputActionData Data;
+		InputMetadataBuilder MetadataBuilder;
 	};
 
-	void InputContext::Activate()
+	void InputMetadataBuilder::Impl::BuildMetadata()
 	{
-		m_Impl->IsActive = true;
-		m_Impl->IsDirty = true;
-	}
-
-	void InputContext::Deactivate()
-	{
-		m_Impl->IsActive = false;
-		m_Impl->IsDirty = true;
-	}
-
-	void InputContext::BindAction(InputAction action, InputActionFunction&& func)
-	{
-		m_Impl->Actions.push_back(action);
-		m_Impl->ActionFunctions[action.GetID()] = std::move(func);
-		m_Impl->IsDirty = true;
-	}
-
-	InputSystem::InputSystem()
-	{
-		m_Adapter = InputAdapter::Create();
-	}
-
-	InputSystem::~InputSystem()
-	{
-		m_Adapter.Destroy();
-	}
-
-	InputAction InputSystem::RegisterAction(const InputActionData& actionData)
-	{
-		auto* action = new InputAction::Impl();
-		action->Data = actionData;
-		m_Actions.push_back({ action });
-		return { action };
-	}
-
-	InputContext InputSystem::CreateContext()
-	{
-		auto* contextImpl = new InputContext::Impl();
-		m_Contexts.push_back({ contextImpl });
-		return { contextImpl };
-	}
-
-	void InputSystem::Update()
-	{
-		m_Adapter.Update();
-
-		// Rebuild action metadata if necessary
-		for (auto context : m_Contexts)
-		{
-			if (context->IsActive && context->IsDirty)
-			{
-				GenerateActionMetadata();
-				break;
-			}
-		}
-
-		// Dispatch input events to the active actions
-		for (auto& actionMetadata : m_ActionMetadata)
-		{
-			bool triggered = false;
-
-			for (const auto& trigger : actionMetadata.Triggers)
-			{
-				// If the channel hasn't changed we don't need to do anything (this will require more complex behavior in the future)
-				if (!trigger.Channel->IsDirty())
-					continue;
-
-				actionMetadata.Reading.Write(trigger.AxisIndex, trigger.Channel->Value * trigger.Scale);
-				triggered = true;
-			}
-
-			if (!triggered)
-				continue;
-
-			// Dispatch the reading to the bound action
-			actionMetadata.Context->InvokeAction(actionMetadata.Action, actionMetadata.Reading);
-		}
-	}
-
-	void InputSystem::GenerateActionMetadata()
-	{
-		m_ActionMetadata.clear();
+		Metadata.clear();
 
 		std::unordered_map<InputAction::ID, const ExternalInputChannel*> consumedChannels;
 
-		for (auto context : m_Contexts)
+		for (auto context : Contexts)
 		{
 			if (!context->IsActive)
 				continue;
 
 			for (auto action : context->Actions)
 			{
-				auto& actionMetadata = m_ActionMetadata.emplace_back();
+				auto& actionMetadata = Metadata.emplace_back();
 				actionMetadata.Action = action;
 				actionMetadata.Context = context;
 				actionMetadata.Reading = InputReading(action->Data.ValueCount);
@@ -130,7 +52,7 @@ namespace Yuki {
 
 					for (const auto& triggerBinding : axisBinding.Bindings)
 					{
-						const auto device = m_Adapter.GetDevice(triggerBinding.ID.DeviceID);
+						const auto device = Adapter.GetDevice(triggerBinding.ID.DeviceID);
 
 						if (!device)
 							continue;
@@ -171,22 +93,148 @@ namespace Yuki {
 
 		// Ensures that channel consumption is respected regardless of context creation order or binding order
 		// while ensuring that context layering still works
-		for (auto& actionMetadata : m_ActionMetadata)
+		for (auto& actionMetadata : Metadata)
 		{
 			std::erase_if(actionMetadata.Triggers, [&](const ActionMetadata::TriggerMetadata& trigger)
-			{
-				for (auto [otherActionID, consumedChannel] : consumedChannels)
 				{
-					if (otherActionID != actionMetadata.Action.GetID() && trigger.Channel == consumedChannel)
+					for (auto [otherActionID, consumedChannel] : consumedChannels)
 					{
-						// Remove this trigger if it uses a channel that has been marked as consumed
-						// by a *different* action
-						return true;
+						if (otherActionID != actionMetadata.Action.GetID() && trigger.Channel == consumedChannel)
+						{
+							// Remove this trigger if it uses a channel that has been marked as consumed
+							// by a *different* action
+							return true;
+						}
 					}
-				}
 
-				return false;
-			});
+					return false;
+				});
+		}
+	}
+
+	void InputContext::Activate()
+	{
+		m_Impl->IsActive = true;
+		m_Impl->MetadataBuilder->BuildMetadata();
+	}
+
+	void InputContext::Deactivate()
+	{
+		m_Impl->IsActive = false;
+		m_Impl->MetadataBuilder->BuildMetadata();
+	}
+
+	void InputContext::BindAction(InputAction action, InputActionFunction&& func)
+	{
+		m_Impl->Actions.push_back(action);
+		m_Impl->ActionFunctions[action.GetID()] = std::move(func);
+	}
+
+	void InputAction::AddTrigger(uint32_t axis, const TriggerBinding& triggerBinding)
+	{
+		if (axis >= m_Impl->Data.AxisBindings.size())
+		{
+			return;
+		}
+
+		m_Impl->Data.AxisBindings[axis].Bindings.push_back(triggerBinding);
+
+		m_Impl->MetadataBuilder->BuildMetadata();
+	}
+
+	void InputAction::RemoveTrigger(uint32_t axis, uint32_t trigger)
+	{
+		if (axis >= m_Impl->Data.AxisBindings.size())
+		{
+			return;
+		}
+
+		auto& bindings = m_Impl->Data.AxisBindings[axis].Bindings;
+
+		if (trigger >= bindings.size())
+		{
+			return;
+		}
+
+		bindings.erase(std::next(bindings.begin(), trigger));
+
+		m_Impl->MetadataBuilder->BuildMetadata();
+	}
+
+	void InputAction::ReplaceTrigger(uint32_t axis, uint32_t trigger, TriggerID triggerID)
+	{
+		if (axis >= m_Impl->Data.AxisBindings.size())
+		{
+			return;
+		}
+
+		auto& bindings = m_Impl->Data.AxisBindings[axis].Bindings;
+
+		if (trigger >= bindings.size())
+		{
+			return;
+		}
+
+		bindings[trigger].ID = triggerID;
+
+		m_Impl->MetadataBuilder->BuildMetadata();
+	}
+
+	void InputSystem::Impl::Init()
+	{
+		Adapter = InputAdapter::Create();
+		MetadataBuilder = { new InputMetadataBuilder::Impl() };
+		MetadataBuilder->Adapter = Adapter;
+	}
+
+	void InputSystem::Impl::Shutdown()
+	{
+		Adapter.Destroy();
+	}
+
+	InputAction InputSystem::RegisterAction(const InputActionData& actionData)
+	{
+		auto* action = new InputAction::Impl();
+		action->Data = actionData;
+		action->MetadataBuilder = m_Impl->MetadataBuilder;
+
+		m_Impl->Actions.push_back({ action });
+		return { action };
+	}
+
+	InputContext InputSystem::CreateContext()
+	{
+		auto* contextImpl = new InputContext::Impl();
+		contextImpl->MetadataBuilder = m_Impl->MetadataBuilder;
+
+		m_Impl->MetadataBuilder->Contexts.push_back({ contextImpl });
+		return { contextImpl };
+	}
+
+	void InputSystem::Impl::Update()
+	{
+		Adapter.Update();
+
+		// Dispatch input events to the active actions
+		for (auto& actionMetadata : MetadataBuilder->Metadata)
+		{
+			bool triggered = false;
+
+			for (const auto& trigger : actionMetadata.Triggers)
+			{
+				// If the channel hasn't changed we don't need to do anything (this will require more complex behavior in the future)
+				if (!trigger.Channel->IsDirty())
+					continue;
+
+				actionMetadata.Reading.Write(trigger.AxisIndex, trigger.Channel->Value * trigger.Scale);
+				triggered = true;
+			}
+
+			if (!triggered)
+				continue;
+
+			// Dispatch the reading to the bound action
+			actionMetadata.Context->InvokeAction(actionMetadata.Action, actionMetadata.Reading);
 		}
 	}
 
