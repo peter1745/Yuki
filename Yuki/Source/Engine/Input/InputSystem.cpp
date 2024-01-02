@@ -63,17 +63,17 @@ namespace Yuki {
 							continue;
 
 						// If our channel has been marked as consumed already we just ignore this trigger (other triggers may still work)
-						bool usesConsumedChanel = false;
+						bool usesConsumedChannel = false;
 						for (auto [otherActionID, consumedChannel] : consumedChannels)
 						{
 							if (otherActionID != action.GetID() && channel == consumedChannel)
 							{
-								usesConsumedChanel = true;
+								usesConsumedChannel = true;
 								break;
 							}
 						}
 
-						if (usesConsumedChanel)
+						if (usesConsumedChannel)
 							continue;
 
 						auto& actionTrigger = actionMetadata.Triggers.emplace_back();
