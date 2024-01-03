@@ -7,9 +7,7 @@
 
 namespace Yuki {
 
-	struct InputMetadataBuilder : Handle<InputMetadataBuilder> {};
-
-	struct ActionMetadata
+	struct CompiledAction
 	{
 		InputAction Action;
 		InputContext Context;
@@ -21,34 +19,29 @@ namespace Yuki {
 			uint32_t AxisIndex;
 			const ExternalInputChannel* Channel = nullptr;
 			float32_t Scale;
+			TriggerEventType EventType;
 		};
 
 		std::vector<TriggerMetadata> Triggers;
 	};
 
 	template<>
-	struct Handle<InputMetadataBuilder>::Impl
-	{
-		InputAdapter Adapter;
-		std::vector<InputContext> Contexts;
-		std::vector<ActionMetadata> Metadata;
-		bool IsDirty = false;
-
-		void BuildMetadata();
-	};
-
-	template<>
 	struct Handle<InputSystem>::Impl
 	{
 		InputAdapter Adapter;
-		InputMetadataBuilder MetadataBuilder;
-
+		std::vector<InputContext> Contexts;
 		std::vector<InputAction> Actions;
+
+		bool NeedsRecompile = false;
+		std::vector<CompiledAction> CompiledActions;
 
 		void Init();
 		void Shutdown();
 
 		void Update();
+
+		void NotifyDataChange();
+		void CompileInputActions();
 	};
 
 }

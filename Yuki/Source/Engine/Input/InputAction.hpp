@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Core/Core.hpp"
+#include "Engine/Core/EnumFlags.hpp"
 #include "Engine/Core/Handle.hpp"
 
 #include "InputAxis.hpp"
@@ -25,10 +26,20 @@ namespace Yuki {
 		operator uint32_t() const { return InputID; }
 	};
 
+	enum class TriggerEventType
+	{
+		OnPressed  = 1 << 0,
+		OnHeld     = 1 << 1,
+		OnReleased = 1 << 2,
+		OnCanceled = 1 << 3,
+	};
+	inline void MakeEnumFlags(TriggerEventType) {}
+
 	struct TriggerID
 	{
 		uint32_t DeviceID;
 		InputIDWrapper InputID;
+		TriggerEventType EventType;
 	};
 
 	struct TriggerBinding
@@ -44,7 +55,7 @@ namespace Yuki {
 
 	struct InputActionData
 	{
-		uint32_t ValueCount;
+		uint32_t AxisCount;
 		std::vector<AxisBinding> AxisBindings;
 		bool ConsumeInputs;
 	};

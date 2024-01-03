@@ -11,7 +11,7 @@ namespace Yuki {
 		float32_t Value;
 		float32_t PreviousValue;
 
-		bool IsDirty() const { return Value != PreviousValue; }
+		bool HasRegisteredInput() const { return Value != 0.0f || PreviousValue != 0.0f; }
 	};
 
 }
