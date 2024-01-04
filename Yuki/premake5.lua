@@ -17,12 +17,17 @@ project "Yuki"
     }
 
 	externalincludedirs {
-		"Source/"
+		"Source/",
+        "../ThirdParty/spdlog/include"
 	}
 
 	forceincludes {
 		"YukiPCH.hpp"
 	}
+
+    defines {
+        "SPDLOG_USE_STD_FORMAT"
+    }
 
     filter { "system:windows" }
         files {

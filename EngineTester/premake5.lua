@@ -16,6 +16,7 @@ project "EngineTester"
 
 	links {
 		"Yuki",
+        "Yuki-D3D12"
 	}
 
 	filter { "system:windows" }

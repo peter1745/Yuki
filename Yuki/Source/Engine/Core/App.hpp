@@ -5,6 +5,7 @@
 #include "Engine/Input/InputSystem.hpp"
 
 #include <concepts>
+#include <filesystem>
 
 namespace Yuki {
 
@@ -27,6 +28,8 @@ namespace Yuki {
 	protected:
 		bool m_Running = true;
 
+		std::filesystem::path m_BaseDirectory;
+
 		Unique<WindowSystem> m_WindowSystem = nullptr;
 		InputSystem m_InputSystem;
 
@@ -39,9 +42,10 @@ namespace Yuki {
 	class AppRunner final
 	{
 	public:
-		AppRunner()
+		AppRunner(const std::filesystem::path& filepath)
 			: m_Application(new T())
 		{
+			m_Application->m_BaseDirectory = filepath;
 		}
 
 		~AppRunner()

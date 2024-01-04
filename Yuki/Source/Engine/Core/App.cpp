@@ -7,6 +7,8 @@ namespace Yuki {
 
 	Application::Application()
 	{
+		Detail::InitializeLogging();
+
 		m_WindowSystem = Unique<WindowSystem>::New();
 
 		m_InputSystem = { new InputSystem::Impl() };

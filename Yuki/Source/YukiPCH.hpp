@@ -19,3 +19,5 @@
 #include <bit>
 
 #include <ranges>
+
+#include "Engine/Core/Logging.hpp"
