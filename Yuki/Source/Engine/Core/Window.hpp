@@ -1,22 +1,16 @@
 #pragma once
 
 #include "Unique.hpp"
+#include "Handle.hpp"
 
 #include <string_view>
 #include <vector>
 
 namespace Yuki {
 
-	class Window
+	struct Window : Handle<Window>
 	{
-	public:
-		bool IsClosed() const { return m_Closed; }
-		void Close() { m_Closed = true; }
-
-	private:
-		bool m_Closed = false;
-
-		friend class WindowSystem;
+		bool IsClosed() const;
 	};
 
 	class WindowSystem final
@@ -25,12 +19,12 @@ namespace Yuki {
 		WindowSystem();
 		~WindowSystem();
 
-		Window* NewWindow(std::string_view title, uint32_t width = 1920, uint32_t height = 1080);
+		Window NewWindow(std::string_view title, uint32_t width = 1920, uint32_t height = 1080);
 
 		void PollEvents() const;
 
 	private:
-		std::vector<Unique<Window>> m_Windows;
+		std::vector<Window> m_Windows;
 	};
 
 }

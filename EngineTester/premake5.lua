@@ -16,10 +16,14 @@ project "EngineTester"
 
 	links {
 		"Yuki",
-        "Yuki-D3D12"
+        "Yuki-Vulkan"
 	}
 
 	filter { "system:windows" }
+		defines {
+			"YUKI_PLATFORM_WINDOWS"
+		}
+
 		libdirs {
 			GRDK .. "/GameKit/Lib/amd64/",
 			"../ThirdParty/DXC/lib/x64/"

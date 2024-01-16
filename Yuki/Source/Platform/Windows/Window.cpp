@@ -1,10 +1,6 @@
-#include "Engine/Core/Window.hpp"
-
-#include "WindowsCommon.hpp"
+#include "WindowImpl.hpp"
 
 namespace Yuki {
-
-	static std::unordered_map<Window*, HWND> s_WindowHandles;
 
 	LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
@@ -14,18 +10,23 @@ namespace Yuki {
 			return DefWindowProcA(hwnd, message, wParam, lParam);
 		}
 
-		auto* window = reinterpret_cast<Window*>(GetWindowLongPtrA(hwnd, GWLP_USERDATA));
+		auto* window = reinterpret_cast<Window::Impl*>(GetWindowLongPtrA(hwnd, GWLP_USERDATA));
 
 		switch (message)
 		{
 		case WM_CLOSE:
 		{
-			window->Close();
+			window->Closed = true;
 			break;
 		}
 		}
 
 		return DefWindowProcA(hwnd, message, wParam, lParam);
+	}
+
+	bool Window::IsClosed() const
+	{
+		return m_Impl->Closed;
 	}
 
 	WindowSystem::WindowSystem()
@@ -47,12 +48,11 @@ namespace Yuki {
 
 	}
 
-	Window* WindowSystem::NewWindow(std::string_view title, uint32_t width, uint32_t height)
+	Window WindowSystem::NewWindow(std::string_view title, uint32_t width, uint32_t height)
 	{
-		Unique<Window> window = Unique<Window>::New();
-		Window* windowPtr = window.Raw();
+		auto* window = new Window::Impl();
 
-		HWND handle = CreateWindowExA(
+		window->WindowHandle = CreateWindowExA(
 			NULL,
 			"YukiWindowClass",
 			title.data(),
@@ -64,24 +64,23 @@ namespace Yuki {
 			NULL,
 			NULL,
 			GetModuleHandle(nullptr),
-			windowPtr
+			window
 		);
 
-		s_WindowHandles[windowPtr] = handle;
-		m_Windows.push_back(std::move(window));
+		m_Windows.push_back({ window });
 
-		ShowWindow(handle, SW_SHOWNORMAL);
+		ShowWindow(window->WindowHandle, SW_SHOWNORMAL);
 
-		return windowPtr;
+		return { window };
 	}
 
 	void WindowSystem::PollEvents() const
 	{
 		MSG msg;
 
-		for (auto[window, handle] : s_WindowHandles)
+		for (auto window : m_Windows)
 		{
-			while (PeekMessageA(&msg, handle, NULL, NULL, PM_REMOVE))
+			while (PeekMessageA(&msg, window->WindowHandle, NULL, NULL, PM_REMOVE))
 			{
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);

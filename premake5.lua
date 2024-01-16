@@ -57,7 +57,7 @@ workspace "Yuki"
 		}
 
 include "Yuki/"
-include "Yuki-D3D12/"
+include "Yuki-Vulkan/"
 include "EngineTester/"
 
 group "ThirdParty"

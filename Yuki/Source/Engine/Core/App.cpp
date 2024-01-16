@@ -3,6 +3,8 @@
 
 #include "Engine/Input/InputSystemImpl.hpp"
 
+#include <ranges>
+
 namespace Yuki {
 
 	Application::Application()
@@ -26,6 +28,8 @@ namespace Yuki {
 
 			OnUpdate();
 		}
+
+		OnShutdown();
 
 		m_InputSystem->Shutdown();
 	}

@@ -12,6 +12,8 @@
 #include <devpkey.h>
 #include <hidsdi.h>
 
+#include <thread>
+
 #pragma comment(lib, "cfgmgr32.lib")
 #pragma comment(lib, "Hid.lib")
 

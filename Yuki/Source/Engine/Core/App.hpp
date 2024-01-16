@@ -21,6 +21,7 @@ namespace Yuki {
 	protected:
 		virtual void OnRun() {}
 		virtual void OnUpdate() {}
+		virtual void OnShutdown() {}
 
 	private:
 		void Run();

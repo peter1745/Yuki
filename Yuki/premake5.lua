@@ -30,6 +30,10 @@ project "Yuki"
     }
 
     filter { "system:windows" }
+		defines {
+			"YUKI_PLATFORM_WINDOWS"
+		}
+
         files {
             "Source/Platform/Windows/**.cpp",
             "Source/Platform/Windows/**.hpp",

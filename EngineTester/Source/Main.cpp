@@ -20,12 +20,16 @@ protected:
 	{
 		m_Window = m_WindowSystem->NewWindow("Input Testing");
 
-		for (auto i : std::views::iota(0, 50))
-		{
-			auto d = 0;
-		}
-
 		m_RHI = RHIContext::Create();
+
+		/*
+		m_Queue = m_RHI.RequestQueue(CommandListType::Graphics);
+		m_Swapchain = Swapchain::Create(m_RHI, m_Queue, m_Window);
+
+		m_Shader = Shader::Create("Resources/HLSL/RayGen.hlsl", ShaderType::RayGeneration);
+		m_RTPipeline = RaytracingPipeline::Create(m_RHI, m_Shader);*/
+
+		//m_CommandAllocator = CommandAllocator::Create(m_RHI, CommandListType::Graphics);
 
 		auto ctx = m_InputSystem.CreateContext();
 
@@ -60,16 +64,38 @@ protected:
 
 	void OnUpdate() override
 	{
-		if (m_Window->IsClosed())
+		/*m_CommandAllocator.Reset();
+
+		auto cmd = m_CommandAllocator.NewList();
+		cmd.BindPipeline(m_RTPipeline);
+		cmd.DispatchRays(1920, 1080);
+
+		m_Queue.SubmitCommandLists({ cmd });
+
+		m_Swapchain.Present();*/
+
+		if (m_Window.IsClosed())
 		{
 			m_Running = false;
 		}
 	}
 
+	void OnShutdown() override
+	{
+		m_RHI.Destroy();
+	}
+
 private:
-	Window* m_Window;
+	Window m_Window;
 
 	RHIContext m_RHI;
+	/*Queue m_Queue;
+	Swapchain m_Swapchain;
+
+	CommandAllocator m_CommandAllocator;
+
+	Shader m_Shader;
+	RaytracingPipeline m_RTPipeline;*/
 };
 
 YukiApp(EngineTester) {};

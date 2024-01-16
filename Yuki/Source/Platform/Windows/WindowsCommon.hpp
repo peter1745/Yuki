@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Core/Core.hpp"
 #include "Engine/Core/Exception.hpp"
 
 #define NOMINMAX
@@ -13,7 +14,15 @@ namespace Yuki {
 	{
 		int length = WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.length()), nullptr, 0, nullptr, nullptr);
 		std::string message(length, 0);
-		(void)WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.length()), message.data(), length, nullptr, nullptr);
+		YukiUnused(WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.length()), message.data(), length, nullptr, nullptr));
+		return message;
+	}
+
+	inline std::wstring Utf8ToUtf16(std::string_view str)
+	{
+		int length = MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.length()), nullptr, 0);
+		std::wstring message(length, 0);
+		YukiUnused(MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.length()), message.data(), length));
 		return message;
 	}
 
