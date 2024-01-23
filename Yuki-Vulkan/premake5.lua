@@ -14,6 +14,7 @@ project "Yuki-Vulkan"
     externalincludedirs {
         "../Yuki/Source/",
 		"../ThirdParty/volk/",
+		"../ThirdParty/Aura/Aura/Include/",
 
 		VulkanIncludeDir,
     }

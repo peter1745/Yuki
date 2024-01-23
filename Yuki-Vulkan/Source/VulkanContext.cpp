@@ -186,10 +186,10 @@ namespace Yuki {
 		WriteLine("GPU: {}", physicalDeviceProperties.deviceName);
 
 		// Create a logical device
-		auto queues = RequestQueues({ impl }, VK_QUEUE_GRAPHICS_BIT, 1);
+		impl->Queues.append_range(RequestQueues({ impl }, VK_QUEUE_GRAPHICS_BIT, 1));
 
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-		for (auto queue : queues)
+		for (auto queue : impl->Queues)
 		{
 			VkDeviceQueueCreateInfo queueInfo =
 			{
@@ -239,4 +239,5 @@ namespace Yuki {
 
 		vkDestroyInstance(m_Impl->Instance, nullptr);
 	}
+
 }

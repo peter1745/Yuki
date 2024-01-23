@@ -16,6 +16,8 @@ namespace Yuki {
 		VkPhysicalDevice PhysicalDevice;
 		VkDevice Device;
 
+		std::vector<Queue> Queues;
+
 		VulkanMemoryAllocator Allocator;
 	};
 

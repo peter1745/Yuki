@@ -11,7 +11,8 @@ project "EngineTester"
 	}
 
 	externalincludedirs {
-		"../Yuki/Source/"
+		"../Yuki/Source/",
+		"../ThirdParty/Aura/Aura/Include/"
 	}
 
 	links {
@@ -32,7 +33,4 @@ project "EngineTester"
 		links {
 			"GameInput",
 			"xgameruntime",
-            "D3d12",
-            "DXGI",
-			"dxcompiler"
 		}

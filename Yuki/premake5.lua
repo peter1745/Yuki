@@ -18,7 +18,8 @@ project "Yuki"
 
 	externalincludedirs {
 		"Source/",
-        "../ThirdParty/spdlog/include"
+        "../ThirdParty/spdlog/include",
+		"../ThirdParty/Aura/Aura/Include/",
 	}
 
 	forceincludes {

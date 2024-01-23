@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Unique.hpp"
-
 #include "Engine/Input/InputSystem.hpp"
+
+#include <Aura/Unique.hpp>
 
 #include <concepts>
 #include <filesystem>
@@ -31,7 +31,7 @@ namespace Yuki {
 
 		std::filesystem::path m_BaseDirectory;
 
-		Unique<WindowSystem> m_WindowSystem = nullptr;
+		Aura::Unique<WindowSystem> m_WindowSystem = nullptr;
 		InputSystem m_InputSystem;
 
 	private:

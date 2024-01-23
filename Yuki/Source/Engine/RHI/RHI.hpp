@@ -3,7 +3,8 @@
 #include "Engine/Core/Core.hpp"
 #include "Engine/Core/Handle.hpp"
 #include "Engine/Core/EnumFlags.hpp"
-#include "Engine/Containers/Span.hpp"
+
+#include <Aura/Span.hpp>
 
 #include <filesystem>
 
@@ -28,15 +29,13 @@ namespace Yuki {
 		static RHIContext Create();
 		void Destroy();
 
-		bool HasFeature(RHIDeviceFeature feature) const;
-
-		Queue RequestQueue(CommandListType commandListType) const;
+		Aura::Span<Queue> RequestQueue(QueueType type, uint32_t count) const;
 	};
 
 	struct CommandList;
 	struct Queue : Handle<Queue>
 	{
-		void SubmitCommandLists(Span<CommandList> commandLists) const;
+		void SubmitCommandLists(Aura::Span<CommandList> commandLists) const;
 	};
 
 	class Window;

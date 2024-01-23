@@ -11,7 +11,7 @@ namespace Yuki {
 	{
 		Detail::InitializeLogging();
 
-		m_WindowSystem = Unique<WindowSystem>::New();
+		m_WindowSystem = Aura::Unique<WindowSystem>::New();
 
 		m_InputSystem = { new InputSystem::Impl() };
 		m_InputSystem->Init();

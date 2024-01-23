@@ -3,8 +3,6 @@
 #include "InputSystem.hpp"
 #include "InputAdapter.hpp"
 
-#include "Engine/Containers/Span.hpp"
-
 namespace Yuki {
 
 	struct CompiledAction
