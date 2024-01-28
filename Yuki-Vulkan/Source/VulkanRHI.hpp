@@ -32,4 +32,15 @@ namespace Yuki {
 		float Priority;
 	};
 
+	template<>
+	struct Handle<Swapchain>::Impl
+	{
+		RHIContext Context;
+
+		VkSwapchainKHR Resource;
+		VkSurfaceKHR Surface;
+
+		void Recreate(Window window);
+	};
+
 }

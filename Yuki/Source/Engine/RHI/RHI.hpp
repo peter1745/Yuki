@@ -10,19 +10,14 @@
 
 namespace Yuki {
 
-	enum class CommandListType
+	enum class QueueType
 	{
-		Graphics,
-		Compute,
-		Transfer
+		Graphics = 1 << 0,
+		Compute  = 1 << 1,
+		Transfer = 1 << 2
 	};
 
 	struct Queue;
-
-	enum class RHIDeviceFeature
-	{
-		HostImageCopy
-	};
 
 	struct RHIContext : Handle<RHIContext>
 	{
@@ -42,12 +37,13 @@ namespace Yuki {
 
 	struct Swapchain : Handle<Swapchain>
 	{
-		static Swapchain Create(RHIContext context, Queue queue, Window window);
+		static Swapchain Create(RHIContext context, Window window);
 		void Destroy();
 
 		void Present() const;
 	};
 
+	/*
 	enum class ShaderType
 	{
 		Vertex, Pixel,
@@ -91,6 +87,6 @@ namespace Yuki {
 		CommandList NewList() const;
 
 		void Reset() const;
-	};
+	};*/
 
 }

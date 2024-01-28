@@ -3,7 +3,7 @@
 #include <Engine/Core/App.hpp>
 
 #define YukiApp(AppType)\
-void AppType##Main();\
+static void AppType##Main();\
 int main(int argc, char* argv[])\
 {\
 	std::string filepath = argv[0];\
@@ -11,4 +11,4 @@ int main(int argc, char* argv[])\
 	AppRunner<AppType>(filepath).Run();\
 	return 0;\
 }\
-void AppType##Main()
+static void AppType##Main()
