@@ -60,6 +60,7 @@ namespace Yuki {
 		GameInputCallbackToken DeviceCallbackToken;
 
 		std::unordered_map<InputDeviceID, InputDevice> Devices;
+		std::unordered_map<InputDeviceID, InputDevice> GenericDevices;
 
 		void RegisterDevice(IGameInputDevice* device);
 		void UnregisterDevice(IGameInputDevice* device);
@@ -216,8 +217,6 @@ namespace Yuki {
 		if (!reading->GetMouseState(&mouseState))
 			return;
 
-		auto genericMouse = Adapter->Devices[GenericMouse];
-
 		for (uint32_t i = 0; i < s_MaxMouseButtons; i++)
 		{
 			uint32_t buttonID = 1 << i;
@@ -233,8 +232,7 @@ namespace Yuki {
 		if (Info->mouseInfo->hasWheelX)
 		{
 			int64_t delta = mouseState.wheelX - PreviousScrollX;
-			float32_t accumulated = Channels[currentChannel].Value + static_cast<float32_t>(delta);
-			WriteChannelValue(currentChannel, accumulated);
+			WriteChannelValue(currentChannel, static_cast<float32_t>(delta));
 			PreviousScrollX = mouseState.wheelX;
 		}
 		currentChannel++;
@@ -242,8 +240,7 @@ namespace Yuki {
 		if (Info->mouseInfo->hasWheelY)
 		{
 			int64_t delta = mouseState.wheelY - PreviousScrollY;
-			float32_t accumulated = Channels[currentChannel].Value + static_cast<float32_t>(delta);
-			WriteChannelValue(currentChannel, accumulated);
+			WriteChannelValue(currentChannel, static_cast<float32_t>(delta));
 			PreviousScrollY = mouseState.wheelY;
 		}
 		currentChannel++;
@@ -355,7 +352,7 @@ namespace Yuki {
 			for (uint32_t i = 0; i < channelCount; i++)
 				inputDevice->Channels.push_back({});
 
-			impl->Devices[deviceID] = inputDevice;
+			impl->GenericDevices[deviceID] = inputDevice;
 		};
 
 		createGenericInputDevice(GenericMouse, "Mouse", s_MaxMouseChannels);
@@ -433,11 +430,8 @@ namespace Yuki {
 
 	void InputAdapter::Update() const
 	{
-		for (auto device : m_Impl->Devices | std::views::values)
+		for (auto device : m_Impl->GenericDevices | std::views::values)
 		{
-			if (!device)
-				continue;
-
 			for (auto& channel : device->Channels)
 			{
 				channel.PreviousValue = channel.Value;
@@ -446,9 +440,14 @@ namespace Yuki {
 
 		for (auto device : m_Impl->Devices | std::views::values)
 		{
-			if (device->Device == nullptr)
-				continue;
+			for (auto& channel : device->Channels)
+			{
+				channel.PreviousValue = channel.Value;
+			}
+		}
 
+		for (auto device : m_Impl->Devices | std::views::values)
+		{
 			IGameInputReading* reading;
 
 			if (SUCCEEDED(m_Impl->Context->GetCurrentReading(device->Info->supportedInput, device->Device, &reading)))
@@ -488,16 +487,15 @@ namespace Yuki {
 
 		{
 			// Update generic mouse channels
-			auto genericMouse = m_Impl->Devices[GenericMouse];
+			auto genericMouse = m_Impl->GenericDevices[GenericMouse];
 			std::array<float32_t, s_MaxMouseChannels> genericMouseValues;
 			genericMouseValues.fill(0.0f);
 			for (auto device : m_Impl->Devices | std::views::values)
 			{
-				if (!device)
+				if (device->Type != InputDevice::Type::Mouse)
+				{
 					continue;
-
-				if (device->Device == nullptr || device->Type != InputDevice::Type::Mouse)
-					continue;
+				}
 
 				for (uint32_t i = 0; i < s_MaxMouseButtons; i++)
 				{
@@ -528,16 +526,15 @@ namespace Yuki {
 
 		{
 			// Update generic keyboard buttons
-			auto genericKeyboard = m_Impl->Devices[GenericKeyboard];
+			auto genericKeyboard = m_Impl->GenericDevices[GenericKeyboard];
 			std::array<float32_t, s_MaxKeyCount> genericKeyboardButtons;
 			genericKeyboardButtons.fill(0.0f);
 			for (auto device : m_Impl->Devices | std::views::values)
 			{
-				if (!device)
+				if (device->Type != InputDevice::Type::Keyboard)
+				{
 					continue;
-
-				if (device->Device == nullptr || device->Type != InputDevice::Type::Keyboard)
-					continue;
+				}
 
 				for (uint32_t i = 0; i < s_MaxKeyCount; i++)
 				{
@@ -552,16 +549,15 @@ namespace Yuki {
 
 		{
 			// Update generic gamepad channels
-			auto genericGamepad = m_Impl->Devices[GenericGamepad];
+			auto genericGamepad = m_Impl->GenericDevices[GenericGamepad];
 			std::array<float32_t, s_MaxGamepadChannels> genericGamepadValues;
 			genericGamepadValues.fill(0.0f);
 			for (auto device : m_Impl->Devices | std::views::values)
 			{
-				if (!device)
+				if (device->Type != InputDevice::Type::Gamepad)
+				{
 					continue;
-
-				if (device->Device == nullptr || device->Type != InputDevice::Type::Gamepad)
-					continue;
+				}
 
 				for (uint32_t i = 0; i < s_MaxGamepadChannels; i++)
 				{
@@ -580,6 +576,11 @@ namespace Yuki {
 
 	const InputDevice InputAdapter::GetDevice(uint32_t deviceIndex) const
 	{
+		if (m_Impl->GenericDevices.contains(deviceIndex))
+		{
+			return m_Impl->GenericDevices.at(deviceIndex);
+		}
+
 		if (m_Impl->Devices.contains(deviceIndex))
 		{
 			return m_Impl->Devices.at(deviceIndex);
