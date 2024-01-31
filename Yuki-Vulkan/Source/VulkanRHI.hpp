@@ -70,6 +70,7 @@ namespace Yuki {
 	template<>
 	struct Handle<ImageView>::Impl
 	{
+		RHIContext Context;
 		Image Source;
 		VkImageView Resource;
 	};

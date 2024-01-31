@@ -5,6 +5,7 @@ namespace Yuki {
 	ImageView ImageView::Create(RHIContext context, Image image)
 	{
 		auto* impl = new Impl();
+		impl->Context = context;
 		impl->Source = image;
 
 		VkImageViewCreateInfo viewInfo =
@@ -25,6 +26,12 @@ namespace Yuki {
 		Vulkan::CheckResult(vkCreateImageView(context->Device, &viewInfo, nullptr, &impl->Resource));
 
 		return { impl };
+	}
+
+	void ImageView::Destroy()
+	{
+		vkDestroyImageView(m_Impl->Context->Device, m_Impl->Resource, nullptr);
+		delete m_Impl;
 	}
 
 	void CommandList::TransitionImage(Image image, ImageLayout layout) const

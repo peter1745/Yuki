@@ -34,6 +34,19 @@ namespace Yuki {
 
 	void Swapchain::Impl::Recreate()
 	{
+		VkSwapchainKHR oldSwapchain = Resource;
+
+		if (oldSwapchain != nullptr)
+		{
+			for (auto imageView : ImageViews)
+			{
+				imageView.Destroy();
+			}
+
+			Images.clear();
+			ImageViews.clear();
+		}
+
 		VkSurfaceCapabilitiesKHR surfaceCapabilities;
 		Vulkan::CheckResult(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 			Context->PhysicalDevice,
@@ -76,7 +89,7 @@ namespace Yuki {
 			.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
 			.presentMode = VK_PRESENT_MODE_MAILBOX_KHR,
 			.clipped = VK_TRUE,
-			.oldSwapchain = nullptr,
+			.oldSwapchain = oldSwapchain,
 		};
 		Vulkan::CheckResult(vkCreateSwapchainKHR(Context->Device, &swapchainInfo, nullptr, &Resource));
 
