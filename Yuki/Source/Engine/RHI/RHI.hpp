@@ -28,13 +28,33 @@ namespace Yuki {
 		Queue RequestQueue(QueueType type) const;
 	};
 
+	enum class ImageLayout
+	{
+		Undefined,
+		General,
+		AttachmentOptimal,
+		Present,
+	};
+
+	struct Image : Handle<Image>
+	{
+		void Destroy();
+	};
+
+	struct ImageView : Handle<ImageView>
+	{
+		static ImageView Create(RHIContext context, Image image);
+		void Destroy();
+	};
+
 	class Window;
 	struct Swapchain : Handle<Swapchain>
 	{
 		static Swapchain Create(RHIContext context, Window window);
 		void Destroy();
 
-		void Present() const;
+		Image GetCurrentImage() const;
+		ImageView GetCurrentImageView() const;
 	};
 
 	struct Fence : Handle<Fence>
@@ -59,9 +79,17 @@ namespace Yuki {
 		void Present(Aura::Span<Swapchain> swapchains, Aura::Span<Fence> waits) const;
 	};
 
+	struct RenderingAttachment
+	{
+		ImageView Target;
+	};
+
 	struct CommandList : Handle<CommandList>
 	{
-		void TransitionSwapchain(Swapchain swapchain) const;
+		void BeginRendering(Aura::Span<RenderingAttachment> colorAttachments) const;
+		void EndRendering() const;
+
+		void TransitionImage(Image image, ImageLayout layout) const;
 	};
 
 	struct CommandPool : Handle<CommandPool>
@@ -73,51 +101,5 @@ namespace Yuki {
 
 		CommandList NewList() const;
 	};
-
-	/*
-	enum class ShaderType
-	{
-		Vertex, Pixel,
-		RayAnyHit, RayCallable, RayClosestHit, RayIntersection, RayMiss, RayGeneration
-	};
-
-	struct Shader : Handle<Shader>
-	{
-		static Shader Create(const std::filesystem::path& filepath, ShaderType type);
-		void Destroy();
-	};
-
-	struct RaytracingPipeline : Handle<RaytracingPipeline>
-	{
-		static RaytracingPipeline Create(RHIContext context, Shader shader);
-	};
-
-	enum class BufferUsage
-	{
-
-	};
-	//void MakeEnumFlags(BufferUsage) {}
-
-	struct Buffer : Handle<Buffer>
-	{
-		static Buffer Create(RHIContext context, BufferUsage usage, uint32_t size);
-	};
-
-	struct CommandList : Handle<CommandList>
-	{
-		void BindPipeline(RaytracingPipeline pipeline) const;
-
-		void DispatchRays(uint32_t width, uint32_t height) const;
-	};
-
-	struct CommandAllocator : Handle<CommandAllocator>
-	{
-		static CommandAllocator Create(RHIContext context, CommandListType commandListType);
-		void Destroy();
-
-		CommandList NewList() const;
-
-		void Reset() const;
-	};*/
 
 }

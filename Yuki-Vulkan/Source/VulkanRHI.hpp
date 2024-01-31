@@ -23,6 +23,58 @@ namespace Yuki {
 	};
 
 	template<>
+	struct Handle<Swapchain>::Impl
+	{
+		RHIContext Context;
+		Window Target;
+
+		VkSwapchainKHR Resource;
+		VkSurfaceKHR Surface;
+
+		std::vector<Image> Images;
+		std::vector<ImageView> ImageViews;
+		uint32_t CurrentImageIndex;
+
+		std::vector<VkSemaphore> Semaphores;
+		uint32_t CurrentSemaphoreIndex;
+
+		void Recreate();
+	};
+
+	inline VkImageLayout ImageLayoutToVkImageLayout(ImageLayout layout)
+	{
+		switch (layout)
+		{
+		case ImageLayout::Undefined: return VK_IMAGE_LAYOUT_UNDEFINED;
+		case ImageLayout::General: return VK_IMAGE_LAYOUT_GENERAL;
+		case ImageLayout::AttachmentOptimal: return VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+		case ImageLayout::Present: return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		}
+
+		YukiAssert(false);
+		return VK_IMAGE_LAYOUT_UNDEFINED;
+	}
+
+	template<>
+	struct Handle<Image>::Impl
+	{
+		VkImage Resource;
+		VkFormat Format;
+		uint32_t Width;
+		uint32_t Height;
+		VkImageLayout OldLayout;
+		VkImageLayout Layout;
+		VkImageAspectFlags AspectFlags;
+	};
+
+	template<>
+	struct Handle<ImageView>::Impl
+	{
+		Image Source;
+		VkImageView Resource;
+	};
+
+	template<>
 	struct Handle<Fence>::Impl
 	{
 		RHIContext Context;
@@ -39,24 +91,6 @@ namespace Yuki {
 		uint32_t Index;
 		VkQueueFlags Flags;
 		float Priority;
-	};
-
-	template<>
-	struct Handle<Swapchain>::Impl
-	{
-		RHIContext Context;
-		Window Target;
-
-		VkSwapchainKHR Resource;
-		VkSurfaceKHR Surface;
-
-		std::vector<VkImage> Images;
-		uint32_t CurrentImageIndex;
-
-		std::vector<VkSemaphore> Semaphores;
-		uint32_t CurrentSemaphoreIndex;
-
-		void Recreate();
 	};
 
 	template<>

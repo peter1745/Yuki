@@ -220,6 +220,7 @@ namespace Yuki {
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
 			.pNext = &hostImageCopyFeatures,
 			.synchronization2 = VK_TRUE,
+			.dynamicRendering = VK_TRUE,
 		};
 
 		VkPhysicalDeviceVulkan12Features features12 =

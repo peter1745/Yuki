@@ -78,10 +78,24 @@ namespace Yuki {
 			.clipped = VK_TRUE,
 			.oldSwapchain = nullptr,
 		};
-
 		Vulkan::CheckResult(vkCreateSwapchainKHR(Context->Device, &swapchainInfo, nullptr, &Resource));
 
-		Vulkan::Enumerate(vkGetSwapchainImagesKHR, Images, Context->Device, Resource);
+		std::vector<VkImage> swapchainImages;
+		Vulkan::Enumerate(vkGetSwapchainImagesKHR, swapchainImages, Context->Device, Resource);
+		for (auto image : swapchainImages)
+		{
+			auto* imageImpl = new Image::Impl();
+			imageImpl->Resource = image;
+			imageImpl->Width = width;
+			imageImpl->Height = height;
+			imageImpl->Format = surfaceFormat.format;
+			imageImpl->OldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageImpl->Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageImpl->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+
+			Images.push_back({ imageImpl });
+			ImageViews.push_back(ImageView::Create(Context, { imageImpl }));
+		}
 
 		while (Semaphores.size() < Images.size() * 2)
 		{
@@ -108,5 +122,8 @@ namespace Yuki {
 
 		delete m_Impl;
 	}
+
+	Image Swapchain::GetCurrentImage() const { return m_Impl->Images[m_Impl->CurrentImageIndex]; }
+	ImageView Swapchain::GetCurrentImageView() const { return m_Impl->ImageViews[m_Impl->CurrentImageIndex]; }
 
 }

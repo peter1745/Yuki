@@ -1,36 +1,62 @@
 #include "VulkanRHI.hpp"
 
+#include <Aura/Stack.hpp>
+
 namespace Yuki {
 
-	void CommandList::TransitionSwapchain(Swapchain swapchain) const
+	void CommandList::BeginRendering(Aura::Span<RenderingAttachment> colorAttachments) const
 	{
-		VkImageMemoryBarrier2 imageBarrier =
+		AuraStackPoint();
+
+		auto attachments = Aura::StackAlloc<VkRenderingAttachmentInfo>(colorAttachments.Count());
+
+		uint32_t renderWidth = ~0u;
+		uint32_t renderHeight = ~0u;
+
+		for (uint32_t i = 0; i < colorAttachments.Count(); i++)
 		{
-			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-			.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-			.srcAccessMask = 0,
-			.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-			.dstAccessMask = 0,
-			.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-			.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-			.image = swapchain->Images[swapchain->CurrentImageIndex],
-			.subresourceRange = {
-				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-				.baseMipLevel = 0,
-				.levelCount = 1,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
+			auto imageView = colorAttachments[i].Target;
+
+			if (imageView->Source->Width < renderWidth)
+			{
+				renderWidth = imageView->Source->Width;
+			}
+
+			if (imageView->Source->Height < renderHeight)
+			{
+				renderHeight = imageView->Source->Height;
+			}
+
+			attachments[i].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			attachments[i].imageView = imageView->Resource;
+			attachments[i].imageLayout = imageView->Source->Layout;
+			attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			attachments[i].clearValue = {
+				.color = {
+					.float32 = { 1.0f, 0.0f, 0.0f, 1.0f }
+				}
+			};
+		}
+
+		VkRenderingInfo renderingInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+			.renderArea = {
+				{ 0, 0 },
+				{ renderWidth, renderHeight }
 			},
+			.layerCount = 1,
+			.colorAttachmentCount = attachments.Count(),
+			.pColorAttachments = attachments.Data(),
 		};
 
-		VkDependencyInfo dependencyInfo =
-		{
-			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-			.imageMemoryBarrierCount = 1,
-			.pImageMemoryBarriers = &imageBarrier,
-		};
+		vkCmdBeginRendering(m_Impl->Resource, &renderingInfo);
+	}
 
-		vkCmdPipelineBarrier2(m_Impl->Resource, &dependencyInfo);
+	void CommandList::EndRendering() const
+	{
+		vkCmdEndRendering(m_Impl->Resource);
 	}
 
 	CommandPool CommandPool::Create(RHIContext context, Queue queue)
