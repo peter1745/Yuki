@@ -10,7 +10,6 @@ namespace Yuki {
 	template<typename T>
 	concept HandleType = requires(T t)
 	{
-		{ T::Create() } -> std::same_as<T>;
 		{ t.Destroy() };
 		{ t.Unwrap() } -> std::same_as<T>;
 		{ t.operator->() } -> std::same_as<typename T::Impl*>;
@@ -193,7 +192,7 @@ namespace Yuki {
 			return *this;
 		}
 
-		T::Impl* operator->() const noexcept { return m_Impl; }
+		operator T() const { return T(m_Impl); }
 
 	private:
 		void IncreaseRefCount()

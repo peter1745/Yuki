@@ -43,7 +43,7 @@ namespace Yuki {
 		return VK_FALSE;
 	}
 
-	static std::vector<Queue> RequestQueues(RHIContext context, VkQueueFlagBits queueType, uint32_t count)
+	static std::vector<Queue> RequestVulkanQueues(RHIContext context, VkQueueFlagBits queueType, uint32_t count)
 	{
 		std::vector<VkQueueFamilyProperties> queueFamilies;
 		Vulkan::Enumerate(vkGetPhysicalDeviceQueueFamilyProperties, queueFamilies, context->PhysicalDevice);
@@ -186,7 +186,7 @@ namespace Yuki {
 		WriteLine("GPU: {}", physicalDeviceProperties.deviceName);
 
 		// Create a logical device
-		impl->Queues.append_range(RequestQueues({ impl }, VK_QUEUE_GRAPHICS_BIT, 1));
+		impl->Queues.append_range(RequestVulkanQueues({ impl }, VK_QUEUE_GRAPHICS_BIT, 1));
 
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 		for (auto queue : impl->Queues)
@@ -204,22 +204,79 @@ namespace Yuki {
 			queueCreateInfos.push_back(std::move(queueInfo));
 		}
 
+		std::vector<const char*> deviceExtensions = {
+			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+			VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME
+		};
+
+		VkPhysicalDeviceHostImageCopyFeaturesEXT hostImageCopyFeatures =
+		{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT,
+			.hostImageCopy = VK_TRUE
+		};
+
+		VkPhysicalDeviceVulkan13Features features13 =
+		{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+			.pNext = &hostImageCopyFeatures,
+			.synchronization2 = VK_TRUE,
+		};
+
+		VkPhysicalDeviceVulkan12Features features12 =
+		{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+			.pNext = &features13,
+			.shaderUniformBufferArrayNonUniformIndexing = VK_TRUE,
+			.shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+			.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE,
+			.shaderStorageImageArrayNonUniformIndexing = VK_TRUE,
+			.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE,
+			.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+			.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE,
+			.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE,
+			.descriptorBindingPartiallyBound = VK_TRUE,
+			.descriptorBindingVariableDescriptorCount = VK_TRUE,
+			.runtimeDescriptorArray = VK_TRUE,
+			.scalarBlockLayout = VK_TRUE,
+			.imagelessFramebuffer = VK_TRUE,
+			.timelineSemaphore = VK_TRUE,
+			.bufferDeviceAddress = VK_TRUE,
+		};
+
+		VkPhysicalDeviceFeatures2 features =
+		{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+			.pNext = &features12
+		};
+
 		VkDeviceCreateInfo deviceInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-			.pNext = nullptr,
+			.pNext = &features,
 			.flags = 0,
 			.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
 			.pQueueCreateInfos = queueCreateInfos.data(),
 			.enabledLayerCount = 0,
 			.ppEnabledLayerNames = nullptr,
-			.enabledExtensionCount = 0,
-			.ppEnabledExtensionNames = nullptr,
+			.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),
+			.ppEnabledExtensionNames = deviceExtensions.data(),
 			.pEnabledFeatures = nullptr,
 		};
 		Vulkan::CheckResult(vkCreateDevice(impl->PhysicalDevice, &deviceInfo, nullptr, &impl->Device));
 
 		volkLoadDevice(impl->Device);
+
+		for (auto queue : impl->Queues)
+		{
+			VkDeviceQueueInfo2 queueInfo =
+			{
+				.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+				.queueFamilyIndex = queue->Family,
+				.queueIndex = queue->Index,
+			};
+
+			vkGetDeviceQueue2(impl->Device, &queueInfo, &queue->Queue);
+		}
 
 		impl->Allocator = VulkanMemoryAllocator::Create(impl->Instance, impl->PhysicalDevice, impl->Device);
 

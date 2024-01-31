@@ -29,6 +29,20 @@ namespace Yuki {
 		return m_Impl->Closed;
 	}
 
+	uint32_t Window::GetWidth() const
+	{
+		RECT size = {};
+		YukiAssert(GetClientRect(m_Impl->WindowHandle, &size));
+		return size.right;
+	}
+
+	uint32_t Window::GetHeight() const
+	{
+		RECT size = {};
+		YukiAssert(GetClientRect(m_Impl->WindowHandle, &size));
+		return size.bottom;
+	}
+
 	WindowSystem::WindowSystem()
 	{
 		WNDCLASSEXA windowClass =

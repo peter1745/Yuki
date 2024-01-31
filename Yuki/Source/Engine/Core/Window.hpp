@@ -10,6 +10,9 @@ namespace Yuki {
 	struct Window : Handle<Window>
 	{
 		bool IsClosed() const;
+
+		uint32_t GetWidth() const;
+		uint32_t GetHeight() const;
 	};
 
 	class WindowSystem final

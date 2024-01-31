@@ -4,6 +4,7 @@
 
 #include <volk.h>
 
+#define NOMINMAX
 #include <vulkan/vulkan.h>
 
 #include <string_view>

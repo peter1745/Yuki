@@ -1,7 +1,5 @@
 #include "VulkanRHI.hpp"
 
-#include <Engine/Core/Window.hpp>
-
 // NOTE(Peter): This should preferably be in a file that only gets compiled on Windows
 #if defined(YUKI_PLATFORM_WINDOWS)
 	#include <Platform/Windows/WindowImpl.hpp>
@@ -13,6 +11,7 @@ namespace Yuki {
 	{
 		auto* impl = new Impl();
 		impl->Context = context;
+		impl->Target = window;
 
 		// Initialize data that persists after a resize
 
@@ -28,12 +27,12 @@ namespace Yuki {
 		Vulkan::CheckResult(vkCreateWin32SurfaceKHR(context->Instance, &surfaceInfo, nullptr, &impl->Surface));
 #endif
 
-		impl->Recreate(window);
+		impl->Recreate();
 
 		return { impl };
 	}
 
-	void Swapchain::Impl::Recreate(Window window)
+	void Swapchain::Impl::Recreate()
 	{
 		VkSurfaceCapabilitiesKHR surfaceCapabilities;
 		Vulkan::CheckResult(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
@@ -44,32 +43,70 @@ namespace Yuki {
 
 		std::vector<VkSurfaceFormatKHR> availableFormats;
 		Vulkan::Enumerate(vkGetPhysicalDeviceSurfaceFormatsKHR, availableFormats, Context->PhysicalDevice, Surface);
-		const auto& surfaceFormat = std::ranges::find_if(availableFormats, [](const auto& availableFormat)
+		const auto& surfaceFormat = *std::ranges::find_if(availableFormats, [](const auto& availableFormat)
 		{
 			return availableFormat.format == VK_FORMAT_R8G8B8A8_UNORM || availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM;
 		});
 
-		/*VkSwapchainCreateInfoKHR swapchainInfo =
+		uint32_t width = surfaceCapabilities.currentExtent.width;
+		uint32_t height = surfaceCapabilities.currentExtent.height;
+
+		if (width == std::numeric_limits<uint32_t>::max())
+		{
+			width = std::clamp(Target.GetWidth(), surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+			height = std::clamp(Target.GetHeight(), surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+		}
+
+		VkSwapchainCreateInfoKHR swapchainInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
 			.pNext = nullptr,
 			.flags = 0,
 			.surface = Surface,
-			.minImageCount,
-			.imageFormat,
-			.imageColorSpace,
-			.imageExtent,
-			.imageArrayLayers,
-			.imageUsage,
-			.imageSharingMode,
-			.queueFamilyIndexCount,
-			.pQueueFamilyIndices,
-			.preTransform,
-			.compositeAlpha,
-			.presentMode,
-			.clipped,
-			.oldSwapchain,
-		};*/
+			.minImageCount = std::min(surfaceCapabilities.minImageCount + 1, surfaceCapabilities.maxImageCount),
+			.imageFormat = surfaceFormat.format,
+			.imageColorSpace = surfaceFormat.colorSpace,
+			.imageExtent = { width, height },
+			.imageArrayLayers = 1,
+			.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+			.queueFamilyIndexCount = 0,
+			.pQueueFamilyIndices = nullptr,
+			.preTransform = surfaceCapabilities.currentTransform,
+			.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+			.presentMode = VK_PRESENT_MODE_MAILBOX_KHR,
+			.clipped = VK_TRUE,
+			.oldSwapchain = nullptr,
+		};
+
+		Vulkan::CheckResult(vkCreateSwapchainKHR(Context->Device, &swapchainInfo, nullptr, &Resource));
+
+		Vulkan::Enumerate(vkGetSwapchainImagesKHR, Images, Context->Device, Resource);
+
+		while (Semaphores.size() < Images.size() * 2)
+		{
+			VkSemaphoreCreateInfo semaphoreInfo = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+			VkSemaphore semaphore;
+			Vulkan::CheckResult(vkCreateSemaphore(Context->Device, &semaphoreInfo, nullptr, &semaphore));
+			Semaphores.push_back(semaphore);
+		}
+	}
+
+	void Swapchain::Destroy()
+	{
+		for (auto semaphore : m_Impl->Semaphores)
+		{
+			vkDestroySemaphore(m_Impl->Context->Device, semaphore, nullptr);
+		}
+		m_Impl->Semaphores.clear();
+
+		if (m_Impl->Resource)
+		{
+			vkDestroySwapchainKHR(m_Impl->Context->Device, m_Impl->Resource, nullptr);
+			vkDestroySurfaceKHR(m_Impl->Context->Instance, m_Impl->Surface, nullptr);
+		}
+
+		delete m_Impl;
 	}
 
 }

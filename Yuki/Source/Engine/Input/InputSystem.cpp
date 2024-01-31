@@ -140,6 +140,7 @@ namespace Yuki {
 
 	void InputSystem::Impl::Update()
 	{
+		// TODO(Peter): Change this to allow for multiple backends
 		Adapter.Update();
 
 		if (NeedsRecompile)

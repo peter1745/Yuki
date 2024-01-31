@@ -8,7 +8,7 @@ int main(int argc, char* argv[])\
 {\
 	std::string filepath = argv[0];\
 	AppType##Main();\
-	AppRunner<AppType>(filepath).Run();\
+	::Yuki::AppRunner<AppType>(filepath).Run();\
 	return 0;\
 }\
 static void AppType##Main()
