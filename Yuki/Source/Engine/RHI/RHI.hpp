@@ -36,8 +36,24 @@ namespace Yuki {
 		Present,
 	};
 
+	enum class ImageFormat
+	{
+		RGBA8Unorm,
+		BGRA8Unorm,
+	};
+
+	enum class ImageUsage
+	{
+		ColorAttachment        = 1 << 0,
+		DepthStencilAttachment = 1 << 1,
+		TransferSrc            = 1 << 2,
+		TransferDst            = 1 << 3
+	};
+	inline void MakeEnumFlags(ImageUsage){}
+
 	struct Image : Handle<Image>
 	{
+		static Image Create(RHIContext context, uint32_t width, uint32_t height, ImageFormat format, ImageUsage usage);
 		void Destroy();
 	};
 
@@ -77,6 +93,31 @@ namespace Yuki {
 		void AcquireImages(Aura::Span<Swapchain> swapchains, Aura::Span<Fence> signals) const;
 		void SubmitCommandLists(Aura::Span<CommandList> commandLists, Aura::Span<Fence> waits, Aura::Span<Fence> signals) const;
 		void Present(Aura::Span<Swapchain> swapchains, Aura::Span<Fence> waits) const;
+	};
+
+	enum class ShaderStage
+	{
+		Vertex, Fragment
+	};
+
+	struct GraphicsPipelineConfig
+	{
+		struct ShaderConfig
+		{
+			ShaderStage Stage;
+			std::filesystem::path FilePath;
+		};
+
+		std::vector<ShaderConfig> Shaders;
+		uint32_t PushConstantSize;
+
+		std::vector<ImageFormat> ColorAttachmentFormats;
+	};
+
+	struct GraphicsPipeline : Handle<GraphicsPipeline>
+	{
+		static GraphicsPipeline Create(RHIContext context, const GraphicsPipelineConfig& config);
+		void Destroy();
 	};
 
 	struct RenderingAttachment

@@ -98,7 +98,7 @@ namespace Yuki {
 		for (auto image : swapchainImages)
 		{
 			auto* imageImpl = new Image::Impl();
-			imageImpl->Resource = image;
+			imageImpl->Allocation.Image = image;
 			imageImpl->Width = width;
 			imageImpl->Height = height;
 			imageImpl->Format = surfaceFormat.format;

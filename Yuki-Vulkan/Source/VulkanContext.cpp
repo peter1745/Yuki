@@ -247,7 +247,10 @@ namespace Yuki {
 		VkPhysicalDeviceFeatures2 features =
 		{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-			.pNext = &features12
+			.pNext = &features12,
+			.features = {
+				.shaderInt64 = VK_TRUE		
+			}
 		};
 
 		VkDeviceCreateInfo deviceInfo =
@@ -280,6 +283,7 @@ namespace Yuki {
 		}
 
 		impl->Allocator = VulkanMemoryAllocator::Create(impl->Instance, impl->PhysicalDevice, impl->Device);
+		impl->Compiler = Aura::Unique<ShaderCompiler>::New();
 
 		return { impl };
 	}

@@ -1,4 +1,5 @@
-local VulkanIncludeDir = os.getenv("VULKAN_SDK") .. "/include"
+local VulkanLib = os.getenv("VULKAN_SDK") .. "/Lib"
+local VulkanIncludeDir = os.getenv("VULKAN_SDK") .. "/Include"
 
 project "Yuki-Vulkan"
     kind "StaticLib"
@@ -22,6 +23,42 @@ project "Yuki-Vulkan"
 	defines {
 		"VK_NO_PROTOTYPES"
 	}
+
+	libdirs {
+		VulkanLib
+	}
+
+	filter { "configurations:Debug or configurations:RelWithDebug" }
+		links {
+			"glslangd",
+			"glslang-default-resource-limitsd",
+			"OSDependentd",
+			"MachineIndependentd",
+			"GenericCodeGend",
+			"SPIRVd",
+			"SPIRV-Toolsd",
+			"SPIRV-Tools-diffd",
+			"SPIRV-Tools-linkd",
+			"SPIRV-Tools-lintd",
+			"SPIRV-Tools-optd",
+			"SPIRV-Tools-reduced",
+		}
+
+	filter { "configurations:Release" }
+		links {
+			"glslang",
+			"glslang-default-resource-limitsd",
+			"OSDependentd",
+			"MachineIndependentd",
+			"GenericCodeGend",
+			"SPIRVd",
+			"SPIRV-Toolsd",
+			"SPIRV-Tools-diffd",
+			"SPIRV-Tools-linkd",
+			"SPIRV-Tools-lintd",
+			"SPIRV-Tools-optd",
+			"SPIRV-Tools-reduced",
+		}
 
 	filter { "system:windows" }
 		defines {

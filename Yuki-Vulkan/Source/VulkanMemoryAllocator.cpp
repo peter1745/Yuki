@@ -41,4 +41,22 @@ namespace Yuki {
 		vmaDestroyAllocator(m_Impl->Allocator);
 		delete m_Impl;
 	}
+
+	ImageAllocation VulkanMemoryAllocator::CreateImage(const VkImageCreateInfo& createInfo) const
+	{
+		VmaAllocationCreateInfo allocationInfo =
+		{
+			.usage = VMA_MEMORY_USAGE_AUTO
+		};
+
+		ImageAllocation allocation{};
+		Vulkan::CheckResult(vmaCreateImage(m_Impl->Allocator, &createInfo, &allocationInfo, &allocation.Image, &allocation.Allocation, nullptr));
+		return allocation;
+	}
+
+	void VulkanMemoryAllocator::DestroyImage(const ImageAllocation& allocation) const
+	{
+		vmaDestroyImage(m_Impl->Allocator, allocation.Image, allocation.Allocation);
+	}
+
 }

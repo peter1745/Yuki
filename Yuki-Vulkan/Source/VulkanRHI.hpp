@@ -2,6 +2,7 @@
 
 #include "VulkanCommon.hpp"
 #include "VulkanMemoryAllocator.hpp"
+#include "ShaderCompiler.hpp"
 
 #include <Engine/Core/Window.hpp>
 #include <Engine/RHI/RHI.hpp>
@@ -20,6 +21,8 @@ namespace Yuki {
 		std::vector<Queue> Queues;
 
 		VulkanMemoryAllocator Allocator;
+
+		Aura::Unique<ShaderCompiler> Compiler;
 	};
 
 	template<>
@@ -55,10 +58,36 @@ namespace Yuki {
 		return VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 
+	inline VkFormat ImageFormatToVkFormat(ImageFormat format)
+	{
+		switch (format)
+		{
+		case ImageFormat::RGBA8Unorm: return VK_FORMAT_R8G8B8A8_UNORM;
+		case ImageFormat::BGRA8Unorm: return VK_FORMAT_B8G8R8A8_UNORM;
+		}
+
+		YukiAssert(false);
+		return VK_FORMAT_UNDEFINED;
+	}
+
+	inline VkImageUsageFlags ImageUsageToVkImageUsage(ImageUsage usage)
+	{
+		VkImageUsageFlags result = 0;
+
+		if (usage & ImageUsage::ColorAttachment) result |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		if (usage & ImageUsage::DepthStencilAttachment) result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		if (usage & ImageUsage::TransferSrc) result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		if (usage & ImageUsage::TransferDst) result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+		return result;
+	}
+
 	template<>
 	struct Handle<Image>::Impl
 	{
-		VkImage Resource;
+		RHIContext Context;
+		ImageAllocation Allocation;
+
 		VkFormat Format;
 		uint32_t Width;
 		uint32_t Height;
@@ -92,6 +121,26 @@ namespace Yuki {
 		uint32_t Index;
 		VkQueueFlags Flags;
 		float Priority;
+	};
+
+	inline VkShaderStageFlagBits ShaderStageToVkShaderStage(ShaderStage stage)
+	{
+		switch (stage)
+		{
+		case ShaderStage::Vertex: return VK_SHADER_STAGE_VERTEX_BIT;
+		case ShaderStage::Fragment: return VK_SHADER_STAGE_FRAGMENT_BIT;
+		}
+
+		YukiAssert(false);
+		return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+	}
+
+	template<>
+	struct Handle<GraphicsPipeline>::Impl
+	{
+		RHIContext Context;
+		VkPipelineLayout Layout;
+		VkPipeline Resource;
 	};
 
 	template<>
