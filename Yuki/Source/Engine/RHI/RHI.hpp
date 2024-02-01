@@ -33,6 +33,8 @@ namespace Yuki {
 		Undefined,
 		General,
 		AttachmentOptimal,
+		TransferSrc,
+		TransferDst,
 		Present,
 	};
 
@@ -51,10 +53,22 @@ namespace Yuki {
 	};
 	inline void MakeEnumFlags(ImageUsage){}
 
+	struct ImageConfig
+	{
+		uint32_t Width;
+		uint32_t Height;
+		ImageFormat Format;
+		ImageUsage Usage;
+		bool CreateDefaultView = false;
+	};
+
+	struct ImageView;
 	struct Image : Handle<Image>
 	{
-		static Image Create(RHIContext context, uint32_t width, uint32_t height, ImageFormat format, ImageUsage usage);
+		static Image Create(RHIContext context, const ImageConfig& config);
 		void Destroy();
+
+		ImageView GetDefaultView() const;
 	};
 
 	struct ImageView : Handle<ImageView>
@@ -120,9 +134,44 @@ namespace Yuki {
 		void Destroy();
 	};
 
+	enum class BufferUsage
+	{
+		TransferSrc   = 1 << 0,
+		TransferDst   = 1 << 1,
+		UniformBuffer = 1 << 2,
+		StorageBuffer = 1 << 3,
+		IndexBuffer   = 1 << 4,
+		VertexBuffer  = 1 << 5,
+		Mapped        = 1 << 6,
+		DeviceLocal   = 1 << 7,
+	};
+	inline void MakeEnumFlags(BufferUsage) {}
+
+	struct Buffer : Handle<Buffer>
+	{
+		static Buffer Create(RHIContext context, uint64_t size, BufferUsage usage);
+		void Destroy();
+
+		uint64_t GetAddress() const;
+
+		void SetData(std::byte* data, uint32_t offset, uint32_t size) const;
+
+		template<typename T>
+		void Set(Aura::Span<T> data)
+		{
+			SetData(reinterpret_cast<std::byte*>(data.Data()), 0, data.ByteCount());
+		}
+	};
+
 	struct RenderingAttachment
 	{
 		ImageView Target;
+	};
+
+	struct Viewport
+	{
+		uint32_t Width;
+		uint32_t Height;
 	};
 
 	struct CommandList : Handle<CommandList>
@@ -130,7 +179,21 @@ namespace Yuki {
 		void BeginRendering(Aura::Span<RenderingAttachment> colorAttachments) const;
 		void EndRendering() const;
 
+		void SetViewports(Aura::Span<Viewport> viewports) const;
+		void BindPipeline(GraphicsPipeline pipeline) const;
+		
 		void TransitionImage(Image image, ImageLayout layout) const;
+		void BlitImage(Image dest, Image src) const;
+
+		void BindVertexBuffer(Buffer buffer, uint32_t stride) const;
+		void BindIndexBuffer(Buffer buffer) const;
+
+		void CopyBuffer(Buffer dest, Buffer src, uint32_t size) const;
+
+		void SetPushConstants(GraphicsPipeline pipeline, void* data, uint32_t size) const;
+
+		void Draw(uint32_t vertexCount) const;
+		void DrawIndexed(uint32_t indexCount) const;
 	};
 
 	struct CommandPool : Handle<CommandPool>

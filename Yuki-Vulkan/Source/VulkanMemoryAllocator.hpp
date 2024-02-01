@@ -6,10 +6,12 @@
 
 namespace Yuki {
 
-	struct ImageAllocation
+	template<typename T>
+	struct GPUAllocation
 	{
-		VkImage Image;
+		T Resource;
 		VmaAllocation Allocation;
+		VmaAllocationInfo AllocationInfo;
 	};
 
 	struct VulkanMemoryAllocator : Handle<VulkanMemoryAllocator>
@@ -17,8 +19,11 @@ namespace Yuki {
 		static VulkanMemoryAllocator Create(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device);
 		void Destroy();
 
-		ImageAllocation CreateImage(const VkImageCreateInfo& createInfo) const;
-		void DestroyImage(const ImageAllocation& allocation) const;
+		GPUAllocation<VkImage> CreateImage(const VkImageCreateInfo& createInfo) const;
+		void DestroyImage(const GPUAllocation<VkImage>& allocation) const;
+
+		GPUAllocation<VkBuffer> CreateBuffer(const VkBufferCreateInfo& createInfo, BufferUsage usage) const;
+		void DestroyBuffer(const GPUAllocation<VkBuffer>& allocation) const;
 	};
 
 }

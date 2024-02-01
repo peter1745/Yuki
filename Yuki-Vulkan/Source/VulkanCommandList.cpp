@@ -34,7 +34,7 @@ namespace Yuki {
 			attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 			attachments[i].clearValue = {
 				.color = {
-					.float32 = { 1.0f, 0.0f, 0.0f, 1.0f }
+					.float32 = { 0.1f, 0.1f, 0.1f, 1.0f }
 				}
 			};
 		}
@@ -57,6 +57,167 @@ namespace Yuki {
 	void CommandList::EndRendering() const
 	{
 		vkCmdEndRendering(m_Impl->Resource);
+	}
+
+	void CommandList::SetViewports(Aura::Span<Viewport> viewports) const
+	{
+		AuraStackPoint();
+
+		auto viewportList = Aura::StackAlloc<VkViewport>(viewports.Count());
+		auto scissorList = Aura::StackAlloc<VkRect2D>(viewports.Count());
+		for (uint32_t i = 0; i < viewports.Count(); i++)
+		{
+			viewportList[i].x = 0.0f;
+			viewportList[i].y = 0.0f;
+			viewportList[i].width = static_cast<float32_t>(viewports[i].Width);
+			viewportList[i].height = static_cast<float32_t>(viewports[i].Height);
+			viewportList[i].minDepth = 0.0f;
+			viewportList[i].maxDepth = 1.0f;
+
+			scissorList[i].offset = { 0, 0 };
+			scissorList[i].extent = { viewports[i].Width, viewports[i].Height };
+		}
+
+		vkCmdSetViewportWithCount(m_Impl->Resource, viewportList.Count(), viewportList.Data());
+		vkCmdSetScissorWithCount(m_Impl->Resource, scissorList.Count(), scissorList.Data());
+	}
+
+	void CommandList::BindPipeline(GraphicsPipeline pipeline) const
+	{
+		vkCmdBindPipeline(m_Impl->Resource, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->Resource);
+	}
+
+	void CommandList::TransitionImage(Image image, ImageLayout layout) const
+	{
+		auto newLayout = ImageLayoutToVkImageLayout(layout);
+
+		if (image->Layout == newLayout)
+		{
+			return;
+		}
+
+		image->OldLayout = image->Layout;
+		image->Layout = newLayout;
+
+		VkImageMemoryBarrier2 imageBarrier =
+		{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+			.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+			.srcAccessMask = 0,
+			.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+			.dstAccessMask = 0,
+			.oldLayout = image->OldLayout,
+			.newLayout = image->Layout,
+			.image = image->Allocation.Resource,
+			.subresourceRange = {
+				.aspectMask = image->AspectFlags,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+		};
+
+		VkDependencyInfo dependencyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+			.imageMemoryBarrierCount = 1,
+			.pImageMemoryBarriers = &imageBarrier,
+		};
+
+		vkCmdPipelineBarrier2(m_Impl->Resource, &dependencyInfo);
+	}
+
+	void CommandList::BlitImage(Image dest, Image src) const
+	{
+		VkImageBlit2 imageBlit =
+		{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+			.srcSubresource = {
+				.aspectMask = src->AspectFlags,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.srcOffsets = {
+				{ 0, 0, 0 },
+				{ src->Width, src->Height, 1 },
+			},
+			.dstSubresource = {
+				.aspectMask = dest->AspectFlags,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.dstOffsets = {
+				{ 0, 0, 0 },
+				{ dest->Width, dest->Height, 1 },
+			},
+		};
+
+		VkBlitImageInfo2 blitInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+			.srcImage = src->Allocation.Resource,
+			.srcImageLayout = src->Layout,
+			.dstImage = dest->Allocation.Resource,
+			.dstImageLayout = dest->Layout,
+			.regionCount = 1,
+			.pRegions = &imageBlit,
+			.filter = VK_FILTER_LINEAR,
+		};
+
+		vkCmdBlitImage2(m_Impl->Resource, &blitInfo);
+	}
+
+	void CommandList::BindVertexBuffer(Buffer buffer, uint32_t stride) const
+	{
+		VkDeviceSize offset = 0;
+		VkDeviceSize size = buffer->Size;
+		VkDeviceSize stride64 = stride;
+		vkCmdBindVertexBuffers2(m_Impl->Resource, 0, 1, &buffer->Allocation.Resource, &offset, &size, &stride64);
+	}
+
+	void CommandList::BindIndexBuffer(Buffer buffer) const
+	{
+		vkCmdBindIndexBuffer(m_Impl->Resource, buffer->Allocation.Resource, 0, VK_INDEX_TYPE_UINT32);
+	}
+
+	void CommandList::CopyBuffer(Buffer dest, Buffer src, uint32_t size) const
+	{
+		VkBufferCopy2 bufferCopy =
+		{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+			.srcOffset = 0,
+			.dstOffset = 0,
+			.size = size,
+		};
+
+		VkCopyBufferInfo2 copyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+			.srcBuffer = src->Allocation.Resource,
+			.dstBuffer = dest->Allocation.Resource,
+			.regionCount = 1,
+			.pRegions = &bufferCopy,
+		};
+
+		vkCmdCopyBuffer2(m_Impl->Resource, &copyInfo);
+	}
+
+	void CommandList::SetPushConstants(GraphicsPipeline pipeline, void* data, uint32_t size) const
+	{
+		vkCmdPushConstants(m_Impl->Resource, pipeline->Layout, VK_SHADER_STAGE_ALL, 0, size, data);
+	}
+
+	void CommandList::Draw(uint32_t vertexCount) const
+	{
+		vkCmdDraw(m_Impl->Resource, vertexCount, 1, 0, 0);
+	}
+
+	void CommandList::DrawIndexed(uint32_t indexCount) const
+	{
+		vkCmdDrawIndexed(m_Impl->Resource, indexCount, 1, 0, 0, 0);
 	}
 
 	CommandPool CommandPool::Create(RHIContext context, Queue queue)

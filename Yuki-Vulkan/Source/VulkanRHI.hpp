@@ -51,6 +51,8 @@ namespace Yuki {
 		case ImageLayout::Undefined: return VK_IMAGE_LAYOUT_UNDEFINED;
 		case ImageLayout::General: return VK_IMAGE_LAYOUT_GENERAL;
 		case ImageLayout::AttachmentOptimal: return VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+		case ImageLayout::TransferSrc: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		case ImageLayout::TransferDst: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		case ImageLayout::Present: return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		}
 
@@ -86,14 +88,16 @@ namespace Yuki {
 	struct Handle<Image>::Impl
 	{
 		RHIContext Context;
-		ImageAllocation Allocation;
+		GPUAllocation<VkImage> Allocation;
 
 		VkFormat Format;
-		uint32_t Width;
-		uint32_t Height;
+		int32_t Width;
+		int32_t Height;
 		VkImageLayout OldLayout;
 		VkImageLayout Layout;
 		VkImageAspectFlags AspectFlags;
+
+		ImageView DefaultView;
 	};
 
 	template<>
@@ -141,6 +145,29 @@ namespace Yuki {
 		RHIContext Context;
 		VkPipelineLayout Layout;
 		VkPipeline Resource;
+	};
+
+	inline VkBufferUsageFlags2KHR BufferUsageToVkBufferUsage(BufferUsage usage)
+	{
+		VkBufferUsageFlags2KHR result = VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR;
+
+		if (usage & BufferUsage::TransferSrc) result |= VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR;
+		if (usage & BufferUsage::TransferDst) result |= VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR;
+		if (usage & BufferUsage::UniformBuffer) result |= VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR;
+		if (usage & BufferUsage::StorageBuffer) result |= VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR;
+		if (usage & BufferUsage::IndexBuffer) result |= VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT_KHR;
+		if (usage & BufferUsage::VertexBuffer) result |= VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT_KHR;
+
+		return result;
+	}
+
+	template<>
+	struct Handle<Buffer>::Impl
+	{
+		RHIContext Context;
+		GPUAllocation<VkBuffer> Allocation;
+		uint32_t Size;
+		uint64_t Address;
 	};
 
 	template<>

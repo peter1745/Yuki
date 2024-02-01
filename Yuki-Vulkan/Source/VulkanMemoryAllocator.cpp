@@ -42,21 +42,68 @@ namespace Yuki {
 		delete m_Impl;
 	}
 
-	ImageAllocation VulkanMemoryAllocator::CreateImage(const VkImageCreateInfo& createInfo) const
+	GPUAllocation<VkImage> VulkanMemoryAllocator::CreateImage(const VkImageCreateInfo& createInfo) const
 	{
 		VmaAllocationCreateInfo allocationInfo =
 		{
 			.usage = VMA_MEMORY_USAGE_AUTO
 		};
 
-		ImageAllocation allocation{};
-		Vulkan::CheckResult(vmaCreateImage(m_Impl->Allocator, &createInfo, &allocationInfo, &allocation.Image, &allocation.Allocation, nullptr));
+		GPUAllocation<VkImage> allocation{};
+		Vulkan::CheckResult(vmaCreateImage(
+			m_Impl->Allocator,
+			&createInfo,
+			&allocationInfo,
+			&allocation.Resource,
+			&allocation.Allocation,
+			&allocation.AllocationInfo
+		));
 		return allocation;
 	}
 
-	void VulkanMemoryAllocator::DestroyImage(const ImageAllocation& allocation) const
+	void VulkanMemoryAllocator::DestroyImage(const GPUAllocation<VkImage>& allocation) const
 	{
-		vmaDestroyImage(m_Impl->Allocator, allocation.Image, allocation.Allocation);
+		vmaDestroyImage(m_Impl->Allocator, allocation.Resource, allocation.Allocation);
 	}
+
+	GPUAllocation<VkBuffer> VulkanMemoryAllocator::CreateBuffer(const VkBufferCreateInfo& createInfo, BufferUsage usage) const
+	{
+		VmaAllocationCreateInfo allocationInfo =
+		{
+			.usage = VMA_MEMORY_USAGE_AUTO,
+		};
+
+		if (usage & BufferUsage::Mapped)
+		{
+			allocationInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+			if (usage & BufferUsage::DeviceLocal)
+			{
+				allocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+				allocationInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			}
+			else
+			{
+				allocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+			}
+		}
+
+		GPUAllocation<VkBuffer> allocation{};
+		Vulkan::CheckResult(vmaCreateBuffer(
+			m_Impl->Allocator,
+			&createInfo,
+			&allocationInfo,
+			&allocation.Resource,
+			&allocation.Allocation,
+			&allocation.AllocationInfo
+		));
+		return allocation;
+	}
+
+	void VulkanMemoryAllocator::DestroyBuffer(const GPUAllocation<VkBuffer>& allocation) const
+	{
+		vmaDestroyBuffer(m_Impl->Allocator, allocation.Resource, allocation.Allocation);
+	}
+
 
 }
