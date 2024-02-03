@@ -6,6 +6,7 @@
 
 #include <concepts>
 #include <filesystem>
+#include <chrono>
 
 namespace Yuki {
 
@@ -14,6 +15,8 @@ namespace Yuki {
 	class Application
 	{
 	public:
+		using Clock = std::chrono::steady_clock;
+
 		Application();
 
 		virtual ~Application() = default;
@@ -33,6 +36,8 @@ namespace Yuki {
 
 		Aura::Unique<WindowSystem> m_WindowSystem = nullptr;
 		InputSystem m_InputSystem;
+
+		Clock::time_point m_LastTime;
 
 	private:
 		template<std::derived_from<Application> T>

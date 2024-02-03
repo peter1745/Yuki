@@ -16,6 +16,8 @@ project "Yuki-Vulkan"
         "../Yuki/Source/",
 		"../ThirdParty/volk/",
 		"../ThirdParty/Aura/Aura/Include/",
+		"../ThirdParty/fastgltf/include/",
+		"../ThirdParty/simdjson/include/",
 
 		VulkanIncludeDir,
     }
@@ -47,17 +49,17 @@ project "Yuki-Vulkan"
 	filter { "configurations:Release" }
 		links {
 			"glslang",
-			"glslang-default-resource-limitsd",
-			"OSDependentd",
-			"MachineIndependentd",
-			"GenericCodeGend",
-			"SPIRVd",
-			"SPIRV-Toolsd",
-			"SPIRV-Tools-diffd",
-			"SPIRV-Tools-linkd",
-			"SPIRV-Tools-lintd",
-			"SPIRV-Tools-optd",
-			"SPIRV-Tools-reduced",
+			"glslang-default-resource-limits",
+			"OSDependent",
+			"MachineIndependent",
+			"GenericCodeGen",
+			"SPIRV",
+			"SPIRV-Tools",
+			"SPIRV-Tools-diff",
+			"SPIRV-Tools-link",
+			"SPIRV-Tools-lint",
+			"SPIRV-Tools-opt",
+			"SPIRV-Tools-reduce",
 		}
 
 	filter { "system:windows" }

@@ -51,7 +51,7 @@ namespace Yuki {
 		TransferSrc            = 1 << 2,
 		TransferDst            = 1 << 3
 	};
-	inline void MakeEnumFlags(ImageUsage){}
+	inline void MakeEnumFlags(ImageUsage) {}
 
 	struct ImageConfig
 	{
@@ -96,7 +96,6 @@ namespace Yuki {
 		uint64_t GetCurrentValue() const;
 
 		void Wait(uint64_t value = 0) const;
-
 	};
 
 	struct CommandList;
@@ -114,14 +113,14 @@ namespace Yuki {
 		Vertex, Fragment
 	};
 
+	struct ShaderConfig
+	{
+		ShaderStage Stage;
+		std::filesystem::path FilePath;
+	};
+
 	struct GraphicsPipelineConfig
 	{
-		struct ShaderConfig
-		{
-			ShaderStage Stage;
-			std::filesystem::path FilePath;
-		};
-
 		std::vector<ShaderConfig> Shaders;
 		uint32_t PushConstantSize;
 
@@ -157,9 +156,9 @@ namespace Yuki {
 		void SetData(std::byte* data, uint32_t offset, uint32_t size) const;
 
 		template<typename T>
-		void Set(Aura::Span<T> data)
+		void Set(Aura::Span<T> data, uint32_t offset = 0)
 		{
-			SetData(reinterpret_cast<std::byte*>(data.Data()), 0, data.ByteCount());
+			SetData(reinterpret_cast<std::byte*>(data.Data()), offset, data.ByteCount());
 		}
 	};
 
@@ -188,12 +187,18 @@ namespace Yuki {
 		void BindVertexBuffer(Buffer buffer, uint32_t stride) const;
 		void BindIndexBuffer(Buffer buffer) const;
 
-		void CopyBuffer(Buffer dest, Buffer src, uint32_t size) const;
+		void CopyBuffer(Buffer dest, Buffer src, uint32_t size, uint32_t srcOffset = 0, uint32_t destOffset = 0) const;
 
-		void SetPushConstants(GraphicsPipeline pipeline, void* data, uint32_t size) const;
+		void SetPushConstants(GraphicsPipeline pipeline, const void* data, uint32_t size) const;
+
+		template<typename T>
+		void SetPushConstants(GraphicsPipeline pipeline, const T& data) const
+		{
+			SetPushConstants(pipeline, &data, sizeof(T));
+		}
 
 		void Draw(uint32_t vertexCount) const;
-		void DrawIndexed(uint32_t indexCount) const;
+		void DrawIndexed(uint32_t indexCount, uint32_t instanceIndex) const;
 	};
 
 	struct CommandPool : Handle<CommandPool>

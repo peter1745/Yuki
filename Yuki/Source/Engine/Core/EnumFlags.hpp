@@ -56,4 +56,3 @@ constexpr TEnum& operator^=(TEnum& InLHS, const TEnum& InRHS) noexcept
 {
 	return (InLHS = (InLHS ^ InRHS));
 }
-

@@ -141,13 +141,15 @@ namespace Yuki {
 			return nullptr;
 		}
 
+		static constexpr bool DebugBuild = true;
+
 		glslang::SpvOptions options =
 		{
-			.generateDebugInfo = true,
-			.stripDebugInfo = false,
-			.disableOptimizer = true,
+			.generateDebugInfo = DebugBuild,
+			.stripDebugInfo = !DebugBuild,
+			.disableOptimizer = DebugBuild,
 			.disassemble = false,
-			.validate = true,
+			.validate = DebugBuild,
 			.emitNonSemanticShaderDebugInfo = false,
 			.emitNonSemanticShaderDebugSource = false,
 		};

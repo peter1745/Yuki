@@ -93,7 +93,6 @@ namespace Yuki {
 		constexpr auto dynamicStates = std::array{
 			VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
 			VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-			VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE
 		};
 
 		VkPipelineDynamicStateCreateInfo dynamicInfo =

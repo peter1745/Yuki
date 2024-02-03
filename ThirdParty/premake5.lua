@@ -15,6 +15,22 @@ project "spdlog"
         "SPDLOG_USE_STD_FORMAT"
     }
 
+project "rtmcpp"
+    location "rtmcpp/"
+	kind "None"
+
+	files {
+		"rtmcpp/**.hpp"
+	}
+
+	externalincludedirs {
+		"rtmcpp/rtm/includes/"
+	}
+
+    defines {
+        "RTMCPP_EXPORT="
+    }
+
 project "Aura"
 	location "Aura/"
     kind "StaticLib"
@@ -25,4 +41,34 @@ project "Aura"
 
     includedirs {
         "Aura/Aura/Include/"
+    }
+
+project "simdjson"
+    location "simdjson/"
+    kind "StaticLib"
+
+    files {
+        "simdjson/src/simdjson.cpp",
+    }
+
+    includedirs {
+        "simdjson/src/",
+        "simdjson/include/",
+        "simdjson/include/simdjson/",
+    }
+
+project "fastgltf"
+    location "fastgltf/"
+    kind "StaticLib"
+
+    files {
+        "fastgltf/src/**.cpp",
+    }
+
+    includedirs {
+        "fastgltf/include/"
+    }
+
+    externalincludedirs {
+        "simdjson/include/"
     }

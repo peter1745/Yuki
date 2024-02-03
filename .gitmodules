@@ -10,3 +10,9 @@
 [submodule "ThirdParty/Aura"]
 	path = ThirdParty/Aura
 	url = https://github.com/peter1745/Aura
+[submodule "ThirdParty/simdjson"]
+	path = ThirdParty/simdjson
+	url = https://github.com/simdjson/simdjson
+[submodule "ThirdParty/fastgltf"]
+	path = ThirdParty/fastgltf
+	url = https://github.com/spnda/fastgltf

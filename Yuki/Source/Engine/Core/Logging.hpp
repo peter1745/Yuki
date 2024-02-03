@@ -16,6 +16,7 @@ namespace Yuki {
 	namespace Detail {
 		void InitializeLogging();
 		void LogMessage(std::string_view message, LogLevel level);
+		void FlushMessages();
 	}
 
 	template<typename... Args>

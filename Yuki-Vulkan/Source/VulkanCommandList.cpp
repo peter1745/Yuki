@@ -73,7 +73,7 @@ namespace Yuki {
 			viewportList[i].height = static_cast<float32_t>(viewports[i].Height);
 			viewportList[i].minDepth = 0.0f;
 			viewportList[i].maxDepth = 1.0f;
-
+			
 			scissorList[i].offset = { 0, 0 };
 			scissorList[i].extent = { viewports[i].Width, viewports[i].Height };
 		}
@@ -164,7 +164,7 @@ namespace Yuki {
 			.dstImageLayout = dest->Layout,
 			.regionCount = 1,
 			.pRegions = &imageBlit,
-			.filter = VK_FILTER_LINEAR,
+			.filter = VK_FILTER_NEAREST,
 		};
 
 		vkCmdBlitImage2(m_Impl->Resource, &blitInfo);
@@ -183,13 +183,13 @@ namespace Yuki {
 		vkCmdBindIndexBuffer(m_Impl->Resource, buffer->Allocation.Resource, 0, VK_INDEX_TYPE_UINT32);
 	}
 
-	void CommandList::CopyBuffer(Buffer dest, Buffer src, uint32_t size) const
+	void CommandList::CopyBuffer(Buffer dest, Buffer src, uint32_t size, uint32_t srcOffset, uint32_t destOffset) const
 	{
 		VkBufferCopy2 bufferCopy =
 		{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
-			.srcOffset = 0,
-			.dstOffset = 0,
+			.srcOffset = srcOffset,
+			.dstOffset = destOffset,
 			.size = size,
 		};
 
@@ -205,7 +205,7 @@ namespace Yuki {
 		vkCmdCopyBuffer2(m_Impl->Resource, &copyInfo);
 	}
 
-	void CommandList::SetPushConstants(GraphicsPipeline pipeline, void* data, uint32_t size) const
+	void CommandList::SetPushConstants(GraphicsPipeline pipeline, const void* data, uint32_t size) const
 	{
 		vkCmdPushConstants(m_Impl->Resource, pipeline->Layout, VK_SHADER_STAGE_ALL, 0, size, data);
 	}
@@ -215,9 +215,9 @@ namespace Yuki {
 		vkCmdDraw(m_Impl->Resource, vertexCount, 1, 0, 0);
 	}
 
-	void CommandList::DrawIndexed(uint32_t indexCount) const
+	void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceIndex) const
 	{
-		vkCmdDrawIndexed(m_Impl->Resource, indexCount, 1, 0, 0, 0);
+		vkCmdDrawIndexed(m_Impl->Resource, indexCount, 1, 0, 0, instanceIndex);
 	}
 
 	CommandPool CommandPool::Create(RHIContext context, Queue queue)

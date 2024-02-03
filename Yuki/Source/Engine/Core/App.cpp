@@ -23,6 +23,14 @@ namespace Yuki {
 
 		while (m_Running)
 		{
+			using namespace std::chrono;
+
+			auto now = Clock::now();
+			auto delta = duration_cast<milliseconds>(now - m_LastTime).count();
+			m_LastTime = now;
+
+			WriteLine("Delta: {}ms", delta);
+
 			m_WindowSystem->PollEvents();
 			m_InputSystem->Update();
 

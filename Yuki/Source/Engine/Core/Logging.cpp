@@ -1,12 +1,19 @@
 #include "Logging.hpp"
 
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
 
 namespace Yuki::Detail {
 
 	void InitializeLogging()
 	{
+		auto& sinks = spdlog::default_logger()->sinks();
+		sinks.push_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("Logs/Messages.log", true));
+
 		spdlog::set_pattern("%^[%T][Yuki]: %v%$");
+
+		using namespace std::chrono_literals;
+		spdlog::flush_every(5s);
 	}
 
 	void LogMessage(std::string_view message, LogLevel level)
@@ -39,6 +46,11 @@ namespace Yuki::Detail {
 			break;
 		}
 		}
+	}
+
+	void FlushMessages()
+	{
+		spdlog::default_logger()->flush();
 	}
 
 }

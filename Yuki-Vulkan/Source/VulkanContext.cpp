@@ -40,6 +40,7 @@ namespace Yuki {
 			YukiAssert(false);
 		}
 
+		Detail::FlushMessages();
 		return VK_FALSE;
 	}
 
@@ -206,19 +207,19 @@ namespace Yuki {
 
 		std::vector<const char*> deviceExtensions = {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-			VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME
+			//VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME
 		};
 
-		VkPhysicalDeviceHostImageCopyFeaturesEXT hostImageCopyFeatures =
+		/*VkPhysicalDeviceHostImageCopyFeaturesEXT hostImageCopyFeatures =
 		{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT,
 			.hostImageCopy = VK_TRUE
-		};
+		};*/
 
 		VkPhysicalDeviceVulkan13Features features13 =
 		{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-			.pNext = &hostImageCopyFeatures,
+			//.pNext = &hostImageCopyFeatures,
 			.synchronization2 = VK_TRUE,
 			.dynamicRendering = VK_TRUE,
 		};

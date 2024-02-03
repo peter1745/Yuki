@@ -20,6 +20,8 @@ project "Yuki"
 		"Source/",
         "../ThirdParty/spdlog/include",
 		"../ThirdParty/Aura/Aura/Include/",
+		"../ThirdParty/rtmcpp/Include/",
+		"../ThirdParty/rtmcpp/rtm/includes/",
 	}
 
 	forceincludes {
@@ -27,6 +29,7 @@ project "Yuki"
 	}
 
     defines {
+        "RTMCPP_EXPORT=",
         "SPDLOG_USE_STD_FORMAT"
     }
 
