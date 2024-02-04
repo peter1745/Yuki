@@ -4,7 +4,7 @@
 
 namespace Yuki {
 
-	GraphicsPipeline GraphicsPipeline::Create(RHIContext context, const GraphicsPipelineConfig& config)
+	GraphicsPipeline GraphicsPipeline::Create(RHIContext context, const GraphicsPipelineConfig& config, DescriptorHeap heap)
 	{
 		AuraStackPoint();
 
@@ -112,8 +112,8 @@ namespace Yuki {
 		VkPipelineLayoutCreateInfo layoutInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-			.setLayoutCount = 0,
-			.pSetLayouts = nullptr,
+			.setLayoutCount = heap ? 1u : 0u,
+			.pSetLayouts = heap ? &heap->Layout : nullptr,
 			.pushConstantRangeCount = 1,
 			.pPushConstantRanges = &pushConstantRange,
 		};

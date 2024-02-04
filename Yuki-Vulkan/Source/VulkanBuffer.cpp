@@ -36,7 +36,7 @@ namespace Yuki {
 
 	uint64_t Buffer::GetAddress() const { return m_Impl->Address; }
 
-	void Buffer::SetData(std::byte* data, uint32_t offset, uint32_t size) const
+	void Buffer::SetData(const std::byte* data, uint32_t offset, uint32_t size) const
 	{
 		std::byte* memory = reinterpret_cast<std::byte*>(m_Impl->Allocation.AllocationInfo.pMappedData);
 		memcpy(memory + offset, data, size);

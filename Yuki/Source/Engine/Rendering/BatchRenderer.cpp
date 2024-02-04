@@ -15,8 +15,12 @@ namespace Yuki {
 	struct BatchedVertex
 	{
 		rtmcpp::PackedVec2 Position;
+		rtmcpp::PackedVec2 UV;
 		uint32_t Color;
+		uint32_t Texture = ~0u;
 	};
+
+	static constexpr float32_t QuadHalfSize = 8.0f;
 
 	template<>
 	struct Handle<RenderBatch>::Impl
@@ -30,9 +34,11 @@ namespace Yuki {
 		Buffer VertexBuffer;
 		Buffer IndexBuffer;
 
+		std::vector<Image> Images;
+
 		bool IsDirty = false;
 
-		void CreateBuffers()
+		void CreateResources()
 		{
 			if (VertexBuffer)
 				VertexBuffer.Destroy();
@@ -55,15 +61,25 @@ namespace Yuki {
 
 		m_UploadFence = Fence::Create(context);
 
+		m_DescriptorHeap = DescriptorHeap::Create(context);
+
 		m_Pipeline = GraphicsPipeline::Create(context, {
 			.Shaders = { shaders.Begin(), shaders.End() },
 			.PushConstantSize = sizeof(BatchPushConstants),
 			.ColorAttachmentFormats = {
 				ImageFormat::RGBA8Unorm
 			}
+		}, m_DescriptorHeap);
+
+		m_DefaultSampler = Sampler::Create(context, {
+			.MinFilter = ImageFilter::Nearest,
+			.MagFilter = ImageFilter::Nearest,
+			.WrapMode = ImageWrapMode::Repeat
 		});
 
- 		m_StagingBuffer = Buffer::Create(context, 100 * 1024 * 1024, BufferUsage::TransferSrc | BufferUsage::Mapped);
+		m_DescriptorHeap.WriteSampler(0, m_DefaultSampler);
+
+ 		m_StagingBuffer = Buffer::Create(context, 512 * 1024 * 1024, BufferUsage::TransferSrc | BufferUsage::Mapped);
 	}
 
 	RenderBatch BatchRenderer::NewBatch()
@@ -95,7 +111,12 @@ namespace Yuki {
 					copyCmd = m_CommandPool.NewList();
 				}
 
-				batch->CreateBuffers();
+				batch->CreateResources();
+
+				for (uint32_t i = 0; i < batch->Images.size(); i++)
+				{
+					m_DescriptorHeap.WriteSampledImage(i, batch->Images[i].GetDefaultView());
+				}
 
 				uint32_t vertexSize = static_cast<uint32_t>(batch->Vertices.size()) * sizeof(BatchedVertex);
 				uint32_t indexSize = static_cast<uint32_t>(batch->Indices.size()) * sizeof(uint32_t);
@@ -123,6 +144,7 @@ namespace Yuki {
 		cmd.TransitionImage(m_FinalImage, ImageLayout::AttachmentOptimal);
 		cmd.BeginRendering({ attachment });
 		cmd.BindPipeline(m_Pipeline);
+		cmd.BindDescriptorHeap(m_DescriptorHeap, m_Pipeline);
 		cmd.SetViewports({ m_Viewport });
 
 		for (auto batch : m_Batches)
@@ -161,10 +183,25 @@ namespace Yuki {
 	{
 		// Add new vertices
 		{
-			m_Impl->Vertices.push_back({ {  position.X - 8.0f, position.Y + 8.0f }, rtmcpp::PackUnorm4x8<float>(color) });
-			m_Impl->Vertices.push_back({ {  position.X + 8.0f, position.Y + 8.0f }, rtmcpp::PackUnorm4x8<float>(color) });
-			m_Impl->Vertices.push_back({ {  position.X + 8.0f, position.Y - 8.0f }, rtmcpp::PackUnorm4x8<float>(color) });
-			m_Impl->Vertices.push_back({ {  position.X - 8.0f, position.Y - 8.0f }, rtmcpp::PackUnorm4x8<float>(color) });
+			m_Impl->Vertices.push_back({
+				.Position = {  position.X - QuadHalfSize, position.Y + QuadHalfSize },
+				.Color = rtmcpp::PackUnorm4x8<float>(color)
+			});
+
+			m_Impl->Vertices.push_back({
+				.Position = {  position.X + QuadHalfSize, position.Y + QuadHalfSize },
+				.Color = rtmcpp::PackUnorm4x8<float>(color)
+			});
+
+			m_Impl->Vertices.push_back({
+				.Position = {  position.X + QuadHalfSize, position.Y - QuadHalfSize },
+				.Color = rtmcpp::PackUnorm4x8<float>(color)
+			});
+
+			m_Impl->Vertices.push_back({
+				.Position = {  position.X - QuadHalfSize, position.Y - QuadHalfSize },
+				.Color = rtmcpp::PackUnorm4x8<float>(color)
+			});
 		}
 
 		// Add new indices
@@ -173,6 +210,66 @@ namespace Yuki {
 			m_Impl->Indices.push_back(m_Impl->BaseIndex + 1);
 			m_Impl->Indices.push_back(m_Impl->BaseIndex + 2);
 		
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 2);
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 3);
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 0);
+
+			m_Impl->BaseIndex += 4;
+		}
+	}
+
+	void RenderBatch::AddTexturedQuad(rtmcpp::Vec2 position, Image image) const
+	{
+		uint32_t imageIndex = ~0u;
+
+		for (uint32_t i = 0; i < m_Impl->Images.size(); i++)
+		{
+			if (m_Impl->Images[i] == image)
+			{
+				imageIndex = i;
+				break;
+			}
+		}
+
+		if (imageIndex == ~0u)
+		{
+			imageIndex = static_cast<uint32_t>(m_Impl->Images.size());
+			m_Impl->Images.push_back(image);
+		}
+
+		// Add new vertices
+		{
+			m_Impl->Vertices.push_back({
+				.Position = {  position.X - QuadHalfSize, position.Y + QuadHalfSize },
+				.UV = { 0.0f, 1.0f },
+				.Texture = imageIndex
+			});
+
+			m_Impl->Vertices.push_back({ 
+				.Position = {  position.X + QuadHalfSize, position.Y + QuadHalfSize },
+				.UV = { 1.0f, 1.0f },
+				.Texture = imageIndex
+			});
+
+			m_Impl->Vertices.push_back({ 
+				.Position = {  position.X + QuadHalfSize, position.Y - QuadHalfSize },
+				.UV = { 1.0f, 0.0f },
+				.Texture = imageIndex
+			});
+
+			m_Impl->Vertices.push_back({ 
+				.Position = {  position.X - QuadHalfSize, position.Y - QuadHalfSize },
+				.UV = { 0.0f, 0.0f },
+				.Texture = imageIndex
+			});
+		}
+
+		// Add new indices
+		{
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 0);
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 1);
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 2);
+
 			m_Impl->Indices.push_back(m_Impl->BaseIndex + 2);
 			m_Impl->Indices.push_back(m_Impl->BaseIndex + 3);
 			m_Impl->Indices.push_back(m_Impl->BaseIndex + 0);

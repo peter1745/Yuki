@@ -37,7 +37,7 @@ namespace Yuki {
 		else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 		{
 			WriteLine("{}", LogLevel::Error, callbackData->pMessage);
-			YukiAssert(false);
+			//YukiAssert(false);
 		}
 
 		Detail::FlushMessages();

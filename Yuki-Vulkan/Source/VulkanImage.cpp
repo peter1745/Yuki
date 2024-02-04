@@ -87,4 +87,37 @@ namespace Yuki {
 		delete m_Impl;
 	}
 
+	Sampler Sampler::Create(RHIContext context, const SamplerConfig& config)
+	{
+		auto* impl = new Impl();
+		impl->Context = context;
+
+		VkSamplerCreateInfo samplerInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.magFilter = ImageFilterToVkFilter(config.MagFilter),
+			.minFilter = ImageFilterToVkFilter(config.MinFilter),
+			.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+			.addressModeU = ImageWrapModeToVkSamplerAddressMode(config.WrapMode),
+			.addressModeV = ImageWrapModeToVkSamplerAddressMode(config.WrapMode),
+			.addressModeW = ImageWrapModeToVkSamplerAddressMode(config.WrapMode),
+			.mipLodBias = 0.0f,
+			.anisotropyEnable = VK_FALSE,
+			.maxAnisotropy = 0.0f,
+			.compareEnable = VK_FALSE,
+			.compareOp = VK_COMPARE_OP_GREATER,
+			.minLod = 0,
+			.maxLod = 1,
+		};
+
+		Vulkan::CheckResult(vkCreateSampler(context->Device, &samplerInfo, nullptr, &impl->Resource));
+		return { impl };
+	}
+
+	void Sampler::Destroy()
+	{
+		vkDestroySampler(m_Impl->Context->Device, m_Impl->Resource, nullptr);
+		delete m_Impl;
+	}
+
 }

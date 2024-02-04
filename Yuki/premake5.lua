@@ -22,6 +22,7 @@ project "Yuki"
 		"../ThirdParty/Aura/Aura/Include/",
 		"../ThirdParty/rtmcpp/Include/",
 		"../ThirdParty/rtmcpp/rtm/includes/",
+		"../ThirdParty/stb/",
 	}
 
 	forceincludes {

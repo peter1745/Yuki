@@ -170,6 +170,20 @@ namespace Yuki {
 		vkCmdBlitImage2(m_Impl->Resource, &blitInfo);
 	}
 
+	void CommandList::BindDescriptorHeap(DescriptorHeap heap, GraphicsPipeline pipeline) const
+	{
+		vkCmdBindDescriptorSets(
+			m_Impl->Resource,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipeline->Layout,
+			0,
+			1,
+			&heap->Set,
+			0,
+			nullptr
+		);
+	}
+
 	void CommandList::BindVertexBuffer(Buffer buffer, uint32_t stride) const
 	{
 		VkDeviceSize offset = 0;
@@ -203,6 +217,37 @@ namespace Yuki {
 		};
 
 		vkCmdCopyBuffer2(m_Impl->Resource, &copyInfo);
+	}
+
+	void CommandList::CopyBufferToImage(Image dest, Buffer src, uint32_t size, uint32_t srcOffset) const
+	{
+		VkBufferImageCopy2 bufferImageCopy =
+		{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+			.bufferOffset = srcOffset,
+			.bufferRowLength = 0,
+			.bufferImageHeight = 0,
+			.imageSubresource = {
+				.aspectMask = dest->AspectFlags,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.imageOffset = { 0, 0, 0 },
+			.imageExtent = { static_cast<uint32_t>(dest->Width), static_cast<uint32_t>(dest->Height), 1 },
+		};
+
+		VkCopyBufferToImageInfo2 copyInfo =
+		{
+			.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2,
+			.srcBuffer = src->Allocation.Resource,
+			.dstImage = dest->Allocation.Resource,
+			.dstImageLayout = dest->Layout,
+			.regionCount = 1,
+			.pRegions = &bufferImageCopy,
+		};
+
+		vkCmdCopyBufferToImage2(m_Impl->Resource, &copyInfo);
 	}
 
 	void CommandList::SetPushConstants(GraphicsPipeline pipeline, const void* data, uint32_t size) const

@@ -10,6 +10,7 @@ namespace Yuki {
 	struct RenderBatch : Handle<RenderBatch>
 	{
 		void AddQuad(rtmcpp::Vec2 position, rtmcpp::Vec4 color) const;
+		void AddTexturedQuad(rtmcpp::Vec2 position, Image image) const;
 		void MarkDirty() const;
 	};
 
@@ -29,6 +30,9 @@ namespace Yuki {
 		RHIContext m_Context;
 		Queue m_GraphicsQueue, m_TransferQueue;
 		Fence m_UploadFence;
+
+		DescriptorHeap m_DescriptorHeap;
+		Sampler m_DefaultSampler;
 
 		GraphicsPipeline m_Pipeline;
 		CommandPool m_CommandPool;

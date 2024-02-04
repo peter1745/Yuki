@@ -53,6 +53,7 @@ namespace Yuki {
 		case ImageLayout::AttachmentOptimal: return VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 		case ImageLayout::TransferSrc: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		case ImageLayout::TransferDst: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		case ImageLayout::ShaderReadOnlyOptimal: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		case ImageLayout::Present: return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		}
 
@@ -80,6 +81,7 @@ namespace Yuki {
 		if (usage & ImageUsage::DepthStencilAttachment) result |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		if (usage & ImageUsage::TransferSrc) result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 		if (usage & ImageUsage::TransferDst) result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		if (usage & ImageUsage::Sampled) result |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
 		return result;
 	}
@@ -184,6 +186,51 @@ namespace Yuki {
 
 		std::vector<CommandList> AllocatedLists;
 		uint32_t NextList = 0;
+	};
+
+	inline VkFilter ImageFilterToVkFilter(ImageFilter filter)
+	{
+		switch (filter)
+		{
+		case ImageFilter::Nearest: return VK_FILTER_NEAREST;
+		case ImageFilter::Linear: return VK_FILTER_LINEAR;
+		case ImageFilter::Cubic: return VK_FILTER_CUBIC_IMG;
+		}
+
+		YukiAssert(false);
+		return VK_FILTER_MAX_ENUM;
+	}
+
+	inline VkSamplerAddressMode ImageWrapModeToVkSamplerAddressMode(ImageWrapMode mode)
+	{
+		switch (mode)
+		{
+		case ImageWrapMode::Repeat: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		case ImageWrapMode::MirroredRepeat: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+		case ImageWrapMode::ClampToEdge: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		case ImageWrapMode::ClampToBorder: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		case ImageWrapMode::MirrorClampToEdge: return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+		}
+
+		YukiAssert(false);
+		return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
+	}
+
+	template<>
+	struct Handle<Sampler>::Impl
+	{
+		RHIContext Context;
+		VkSampler Resource;
+	};
+
+	template<>
+	struct Handle<DescriptorHeap>::Impl
+	{
+		RHIContext Context;
+
+		VkDescriptorSetLayout Layout;
+		VkDescriptorPool Pool;
+		VkDescriptorSet Set;
 	};
 
 }

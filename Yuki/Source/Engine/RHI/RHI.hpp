@@ -7,6 +7,7 @@
 #include <Aura/Span.hpp>
 
 #include <filesystem>
+#include <functional>
 
 namespace Yuki {
 
@@ -35,6 +36,7 @@ namespace Yuki {
 		AttachmentOptimal,
 		TransferSrc,
 		TransferDst,
+		ShaderReadOnlyOptimal,
 		Present,
 	};
 
@@ -49,7 +51,8 @@ namespace Yuki {
 		ColorAttachment        = 1 << 0,
 		DepthStencilAttachment = 1 << 1,
 		TransferSrc            = 1 << 2,
-		TransferDst            = 1 << 3
+		TransferDst            = 1 << 3,
+		Sampled                = 1 << 4,
 	};
 	inline void MakeEnumFlags(ImageUsage) {}
 
@@ -108,6 +111,44 @@ namespace Yuki {
 		void Present(Aura::Span<Swapchain> swapchains, Aura::Span<Fence> waits) const;
 	};
 
+	enum class ImageFilter
+	{
+		Nearest,
+		Linear,
+		Cubic
+	};
+
+	enum class ImageWrapMode
+	{
+		Repeat,
+		MirroredRepeat,
+		ClampToEdge,
+		ClampToBorder,
+		MirrorClampToEdge
+	};
+
+	struct SamplerConfig
+	{
+		ImageFilter MinFilter = ImageFilter::Linear;
+		ImageFilter MagFilter = ImageFilter::Linear;
+		ImageWrapMode WrapMode = ImageWrapMode::ClampToEdge;
+	};
+
+	struct Sampler : Handle<Sampler>
+	{
+		static Sampler Create(RHIContext context, const SamplerConfig& config);
+		void Destroy();
+	};
+
+	struct DescriptorHeap : Handle<DescriptorHeap>
+	{
+		static DescriptorHeap Create(RHIContext context);
+		void Destroy();
+
+		void WriteSampledImage(uint32_t index, ImageView imageView);
+		void WriteSampler(uint32_t index, Sampler sampler);
+	};
+
 	enum class ShaderStage
 	{
 		Vertex, Fragment
@@ -129,7 +170,7 @@ namespace Yuki {
 
 	struct GraphicsPipeline : Handle<GraphicsPipeline>
 	{
-		static GraphicsPipeline Create(RHIContext context, const GraphicsPipelineConfig& config);
+		static GraphicsPipeline Create(RHIContext context, const GraphicsPipelineConfig& config, DescriptorHeap heap);
 		void Destroy();
 	};
 
@@ -154,7 +195,7 @@ namespace Yuki {
 
 		uint64_t GetAddress() const;
 
-		void SetData(std::byte* data, uint32_t offset, uint32_t size) const;
+		void SetData(const std::byte* data, uint32_t offset, uint32_t size) const;
 
 		template<typename T>
 		void Set(Aura::Span<T> data, uint32_t offset = 0)
@@ -185,10 +226,12 @@ namespace Yuki {
 		void TransitionImage(Image image, ImageLayout layout) const;
 		void BlitImage(Image dest, Image src) const;
 
+		void BindDescriptorHeap(DescriptorHeap heap, GraphicsPipeline pipeline) const;
 		void BindVertexBuffer(Buffer buffer, uint32_t stride) const;
 		void BindIndexBuffer(Buffer buffer) const;
 
 		void CopyBuffer(Buffer dest, Buffer src, uint32_t size, uint32_t srcOffset = 0, uint32_t destOffset = 0) const;
+		void CopyBufferToImage(Image dest, Buffer src, uint32_t size, uint32_t srcOffset = 0) const;
 
 		void SetPushConstants(GraphicsPipeline pipeline, const void* data, uint32_t size) const;
 
@@ -211,5 +254,4 @@ namespace Yuki {
 
 		CommandList NewList() const;
 	};
-
 }
