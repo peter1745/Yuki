@@ -6,18 +6,12 @@ namespace Yuki {
 	{
 		auto* impl = new Impl();
 		impl->Context = context;
-
-		VkBufferUsageFlags2CreateInfoKHR usageFlags =
-		{
-			.sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
-			.usage = BufferUsageToVkBufferUsage(usage),
-		};
-
+		
 		VkBufferCreateInfo bufferInfo =
 		{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			.pNext = &usageFlags,
 			.size = size,
+			.usage = BufferUsageToVkBufferUsage(usage),
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 		};
 

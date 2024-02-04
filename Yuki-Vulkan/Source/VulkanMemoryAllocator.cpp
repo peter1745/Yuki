@@ -88,6 +88,11 @@ namespace Yuki {
 			}
 		}
 
+		if (usage & BufferUsage::DedicatedMemory)
+		{
+			allocationInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+		}
+
 		GPUAllocation<VkBuffer> allocation{};
 		Vulkan::CheckResult(vmaCreateBuffer(
 			m_Impl->Allocator,

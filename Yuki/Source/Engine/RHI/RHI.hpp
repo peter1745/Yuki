@@ -135,14 +135,15 @@ namespace Yuki {
 
 	enum class BufferUsage
 	{
-		TransferSrc   = 1 << 0,
-		TransferDst   = 1 << 1,
-		UniformBuffer = 1 << 2,
-		StorageBuffer = 1 << 3,
-		IndexBuffer   = 1 << 4,
-		VertexBuffer  = 1 << 5,
-		Mapped        = 1 << 6,
-		DeviceLocal   = 1 << 7,
+		TransferSrc     = 1 << 0,
+		TransferDst     = 1 << 1,
+		UniformBuffer   = 1 << 2,
+		StorageBuffer   = 1 << 3,
+		IndexBuffer     = 1 << 4,
+		VertexBuffer    = 1 << 5,
+		Mapped          = 1 << 6,
+		DeviceLocal     = 1 << 7,
+		DedicatedMemory = 1 << 8,
 	};
 	inline void MakeEnumFlags(BufferUsage) {}
 

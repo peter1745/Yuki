@@ -27,9 +27,10 @@ namespace Yuki {
 
 			auto now = Clock::now();
 			auto delta = duration_cast<milliseconds>(now - m_LastTime).count();
+			auto deltaMicro = duration_cast<microseconds>(now - m_LastTime).count();
 			m_LastTime = now;
 
-			WriteLine("Delta: {}ms", delta);
+			WriteLine("Delta: {}ms ({} micro)", delta, deltaMicro);
 
 			m_WindowSystem->PollEvents();
 			m_InputSystem->Update();

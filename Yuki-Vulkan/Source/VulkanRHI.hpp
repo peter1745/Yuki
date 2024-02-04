@@ -147,16 +147,16 @@ namespace Yuki {
 		VkPipeline Resource;
 	};
 
-	inline VkBufferUsageFlags2KHR BufferUsageToVkBufferUsage(BufferUsage usage)
+	inline VkBufferUsageFlags BufferUsageToVkBufferUsage(BufferUsage usage)
 	{
-		VkBufferUsageFlags2KHR result = VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT_KHR;
+		VkBufferUsageFlags result = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
 
-		if (usage & BufferUsage::TransferSrc) result |= VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT_KHR;
-		if (usage & BufferUsage::TransferDst) result |= VK_BUFFER_USAGE_2_TRANSFER_DST_BIT_KHR;
-		if (usage & BufferUsage::UniformBuffer) result |= VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR;
-		if (usage & BufferUsage::StorageBuffer) result |= VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR;
-		if (usage & BufferUsage::IndexBuffer) result |= VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT_KHR;
-		if (usage & BufferUsage::VertexBuffer) result |= VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT_KHR;
+		if (usage & BufferUsage::TransferSrc) result |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		if (usage & BufferUsage::TransferDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		if (usage & BufferUsage::UniformBuffer) result |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		if (usage & BufferUsage::StorageBuffer) result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		if (usage & BufferUsage::IndexBuffer) result |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		if (usage & BufferUsage::VertexBuffer) result |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
 		return result;
 	}
