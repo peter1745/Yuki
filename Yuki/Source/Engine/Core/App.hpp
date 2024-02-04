@@ -16,6 +16,7 @@ namespace Yuki {
 	{
 	public:
 		using Clock = std::chrono::steady_clock;
+		using Duration = std::chrono::duration<float32_t, std::milli>;
 
 		Application();
 
@@ -38,6 +39,8 @@ namespace Yuki {
 		InputSystem m_InputSystem;
 
 		Clock::time_point m_LastTime;
+		uint64_t m_AccumulatedFrames = 0;
+		Duration m_AccumulatedTime = Duration::zero();
 
 	private:
 		template<std::derived_from<Application> T>

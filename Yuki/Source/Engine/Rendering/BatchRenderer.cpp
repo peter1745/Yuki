@@ -18,21 +18,32 @@ namespace Yuki {
 		uint32_t Color;
 	};
 
-	static constexpr uint32_t MaxQuads = 1'000'000;
-	static constexpr uint32_t MaxVertices = MaxQuads * 4;
-	static constexpr uint32_t VertexBufferSize = MaxVertices * sizeof(BatchedVertex);
-	static constexpr uint32_t MaxIndices = MaxQuads * 6;
-	static constexpr uint32_t IndexBufferSize = MaxIndices * sizeof(uint32_t);
-
-	static std::array<BatchedVertex, 4> CreateQuad(rtmcpp::Vec2 position, rtmcpp::Vec4 color)
+	template<>
+	struct Handle<RenderBatch>::Impl
 	{
-		return {
-			BatchedVertex{{  position.X - 16.0f, position.Y + 16.0f }, rtmcpp::PackUnorm4x8<float>(color) },
-			BatchedVertex{{  position.X + 16.0f, position.Y + 16.0f }, rtmcpp::PackUnorm4x8<float>(color) },
-			BatchedVertex{{  position.X + 16.0f, position.Y - 16.0f }, rtmcpp::PackUnorm4x8<float>(color) },
-			BatchedVertex{{  position.X - 16.0f, position.Y - 16.0f }, rtmcpp::PackUnorm4x8<float>(color) },
-		};
-	}
+		RHIContext Context;
+
+		std::vector<BatchedVertex> Vertices;
+		std::vector<uint32_t> Indices;
+		uint32_t BaseIndex = 0;
+
+		Buffer VertexBuffer;
+		Buffer IndexBuffer;
+
+		bool IsDirty = false;
+
+		void CreateBuffers()
+		{
+			if (VertexBuffer)
+				VertexBuffer.Destroy();
+
+			if (IndexBuffer)
+				IndexBuffer.Destroy();
+
+			VertexBuffer = Buffer::Create(Context, Vertices.size() * sizeof(BatchedVertex), BufferUsage::StorageBuffer | BufferUsage::TransferDst);
+			IndexBuffer = Buffer::Create(Context, Indices.size() * sizeof(uint32_t), BufferUsage::IndexBuffer | BufferUsage::TransferDst);
+		}
+	};
 
 	BatchRenderer::BatchRenderer(RHIContext context, Aura::Span<ShaderConfig> shaders)
 		: m_Context(context)
@@ -52,46 +63,15 @@ namespace Yuki {
 			}
 		});
 
-		uint32_t baseIndex = 0;
-
-		std::vector<uint32_t> indices;
-		indices.reserve(MaxIndices);
-
-		for (uint32_t i = 0; i < MaxQuads; i++)
-		{
-			indices.push_back(baseIndex + 0);
-			indices.push_back(baseIndex + 1);
-			indices.push_back(baseIndex + 2);
-
-			indices.push_back(baseIndex + 2);
-			indices.push_back(baseIndex + 3);
-			indices.push_back(baseIndex + 0);
-
-			baseIndex += 4;
-		}
-
- 		m_StagingBuffer = Buffer::Create(context, VertexBufferSize + IndexBufferSize, BufferUsage::TransferSrc | BufferUsage::Mapped);
-		m_StagingBuffer.Set(Aura::Span{ indices.data(), static_cast<uint32_t>(indices.size()) }, VertexBufferSize);
-
-		m_VertexBuffer = Buffer::Create(context, VertexBufferSize, BufferUsage::StorageBuffer | BufferUsage::TransferDst | BufferUsage::DedicatedMemory);
-		m_VertexBackBuffer = Buffer::Create(context, VertexBufferSize, BufferUsage::StorageBuffer | BufferUsage::TransferDst | BufferUsage::DedicatedMemory);
-		m_CurrentVertexBuffer = m_VertexBuffer;
-		PC.Vertices = m_VertexBuffer.GetAddress();
-
-		m_IndexBuffer = Buffer::Create(context, IndexBufferSize, BufferUsage::IndexBuffer | BufferUsage::TransferDst | BufferUsage::DedicatedMemory);
-		m_IndexBackBuffer = Buffer::Create(context, IndexBufferSize, BufferUsage::IndexBuffer | BufferUsage::TransferDst | BufferUsage::DedicatedMemory);
-		m_CurrentIndexBuffer = m_IndexBuffer;
-
-		WriteLine("Allocated {}MB for BatchRenderer", (VertexBufferSize + IndexBufferSize) / (1024 * 1024));
+ 		m_StagingBuffer = Buffer::Create(context, 100 * 1024 * 1024, BufferUsage::TransferSrc | BufferUsage::Mapped);
 	}
 
-	void BatchRenderer::DrawQuad(rtmcpp::Vec2 position, rtmcpp::Vec4 color)
+	RenderBatch BatchRenderer::NewBatch()
 	{
-		auto vertices = CreateQuad(position, color);
-		m_StagingBuffer.Set(Aura::Span{ vertices.data(), vertices.size() }, m_VertexCount * sizeof(BatchedVertex));
-		m_VertexCount += vertices.size();
-		m_IndexCount += 6;
-		m_VertexBufferDirty = true;
+		auto* batch = new RenderBatch::Impl();
+		batch->Context = m_Context;
+		m_Batches.push_back({ batch });
+		return { batch };
 	}
 
 	void BatchRenderer::Render(const rtmcpp::Mat4& viewProjection, Fence fence)
@@ -102,32 +82,61 @@ namespace Yuki {
 
 		m_CommandPool.Reset();
 
-		if (m_VertexBufferDirty)
+		uint32_t stagingOffset = 0;
+
+		CommandList copyCmd = {};
+
+		for (auto batch : m_Batches)
 		{
-			auto copyCmd = m_CommandPool.NewList();
-			copyCmd.CopyBuffer(m_VertexBuffer, m_StagingBuffer, m_VertexCount * sizeof(BatchedVertex));
-			copyCmd.CopyBuffer(m_IndexBuffer, m_StagingBuffer, m_IndexCount * sizeof(uint32_t), VertexBufferSize);
-			m_TransferQueue.SubmitCommandLists({ copyCmd }, {}, { m_UploadFence });
-			m_VertexBufferDirty = false;
+			if (batch->IsDirty)
+			{
+				if (!copyCmd)
+				{
+					copyCmd = m_CommandPool.NewList();
+				}
+
+				batch->CreateBuffers();
+
+				uint32_t vertexSize = static_cast<uint32_t>(batch->Vertices.size()) * sizeof(BatchedVertex);
+				uint32_t indexSize = static_cast<uint32_t>(batch->Indices.size()) * sizeof(uint32_t);
+
+				m_StagingBuffer.Set(Aura::Span{ batch->Vertices.data(), static_cast<uint32_t>(batch->Vertices.size()) }, stagingOffset);
+				copyCmd.CopyBuffer(batch->VertexBuffer, m_StagingBuffer, vertexSize, stagingOffset);
+				stagingOffset += vertexSize;
+				m_StagingBuffer.Set(Aura::Span{ batch->Indices.data(), static_cast<uint32_t>(batch->Indices.size()) }, stagingOffset);
+				copyCmd.CopyBuffer(batch->IndexBuffer, m_StagingBuffer, indexSize, stagingOffset);
+				stagingOffset += indexSize;
+
+				batch->IsDirty = false;
+			}
 		}
 
-		m_UploadFence.Wait();
+		if (copyCmd)
+		{
+			m_TransferQueue.SubmitCommandLists({ copyCmd }, {}, { m_UploadFence });
+
+			// NOTE(Peter): Potentially quite slow, horrible regardless, consider double-buffering
+			m_UploadFence.Wait();
+		}
 
 		auto cmd = m_CommandPool.NewList();
 		cmd.TransitionImage(m_FinalImage, ImageLayout::AttachmentOptimal);
 		cmd.BeginRendering({ attachment });
 		cmd.BindPipeline(m_Pipeline);
 		cmd.SetViewports({ m_Viewport });
-		cmd.BindIndexBuffer(m_IndexBuffer);
-		cmd.SetPushConstants(m_Pipeline, PC);
-		cmd.DrawIndexed(m_IndexCount, 0);
+
+		for (auto batch : m_Batches)
+		{
+			PC.Vertices = batch->VertexBuffer.GetAddress();
+			cmd.SetPushConstants(m_Pipeline, PC);
+			cmd.BindIndexBuffer(batch->IndexBuffer);
+			cmd.DrawIndexed(static_cast<uint32_t>(batch->Indices.size()), 0);
+		}
+
 		cmd.EndRendering();
 		cmd.TransitionImage(m_FinalImage, ImageLayout::TransferSrc);
 
 		m_GraphicsQueue.SubmitCommandLists({ cmd }, { fence }, { fence });
-
-		m_VertexCount = 0;
-		m_IndexCount = 0;
 	}
 
 	void BatchRenderer::SetSize(uint32_t width, uint32_t height)
@@ -146,6 +155,35 @@ namespace Yuki {
 		});
 
 		m_Viewport = { width, height };
+	}
+
+	void RenderBatch::AddQuad(rtmcpp::Vec2 position, rtmcpp::Vec4 color) const
+	{
+		// Add new vertices
+		{
+			m_Impl->Vertices.push_back({ {  position.X - 8.0f, position.Y + 8.0f }, rtmcpp::PackUnorm4x8<float>(color) });
+			m_Impl->Vertices.push_back({ {  position.X + 8.0f, position.Y + 8.0f }, rtmcpp::PackUnorm4x8<float>(color) });
+			m_Impl->Vertices.push_back({ {  position.X + 8.0f, position.Y - 8.0f }, rtmcpp::PackUnorm4x8<float>(color) });
+			m_Impl->Vertices.push_back({ {  position.X - 8.0f, position.Y - 8.0f }, rtmcpp::PackUnorm4x8<float>(color) });
+		}
+
+		// Add new indices
+		{
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 0);
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 1);
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 2);
+		
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 2);
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 3);
+			m_Impl->Indices.push_back(m_Impl->BaseIndex + 0);
+
+			m_Impl->BaseIndex += 4;
+		}
+	}
+
+	void RenderBatch::MarkDirty() const
+	{
+		m_Impl->IsDirty = true;
 	}
 
 }

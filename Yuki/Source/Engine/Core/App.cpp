@@ -21,16 +21,23 @@ namespace Yuki {
 	{
 		OnRun();
 
+		m_LastTime = Clock::now();
+
 		while (m_Running)
 		{
 			using namespace std::chrono;
 
 			auto now = Clock::now();
-			auto delta = duration_cast<milliseconds>(now - m_LastTime).count();
-			auto deltaMicro = duration_cast<microseconds>(now - m_LastTime).count();
+			m_AccumulatedFrames++;
+			m_AccumulatedTime += duration_cast<Duration>(now - m_LastTime);
 			m_LastTime = now;
 
-			WriteLine("Delta: {}ms ({} micro)", delta, deltaMicro);
+			if (m_AccumulatedTime.count() >= 1000.0f)
+			{
+				WriteLine("Avg Frame Time: {:.3f}ms", m_AccumulatedTime.count() / m_AccumulatedFrames);
+				m_AccumulatedFrames = 0;
+				m_AccumulatedTime = Duration::zero();
+			}
 
 			m_WindowSystem->PollEvents();
 			m_InputSystem->Update();

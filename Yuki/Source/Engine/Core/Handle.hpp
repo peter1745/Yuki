@@ -100,7 +100,7 @@ namespace Yuki {
 		bool IsValid() const noexcept { return m_Impl; }
 		bool IsAlive() const { return m_ControlBlock && m_ControlBlock->RefCount > 0; }
 
-		operator bool() const noexcept { return IsValid() && IsAlive(); }
+		operator bool() const noexcept { return IsValid(); }
 		Impl* operator->() const noexcept { return m_Impl; }
 
 		ID GetID() const noexcept { return reinterpret_cast<ID>(m_Impl); }
