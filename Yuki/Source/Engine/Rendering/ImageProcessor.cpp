@@ -43,7 +43,13 @@ namespace Yuki {
 		queue.SubmitCommandLists({ cmd }, {}, { uploadFence });
 
 		uploadFence.Wait();
-		
+
+		pool.Destroy();
+		stagingBuffer.Destroy();
+		uploadFence.Destroy();
+
+		stbi_image_free(data);
+
 		return image;
 	}
 

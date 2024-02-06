@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GeometryBatch.hpp"
 #include "Engine/RHI/RHI.hpp"
 
 #include <rtmcpp/Vector.hpp>
@@ -7,19 +8,12 @@
 
 namespace Yuki {
 
-	struct RenderBatch : Handle<RenderBatch>
-	{
-		void AddQuad(rtmcpp::Vec2 position, rtmcpp::Vec4 color) const;
-		void AddTexturedQuad(rtmcpp::Vec2 position, Image image) const;
-		void MarkDirty() const;
-	};
-
 	class BatchRenderer
 	{
 	public:
 		BatchRenderer(RHIContext context, Aura::Span<ShaderConfig> shaders);
 
-		RenderBatch NewBatch();
+		GeometryBatch NewBatch();
 
 		void Render(const rtmcpp::Mat4& viewProjection, Fence fence);
 
@@ -42,7 +36,7 @@ namespace Yuki {
 
 		Buffer m_StagingBuffer;
 
-		std::vector<RenderBatch> m_Batches;
+		std::vector<GeometryBatch> m_Batches;
 	};
 
 }

@@ -23,7 +23,7 @@ namespace Yuki {
 	static constexpr float32_t QuadHalfSize = 8.0f;
 
 	template<>
-	struct Handle<RenderBatch>::Impl
+	struct Handle<GeometryBatch>::Impl
 	{
 		RHIContext Context;
 
@@ -40,12 +40,6 @@ namespace Yuki {
 
 		void CreateResources()
 		{
-			if (VertexBuffer)
-				VertexBuffer.Destroy();
-
-			if (IndexBuffer)
-				IndexBuffer.Destroy();
-
 			VertexBuffer = Buffer::Create(Context, Vertices.size() * sizeof(BatchedVertex), BufferUsage::StorageBuffer | BufferUsage::TransferDst);
 			IndexBuffer = Buffer::Create(Context, Indices.size() * sizeof(uint32_t), BufferUsage::IndexBuffer | BufferUsage::TransferDst);
 		}
@@ -78,13 +72,14 @@ namespace Yuki {
 		});
 
 		m_DescriptorHeap.WriteSampler(0, m_DefaultSampler);
-
- 		m_StagingBuffer = Buffer::Create(context, 512 * 1024 * 1024, BufferUsage::TransferSrc | BufferUsage::Mapped);
+		
+		// NOTE(Peter): Growable staging buffer (or several smaller staging buffers?)
+ 		m_StagingBuffer = Buffer::Create(context, 10 * 1024 * 1024, BufferUsage::TransferSrc | BufferUsage::Mapped);
 	}
 
-	RenderBatch BatchRenderer::NewBatch()
+	GeometryBatch BatchRenderer::NewBatch()
 	{
-		auto* batch = new RenderBatch::Impl();
+		auto* batch = new GeometryBatch::Impl();
 		batch->Context = m_Context;
 		m_Batches.push_back({ batch });
 		return { batch };
@@ -149,6 +144,11 @@ namespace Yuki {
 
 		for (auto batch : m_Batches)
 		{
+			if (!batch->VertexBuffer || !batch->IndexBuffer)
+			{
+				continue;
+			}
+
 			PC.Vertices = batch->VertexBuffer.GetAddress();
 			cmd.SetPushConstants(m_Pipeline, PC);
 			cmd.BindIndexBuffer(batch->IndexBuffer);
@@ -179,7 +179,26 @@ namespace Yuki {
 		m_Viewport = { width, height };
 	}
 
-	void RenderBatch::AddQuad(rtmcpp::Vec2 position, rtmcpp::Vec4 color) const
+	void GeometryBatch::Clear() const
+	{
+		m_Impl->Vertices.clear();
+		m_Impl->Indices.clear();
+		m_Impl->BaseIndex = 0;
+
+		if (m_Impl->VertexBuffer)
+		{
+			m_Impl->VertexBuffer.Destroy();
+		}
+
+		if (m_Impl->IndexBuffer)
+		{
+			m_Impl->IndexBuffer.Destroy();
+		}
+
+		m_Impl->Images.clear();
+	}
+
+	void GeometryBatch::AddQuad(rtmcpp::Vec2 position, rtmcpp::Vec4 color) const
 	{
 		// Add new vertices
 		{
@@ -218,7 +237,7 @@ namespace Yuki {
 		}
 	}
 
-	void RenderBatch::AddTexturedQuad(rtmcpp::Vec2 position, Image image) const
+	void GeometryBatch::AddTexturedQuad(rtmcpp::Vec2 position, Image image) const
 	{
 		uint32_t imageIndex = ~0u;
 
@@ -278,7 +297,7 @@ namespace Yuki {
 		}
 	}
 
-	void RenderBatch::MarkDirty() const
+	void GeometryBatch::MarkDirty() const
 	{
 		m_Impl->IsDirty = true;
 	}

@@ -282,6 +282,12 @@ namespace Yuki {
 		return { impl };
 	}
 
+	void CommandPool::Destroy()
+	{
+		vkDestroyCommandPool(m_Impl->Context->Device, m_Impl->Resource, nullptr);
+		delete m_Impl;
+	}
+
 	void CommandPool::Reset() const
 	{
 		vkResetCommandPool(m_Impl->Context->Device, m_Impl->Resource, 0);

@@ -103,6 +103,8 @@ namespace Yuki {
 		operator bool() const noexcept { return IsValid(); }
 		Impl* operator->() const noexcept { return m_Impl; }
 
+		bool operator==(const Handle& other) const { return m_Impl == other.m_Impl; }
+
 		ID GetID() const noexcept { return reinterpret_cast<ID>(m_Impl); }
 
 	private:
