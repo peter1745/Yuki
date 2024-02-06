@@ -3,6 +3,7 @@
 #include "Logging.hpp"
 
 #include <stacktrace>
+#include <random>
 
 namespace Yuki {
 
@@ -39,6 +40,15 @@ namespace Yuki {
 	constexpr float64_t operator""_f64(long double value)
 	{
 		return static_cast<float64_t>(value);
+	}
+
+	template<typename T>
+	T RandomRange(T from, T to)
+	{
+		std::random_device rd;
+		std::mt19937_64 generator(rd());
+		std::uniform_int_distribution<T> distribution(from, to);
+		return distribution(generator);
 	}
 }
 

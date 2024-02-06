@@ -55,7 +55,6 @@ namespace Yuki {
 
 	struct InputActionData
 	{
-		uint32_t AxisCount;
 		std::vector<AxisBinding> AxisBindings;
 		bool ConsumeInputs;
 	};

@@ -196,7 +196,7 @@ namespace Yuki {
 				auto& compiledAction = CompiledActions.emplace_back();
 				compiledAction.Action = action;
 				compiledAction.Context = context;
-				compiledAction.Reading = InputReading(action->Data.AxisCount);
+				compiledAction.Reading = InputReading(action->Data.AxisBindings.size());
 
 				for (uint32_t axisIndex = 0; axisIndex < action->Data.AxisBindings.size(); axisIndex++)
 				{
