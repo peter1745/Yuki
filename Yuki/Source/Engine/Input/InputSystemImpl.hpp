@@ -1,7 +1,9 @@
 #pragma once
 
 #include "InputSystem.hpp"
-#include "InputAdapter.hpp"
+#include "InputDevice.hpp"
+
+#include <concepts>
 
 namespace Yuki {
 
@@ -26,7 +28,9 @@ namespace Yuki {
 	template<>
 	struct Handle<InputSystem>::Impl
 	{
-		InputAdapter Adapter;
+		InputDeviceRegistry DeviceRegistry;
+		std::vector<Aura::Unique<InputProvider>> Providers;
+
 		std::vector<InputContext> Contexts;
 		std::vector<InputAction> Actions;
 
@@ -40,6 +44,14 @@ namespace Yuki {
 
 		void NotifyDataChange();
 		void CompileInputActions();
+
+		template<typename Provider>
+		void RegisterProvider()
+		{
+			auto* provider = new Provider();
+			provider->Init(DeviceRegistry);
+			Providers.emplace_back(provider);
+		}
 	};
 
 }

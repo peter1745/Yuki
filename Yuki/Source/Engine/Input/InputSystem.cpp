@@ -1,9 +1,14 @@
 #include "InputSystem.hpp"
 #include "InputSystemImpl.hpp"
+#include "InputDeviceImpl.hpp"
+
+#include "Providers/GenericInputDeviceProvider.hpp"
 
 #include <ranges>
 
 namespace Yuki {
+
+	void RegisterPlatformInputProviders(InputSystem inputSystem);
 
 	template<>
 	struct Handle<InputContext>::Impl
@@ -99,12 +104,17 @@ namespace Yuki {
 
 	void InputSystem::Impl::Init()
 	{
-		Adapter = InputAdapter::Create();
+		DeviceRegistry = { new InputDeviceRegistry::Impl() };
+
+		// RegisterProvider<WootingInputProvider>();
+		RegisterPlatformInputProviders({ this });
+
+		RegisterProvider<GenericInputDeviceProvider>();
 	}
 
 	void InputSystem::Impl::Shutdown()
 	{
-		Adapter.Destroy();
+		Providers.clear();
 	}
 
 	InputAction InputSystem::RegisterAction(const InputActionData& actionData)
@@ -140,8 +150,18 @@ namespace Yuki {
 
 	void InputSystem::Impl::Update()
 	{
-		// TODO(Peter): Change this to allow for multiple backends
-		Adapter.Update();
+		for (auto device : DeviceRegistry->Devices | std::views::values)
+		{
+			for (auto& channel : device->Channels)
+			{
+				channel.PreviousValue = channel.Value;
+			}
+		}
+
+		for (auto& provider : Providers)
+		{
+			provider->Update();
+		}
 
 		if (NeedsRecompile)
 		{
@@ -193,18 +213,20 @@ namespace Yuki {
 
 			for (auto action : context->Actions)
 			{
+				uint32_t axisCount = static_cast<uint32_t>(action->Data.AxisBindings.size());
+
 				auto& compiledAction = CompiledActions.emplace_back();
 				compiledAction.Action = action;
 				compiledAction.Context = context;
-				compiledAction.Reading = InputReading(action->Data.AxisBindings.size());
+				compiledAction.Reading = InputReading(axisCount);
 
-				for (uint32_t axisIndex = 0; axisIndex < action->Data.AxisBindings.size(); axisIndex++)
+				for (uint32_t axisIndex = 0; axisIndex < axisCount; axisIndex++)
 				{
 					const auto& axisBinding = action->Data.AxisBindings[axisIndex];
 
 					for (const auto& triggerBinding : axisBinding.Bindings)
 					{
-						const auto device = Adapter.GetDevice(triggerBinding.ID.DeviceID);
+						const auto device = DeviceRegistry.GetDevice(triggerBinding.ID.DeviceID);
 
 						if (!device)
 							continue;

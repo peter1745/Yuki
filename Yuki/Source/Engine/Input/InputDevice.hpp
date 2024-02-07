@@ -5,6 +5,8 @@
 
 #include "ExternalInputChannel.hpp"
 
+#include <Aura/Span.hpp>
+
 namespace Yuki {
 
 	inline constexpr uint32_t GenericMouse    = ~0u - 1;
@@ -29,6 +31,19 @@ namespace Yuki {
 		Type GetType() const;
 
 		const ExternalInputChannel* GetChannel(uint32_t channelIndex) const;
+	};
+
+	struct InputDeviceRegistry : Handle<InputDeviceRegistry>
+	{
+		InputDevice GetDevice(InputDeviceID deviceID) const;
+		const std::unordered_map<InputDeviceID, InputDevice>& GetAllDevices() const;
+	};
+
+	class InputProvider
+	{
+	public:
+		virtual void Init(InputDeviceRegistry registry) = 0;
+		virtual void Update() = 0;
 	};
 
 }
