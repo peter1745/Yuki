@@ -2,6 +2,7 @@
 #include "InputSystemImpl.hpp"
 #include "InputDeviceImpl.hpp"
 
+#include "Providers/WootingInputProvider.hpp"
 #include "Providers/GenericInputDeviceProvider.hpp"
 
 #include <ranges>
@@ -106,15 +107,24 @@ namespace Yuki {
 	{
 		DeviceRegistry = { new InputDeviceRegistry::Impl() };
 
-		// RegisterProvider<WootingInputProvider>();
 		RegisterPlatformInputProviders({ this });
 
+		RegisterProvider<WootingInputProvider>();
 		RegisterProvider<GenericInputDeviceProvider>();
 	}
 
 	void InputSystem::Impl::Shutdown()
 	{
 		Providers.clear();
+	}
+
+	InputContext InputSystem::CreateContext()
+	{
+		auto* contextImpl = new InputContext::Impl();
+		contextImpl->System = { m_Impl };
+
+		m_Impl->Contexts.push_back({ contextImpl });
+		return { contextImpl };
 	}
 
 	InputAction InputSystem::RegisterAction(const InputActionData& actionData)
@@ -125,15 +135,6 @@ namespace Yuki {
 
 		m_Impl->Actions.push_back({ action });
 		return { action };
-	}
-
-	InputContext InputSystem::CreateContext()
-	{
-		auto* contextImpl = new InputContext::Impl();
-		contextImpl->System = { m_Impl };
-
-		m_Impl->Contexts.push_back({ contextImpl });
-		return { contextImpl };
 	}
 
 	static bool ShouldTrigger(TriggerEventType eventType, const ExternalInputChannel* channel)

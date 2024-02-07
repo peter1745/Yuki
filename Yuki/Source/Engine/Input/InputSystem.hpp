@@ -8,8 +8,8 @@ namespace Yuki {
 
 	struct InputSystem : Handle<InputSystem>
 	{
-		InputAction RegisterAction(const InputActionData& actionData);
 		InputContext CreateContext();
+		InputAction RegisterAction(const InputActionData& actionData);
 	};
 
 }

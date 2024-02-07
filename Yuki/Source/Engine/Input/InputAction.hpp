@@ -11,8 +11,6 @@
 
 namespace Yuki {
 
-	inline constexpr uint32_t AnyDevice = ~0u;
-
 	struct InputIDWrapper
 	{
 		uint32_t InputID;

@@ -23,6 +23,7 @@ project "Yuki"
 		"../ThirdParty/rtmcpp/Include/",
 		"../ThirdParty/rtmcpp/rtm/includes/",
 		"../ThirdParty/stb/",
+		"../ThirdParty/wooting/includes-cpp/",
 	}
 
 	forceincludes {
@@ -32,6 +33,14 @@ project "Yuki"
     defines {
         "RTMCPP_EXPORT=",
         "SPDLOG_USE_STD_FORMAT"
+    }
+
+    libdirs {
+		"../ThirdParty/wooting/lib/"
+    }
+
+    links {
+        "wooting_analog_wrapper"
     }
 
     filter { "system:windows" }
@@ -44,6 +53,19 @@ project "Yuki"
             "Source/Platform/Windows/**.hpp",
         }
 
+        libdirs {
+            GRDK .. "/GameKit/Lib/amd64/",
+        }
+
 		externalincludedirs {
 			GRDK .. "/GameKit/Include/",
+		}
+
+        links {
+			"GameInput",
+			"xgameruntime",
+			"Ws2_32",
+			"Bcrypt",
+			"Userenv",
+			"ntdll",
 		}

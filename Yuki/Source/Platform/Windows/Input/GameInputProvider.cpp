@@ -205,12 +205,12 @@ namespace Yuki {
 		currentChannel += switchCount;
 	}
 
+	uint32_t g_DummyID = 0;
 	void GameInputProvider::RegisterGameInputDevice(IGameInputDevice* device)
 	{
 		auto [deviceName, manufacturer] = FetchDeviceNames(device);
 
-		static uint32_t s_DummyID = 0;
-		InputDeviceID deviceID = s_DummyID++; // Generate from GameInput deviceId (hash or something)
+		InputDeviceID deviceID = g_DummyID++; // Generate from GameInput deviceId (hash or something)
 
 		InputDevice inputDevice = m_DeviceRegistry->CreateDevice(deviceID);
 		inputDevice->Name = deviceName;
